@@ -5,7 +5,7 @@ Subcommands (v0.1): init, save, search, list, link, index, archive
 Subcommands (v0.2): score, verify
 Subcommands (v0.3): review, compress
 Subcommands (v0.4): table-profile, db-profile, analyze-plan, analyze-run
-Subcommands (v0.5): sync
+Subcommands (v0.5): sync, depth
 Subcommands (bridges): extract (Omniparse)
 
 Canonical markdown lives under a configurable content root (default:
@@ -112,6 +112,42 @@ CREATE TABLE IF NOT EXISTS domain_scores (
   set_by TEXT,
   set_date TEXT
 );
+
+CREATE TABLE IF NOT EXISTS linked_files (
+  id INTEGER PRIMARY KEY,
+  project TEXT NOT NULL,
+  source_path TEXT UNIQUE NOT NULL,
+  relpath TEXT NOT NULL,
+  name TEXT NOT NULL,
+  title TEXT,
+  summary TEXT,
+  mtime TEXT,
+  size INTEGER,
+  body TEXT
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS linked_files_fts USING fts5(
+  project, relpath, title, summary, body,
+  content='linked_files', content_rowid='id',
+  tokenize='porter unicode61'
+);
+
+CREATE TRIGGER IF NOT EXISTS linked_files_ai AFTER INSERT ON linked_files BEGIN
+  INSERT INTO linked_files_fts(rowid, project, relpath, title, summary, body)
+  VALUES (new.id, new.project, new.relpath, new.title, new.summary, new.body);
+END;
+
+CREATE TRIGGER IF NOT EXISTS linked_files_ad AFTER DELETE ON linked_files BEGIN
+  INSERT INTO linked_files_fts(linked_files_fts, rowid, project, relpath, title, summary, body)
+  VALUES ('delete', old.id, old.project, old.relpath, old.title, old.summary, old.body);
+END;
+
+CREATE TRIGGER IF NOT EXISTS linked_files_au AFTER UPDATE ON linked_files BEGIN
+  INSERT INTO linked_files_fts(linked_files_fts, rowid, project, relpath, title, summary, body)
+  VALUES ('delete', old.id, old.project, old.relpath, old.title, old.summary, old.body);
+  INSERT INTO linked_files_fts(rowid, project, relpath, title, summary, body)
+  VALUES (new.id, new.project, new.relpath, new.title, new.summary, new.body);
+END;
 """
 
 
@@ -575,6 +611,68 @@ def _scan_linked_project_files(source_dir: Path) -> list[dict]:
     return files
 
 
+def _linked_file_body(path: Path) -> str:
+    """Return markdown body text for linked-file search without requiring plugin frontmatter."""
+    try:
+        text = path.read_text(errors="replace")
+    except OSError:
+        return ""
+    if text.startswith("---\n"):
+        end = text.find("\n---\n", 4)
+        if end != -1:
+            return text[end + 5 :]
+    return text
+
+
+def _index_linked_project_files(project_name: str, files: list[dict]) -> int:
+    """Upsert linked external files into their own FTS-backed table."""
+    ensure_db()
+    conn = db_connect()
+    desired_paths = {f["abspath"] for f in files}
+    indexed = 0
+    with conn:
+        if desired_paths:
+            placeholders = ",".join("?" for _ in desired_paths)
+            conn.execute(
+                f"DELETE FROM linked_files WHERE project = ? AND source_path NOT IN ({placeholders})",
+                [project_name, *sorted(desired_paths)],
+            )
+        else:
+            conn.execute("DELETE FROM linked_files WHERE project = ?", (project_name,))
+        for f in files:
+            body = _linked_file_body(Path(f["abspath"]))
+            conn.execute(
+                """
+                INSERT INTO linked_files
+                  (project, source_path, relpath, name, title, summary, mtime, size, body)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_path) DO UPDATE SET
+                  project=excluded.project,
+                  relpath=excluded.relpath,
+                  name=excluded.name,
+                  title=excluded.title,
+                  summary=excluded.summary,
+                  mtime=excluded.mtime,
+                  size=excluded.size,
+                  body=excluded.body
+                """,
+                (
+                    project_name,
+                    f["abspath"],
+                    f["relpath"],
+                    f["name"],
+                    f["title"],
+                    f["summary"],
+                    f["mtime"],
+                    f["size"],
+                    body,
+                ),
+            )
+            indexed += 1
+    conn.close()
+    return indexed
+
+
 def _refresh_linked_project_symlinks(project_name: str, files: list[dict]) -> list[Path]:
     """Refresh <content-root>/projects/<name>/ symlinks for a linked external project.
 
@@ -759,16 +857,29 @@ def cmd_save(args: argparse.Namespace) -> int:
 
 # ---------- search ----------
 
-def cmd_search(args: argparse.Namespace) -> int:
-    ensure_db()
-    conn = db_connect()
-    # Build FTS5 query
-    query = args.query
-    # FTS5 uses double-quoted phrases; leave user query mostly intact but escape quotes
-    safe_query = query.replace('"', '""')
-    # Filters
+def _quote_fts_token(token: str) -> str:
+    return '"' + token.replace('"', '""') + '"'
+
+
+def _plain_fts_query(query: str) -> str:
+    """Convert normal user text into a safe FTS5 AND query.
+
+    FTS5 treats punctuation such as hyphen as syntax in raw queries. Quoting each
+    token keeps everyday searches like `research-plugin` from becoming parser
+    errors while still allowing quoted phrases from the user's input.
+    """
+    tokens: list[str] = []
+    for match in re.finditer(r'"([^"]+)"|(\S+)', query):
+        token = (match.group(1) or match.group(2) or "").strip()
+        token = token.strip(" \t\r\n,;:!?()[]{}<>")
+        if token:
+            tokens.append(_quote_fts_token(token))
+    return " ".join(tokens)
+
+
+def _search_entries(conn: sqlite3.Connection, args: argparse.Namespace, fts_query: str) -> list[dict]:
     where_clauses = ["entries_fts MATCH ?"]
-    params: list = [safe_query]
+    params: list[Any] = [fts_query]
     if args.tag:
         where_clauses.append("entries.tags LIKE ?")
         params.append(f'%"{args.tag}"%')
@@ -781,10 +892,19 @@ def cmd_search(args: argparse.Namespace) -> int:
     if args.status:
         where_clauses.append("entries.status = ?")
         params.append(args.status)
+
     sql = f"""
-        SELECT entries.slug, entries.title, entries.path, entries.reviewed,
-               entries.confidence, entries.corroboration,
-               bm25(entries_fts) AS score
+        SELECT 'entry' AS kind,
+               entries.slug,
+               entries.title,
+               entries.path,
+               entries.reviewed,
+               entries.confidence,
+               entries.corroboration,
+               NULL AS project,
+               NULL AS relpath,
+               bm25(entries_fts, 8.0, 6.0, 4.0, 2.0, 1.0) AS score,
+               snippet(entries_fts, -1, '[', ']', ' ... ', 32) AS snippet
         FROM entries_fts
         JOIN entries ON entries.id = entries_fts.rowid
         WHERE {' AND '.join(where_clauses)}
@@ -792,8 +912,53 @@ def cmd_search(args: argparse.Namespace) -> int:
         LIMIT ?
     """
     params.append(args.n)
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def _search_linked_files(conn: sqlite3.Connection, args: argparse.Namespace, fts_query: str) -> list[dict]:
+    if args.entries_only or args.tag or args.topic or args.status:
+        return []
+    where_clauses = ["linked_files_fts MATCH ?"]
+    params: list[Any] = [fts_query]
+    if args.project:
+        where_clauses.append("linked_files.project = ?")
+        params.append(args.project)
+
+    sql = f"""
+        SELECT 'linked' AS kind,
+               linked_files.project || '/' || linked_files.relpath AS slug,
+               linked_files.title,
+               linked_files.source_path AS path,
+               linked_files.mtime AS reviewed,
+               'linked' AS confidence,
+               0 AS corroboration,
+               linked_files.project AS project,
+               linked_files.relpath AS relpath,
+               bm25(linked_files_fts, 2.0, 3.0, 6.0, 4.0, 1.0) AS score,
+               snippet(linked_files_fts, -1, '[', ']', ' ... ', 32) AS snippet
+        FROM linked_files_fts
+        JOIN linked_files ON linked_files.id = linked_files_fts.rowid
+        WHERE {' AND '.join(where_clauses)}
+        ORDER BY score
+        LIMIT ?
+    """
+    params.append(args.n)
+    return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    ensure_db()
+    conn = db_connect()
+    fts_query = args.query if args.fts_query else _plain_fts_query(args.query)
+    if not fts_query:
+        print("ERROR: empty search query", file=sys.stderr)
+        conn.close()
+        return 2
     try:
-        rows = conn.execute(sql, params).fetchall()
+        rows = _search_entries(conn, args, fts_query)
+        rows.extend(_search_linked_files(conn, args, fts_query))
+        rows.sort(key=lambda r: r["score"])
+        rows = rows[: args.n]
     except sqlite3.OperationalError as e:
         print(f"Query error: {e}", file=sys.stderr)
         conn.close()
@@ -806,8 +971,213 @@ def cmd_search(args: argparse.Namespace) -> int:
             print("No matches.")
             return 0
         for r in rows:
-            print(f"  [{r['confidence']:8s}] {r['slug']:50s}  {r['title']}")
+            label = r["confidence"] if r["kind"] == "entry" else "linked"
+            print(f"  [{label:8s}] {r['slug']:50s}  {r['title']}")
             print(f"     {r['path']}  (reviewed {r['reviewed']}, corroboration {r['corroboration']})")
+            if r.get("snippet"):
+                print(f"     {r['snippet']}")
+    return 0
+
+
+# ---------- research depth ----------
+
+DEPTH_LIGHT_PATTERNS = [
+    r"\bquick\b",
+    r"\bbrief\b",
+    r"\bshort\b",
+    r"\bsimple\b",
+    r"\bjust\b",
+    r"\btldr\b",
+    r"\bwhat is\b",
+    r"\bdefine\b",
+    r"\bsummarize\b",
+]
+
+DEPTH_DEEP_PATTERNS = [
+    r"\bdeep\b",
+    r"\bthorough\b",
+    r"\bcomprehensive\b",
+    r"\bfull\b",
+    r"\blandscape\b",
+    r"\bstrategy\b",
+    r"\brecommend\b",
+    r"\brecommendation\b",
+    r"\barchitecture\b",
+    r"\btrade[- ]?off",
+    r"\brisk\b",
+    r"\broadmap\b",
+    r"\bbenchmark\b",
+    r"\bvalidate\b",
+    r"\bverification\b",
+    r"\bpersona\b",
+]
+
+DEPTH_COMPARISON_PATTERNS = [
+    r"\bcompare\b",
+    r"\bversus\b",
+    r"\bvs\.?\b",
+    r"\bbetter\b",
+    r"\boptions\b",
+    r"\balternatives\b",
+    r"\bevaluate\b",
+    r"\bassess\b",
+]
+
+DEPTH_FRESHNESS_PATTERNS = [
+    r"\blatest\b",
+    r"\bcurrent\b",
+    r"\btoday\b",
+    r"\bnow\b",
+    r"\bpricing\b",
+    r"\bversion\b",
+    r"\brelease\b",
+    r"\bnews\b",
+    r"\bstatus\b",
+]
+
+DEPTH_HIGH_STAKES_PATTERNS = [
+    r"\blegal\b",
+    r"\bmedical\b",
+    r"\bclinical\b",
+    r"\bfinancial\b",
+    r"\binvestment\b",
+    r"\btax\b",
+    r"\bsecurity\b",
+    r"\bcompliance\b",
+]
+
+DEPTH_QUANT_PATTERNS = [
+    r"\bcalculate\b",
+    r"\bquantitative\b",
+    r"\bmetric\b",
+    r"\bmetrics\b",
+    r"\bcsv\b",
+    r"\bdatabase\b",
+    r"\bsql\b",
+    r"\btable\b",
+    r"\bschema\b",
+]
+
+
+def _matches_any(text: str, patterns: list[str]) -> bool:
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def _research_depth_profile(query: str) -> dict[str, Any]:
+    text = " ".join(query.lower().split())
+    words = re.findall(r"\b[\w-]+\b", text)
+    score = 0
+    reasons: list[str] = []
+
+    if not text:
+        return {
+            "depth": "light",
+            "score": 0,
+            "workflow": "general",
+            "web_required": False,
+            "persist": False,
+            "source_budget": {"target": 0, "minimum": 0, "maximum": 0},
+            "phases": ["ask-for-question"],
+            "reasons": ["No research question provided."],
+        }
+
+    if _matches_any(text, DEPTH_DEEP_PATTERNS):
+        score += 3
+        reasons.append("Deep-work language: strategy, recommendation, validation, risk, architecture, or similar.")
+    if _matches_any(text, DEPTH_COMPARISON_PATTERNS):
+        score += 2
+        reasons.append("Comparison or evaluation requires criteria and multiple sources.")
+    if _matches_any(text, DEPTH_FRESHNESS_PATTERNS):
+        score += 2
+        reasons.append("Freshness-sensitive terms require current-source checking.")
+    if _matches_any(text, DEPTH_HIGH_STAKES_PATTERNS):
+        score += 3
+        reasons.append("High-stakes domain requires stronger verification and caveats.")
+    if _matches_any(text, DEPTH_QUANT_PATTERNS):
+        score += 3
+        reasons.append("Quantitative or tabular claims require profiling and computed validation.")
+    if re.search(r"\b(deep|thorough|comprehensive|full)\s+(research|investigation|analysis|review)\b", text):
+        score = max(score, 5)
+        reasons.append("User explicitly requested deep research depth.")
+    if re.search(r"\b(quick|light|brief|short)\s+(answer|lookup|summary|take|pass)\b", text) and score < 5:
+        score = min(score, 1)
+        reasons.append("User explicitly requested light research depth.")
+    if len(words) >= 28:
+        score += 2
+        reasons.append("Long request likely contains multiple subquestions or constraints.")
+    elif len(words) <= 8 and _matches_any(text, DEPTH_LIGHT_PATTERNS):
+        score -= 1
+        reasons.append("Short definitional or summary request can be handled lightly.")
+    if re.search(r"\b(one|1)\s+(source|link|url|file|doc|document)\b", text):
+        score -= 1
+        reasons.append("Single-source request limits scope.")
+    if re.search(r"\b(no need to save|inline only|don't save|do not save)\b", text):
+        score -= 2
+        reasons.append("User asked for inline-only or no persistence.")
+
+    workflow = "general"
+    if _matches_any(text, DEPTH_QUANT_PATTERNS):
+        workflow = "quantitative"
+    elif re.search(r"\bextract|collect|pull data|key claims|what does this say\b", text):
+        workflow = "collection"
+    elif re.search(r"\bsynthesize|executive summary|combine findings|what should we do\b", text):
+        workflow = "synthesis"
+
+    web_required = _matches_any(text, DEPTH_FRESHNESS_PATTERNS) or bool(
+        re.search(r"\bweb|internet|sources|pricing|competitor|market|latest\b", text)
+    )
+
+    if score >= 5:
+        depth = "deep"
+        source_budget = {"target": 6, "minimum": 4, "maximum": 10}
+        phases = ["frame", "source-plan", "collect", "synthesize", "verify", "persist"]
+        persist = True
+    elif score >= 2:
+        depth = "standard"
+        source_budget = {"target": 3, "minimum": 2, "maximum": 5}
+        phases = ["frame", "source", "synthesize", "persist-if-reusable"]
+        persist = not re.search(r"\b(no need to save|inline only|don't save|do not save)\b", text)
+    else:
+        depth = "light"
+        source_budget = {"target": 1, "minimum": 0, "maximum": 2}
+        phases = ["answer", "cite-if-external", "skip-persist-unless-reusable"]
+        persist = False
+
+    if not reasons:
+        reasons.append("No deep-work signals detected; defaulting to a bounded light pass.")
+
+    return {
+        "depth": depth,
+        "score": score,
+        "workflow": workflow,
+        "web_required": web_required,
+        "persist": persist,
+        "source_budget": source_budget,
+        "phases": phases,
+        "reasons": reasons,
+    }
+
+
+def cmd_depth(args: argparse.Namespace) -> int:
+    profile = _research_depth_profile(args.query)
+    if args.json:
+        print(json.dumps(profile, indent=2))
+        return 0
+
+    print(f"Research depth: {profile['depth']} (score {profile['score']})")
+    print(f"Workflow: {profile['workflow']}")
+    print(f"Web required: {'yes' if profile['web_required'] else 'no'}")
+    print(f"Persist: {'yes' if profile['persist'] else 'no'}")
+    budget = profile["source_budget"]
+    print(
+        "Source budget: "
+        f"target {budget['target']} "
+        f"(min {budget['minimum']}, max {budget['maximum']})"
+    )
+    print("Phases: " + " -> ".join(profile["phases"]))
+    print("Reasons:")
+    for reason in profile["reasons"]:
+        print(f"  - {reason}")
     return 0
 
 
@@ -889,6 +1259,7 @@ def _do_link_project(project_name: str, source_dir: Path) -> dict:
     Returns the registry entry dict that was written. Idempotent.
     """
     ensure_layout()
+    ensure_db()
     source_dir = source_dir.resolve()
     if not source_dir.is_dir():
         raise ValueError(f"not a directory: {source_dir}")
@@ -896,6 +1267,7 @@ def _do_link_project(project_name: str, source_dir: Path) -> dict:
     files = _scan_linked_project_files(source_dir)
     # Refresh symlinks at <content-root>/projects/<project_name>/
     _refresh_linked_project_symlinks(project_name, files)
+    indexed = _index_linked_project_files(project_name, files)
 
     # Persist registry entry (without abspath — keep entry lean; can be rebuilt from path)
     registry = _read_linked_projects_registry()
@@ -906,6 +1278,7 @@ def _do_link_project(project_name: str, source_dir: Path) -> dict:
             {k: f[k] for k in ("name", "relpath", "title", "summary", "mtime", "size")}
             for f in files
         ],
+        "indexed": indexed,
     }
     registry[project_name] = entry
     _write_linked_projects_registry(registry)
@@ -948,6 +1321,7 @@ def cmd_link_project(args: argparse.Namespace) -> int:
     print(f"Linked project: {args.name}")
     print(f"  Source:   {entry['path']}")
     print(f"  Files:    {len(entry['files'])}")
+    print(f"  Indexed:  {entry.get('indexed', len(entry['files']))}")
     print(f"  Symlinks: {link_dir}/")
     print(f"  Registry: {_linked_projects_registry_path()}")
     return 0
@@ -3179,9 +3553,16 @@ def main() -> int:
     sp.add_argument("--topic")
     sp.add_argument("--project")
     sp.add_argument("--status")
+    sp.add_argument("--entries-only", action="store_true", help="Search only canonical saved entries, not linked external files")
+    sp.add_argument("--fts-query", action="store_true", help="Treat query as raw FTS5 syntax instead of safe plain text")
     sp.add_argument("-n", type=int, default=20)
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_search)
+
+    sp = sub.add_parser("depth", help="Classify a research request as light, standard, or deep")
+    sp.add_argument("query", help="Research topic or question to classify")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_depth)
 
     sp = sub.add_parser("list", help="Recent entries")
     sp.add_argument("-n", type=int, default=20)

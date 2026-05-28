@@ -76,7 +76,8 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:init` | Bootstrap the configured content and index roots |
 | `/research:save <file>` | Persist an entry (Phase 6 entry point); writes canonical + project symlink, regenerates portfolio. `--with-project-index` to also write `<project>/RossLabs-Research.md` |
 | `/research:ingest <path>` | Bulk-ingest existing markdown files; `--inbox` to park, `--save` to persist drafts |
-| `/research:search <query>` | FTS5-ranked search |
+| `/research:search <query>` | FTS5-ranked plain-text search across canonical entries and linked external project files. Use `--fts-query` for raw FTS5 syntax or `--entries-only` to exclude linked files |
+| `/research:depth <query>` | Classify a request as light, standard, or deep before sourcing |
 | `/research:list [N]` | Recent entries |
 | `/research:link <slug>` | Retroactive project symlink for a saved entry |
 | `/research:link-project <name> <path>` | Register an existing external research directory (plugin does not modify it) |
@@ -93,6 +94,18 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:review` | Surface stale / review-due entries |
 | `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
 | `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse |
+
+## Search
+
+`/research:search` defaults to safe plain-text search: punctuation-heavy terms such as `research-plugin` are quoted before they reach FTS5, and results include highlighted snippets. Canonical entries and linked external project files are searched together unless `--entries-only` is passed. Raw FTS5 syntax remains available with `--fts-query` for advanced queries.
+
+## Research depth
+
+`/research:depth` is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, workflow, web requirement, persistence guidance, and rationale.
+
+- `light` — quick answer, usually 0-2 sources, skip persistence unless reusable.
+- `standard` — bounded research, usually 2-5 sources, persist when the answer becomes report-sized.
+- `deep` — decision-grade research, usually 4-10 sources, verify and persist by default.
 
 ## Vendored dependencies
 

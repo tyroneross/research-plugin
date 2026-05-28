@@ -183,8 +183,9 @@ What happens:
 1. Walks the source directory recursively for `*.md` files.
 2. For each file, extracts a title (first `# H1`, or filename stem) and a 1-line summary (first paragraph, first sentence, truncated to ~120 chars). Pure deterministic — no LLM calls.
 3. Records the registration in `~/dev/research/.linked-projects.json` as `{<name>: {path, linked, files: [{name, relpath, title, summary, mtime, size}]}}`.
-4. Creates symlinks at `~/dev/research/projects/<name>/<filename>` pointing to the real files.
-5. Appends a "Linked external research directories" section to `~/dev/research/PORTFOLIO.md`.
+4. Indexes the linked files in SQLite FTS so `/research:search --project <name>` can retrieve them without copying them into canonical topics.
+5. Creates symlinks at `~/dev/research/projects/<name>/<filename>` pointing to the real files.
+6. Appends a "Linked external research directories" section to `~/dev/research/PORTFOLIO.md`.
 
 The source directory is never modified. Re-running the command refreshes the registration and symlinks; `/research:index` also re-scans every registered linked project (detects new files, removes deleted ones, refreshes summaries).
 

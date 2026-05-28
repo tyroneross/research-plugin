@@ -23,6 +23,24 @@ Route to the appropriate workflow based on user language:
 
 **When ambiguous:** Ask the user. If they say "just research it," use General Research.
 
+## Depth Detection
+
+Before sourcing, classify the request as `light`, `standard`, or `deep`:
+
+```bash
+python ${CLAUDE_PLUGIN_ROOT}/research.py depth "<user request>"
+```
+
+Use the classifier as a transparent pre-flight, not as a hidden override. If the user explicitly asks for "quick", "light", "deep", "thorough", or "comprehensive", honor that language.
+
+| Depth | Use when | Source budget | Persistence |
+|-------|----------|---------------|-------------|
+| **Light** | Definition, quick lookup, one-file summary, narrow factual answer | 0-2 sources | Skip unless reusable or user asks |
+| **Standard** | Bounded multi-source question, current-state check, ordinary comparison | 2-5 sources | Persist if more than a short answer |
+| **Deep** | Decision-grade recommendation, architecture, strategy, risks, high-stakes domain, quantitative claims, large corpus | 4-10 sources | Persist by default; verify critical claims |
+
+Depth controls effort, not quality. Even light research must be accurate, cite external sources when used, and mark uncertainty.
+
 **Sequential workflow:** For thorough research on a topic, the full pipeline is:
 1. **General Research** (Phase 1-3) to identify and gather sources
 2. **Collection** to extract structured evidence from those sources
@@ -213,7 +231,7 @@ Always include:
 
 ### Phase 6: Persist
 
-**When to run:** For any research that produces a report-sized result (more than a single-line answer). Skip for quick factual lookups the user clearly doesn't want archived.
+**When to run:** Use the depth classifier. Persist deep research by default, persist standard research when it produces a report-sized or reusable result, and skip light research unless the user asks to archive it.
 
 **See `references/persistence.md` for the full contract.** Summary:
 
@@ -252,7 +270,7 @@ Always include:
 - If a search returns nothing useful, say so. Empty findings are valid findings.
 - Prefer depth on fewer sources over shallow coverage of many.
 - Research is complete when the question is answered, not when all sources are exhausted.
-- **Phase 6 is default-on** — unless the user explicitly asks for inline-only, persist. Future-you will want the file.
+- **Phase 6 follows depth** — deep persists by default; standard persists when reusable; light stays inline unless the user asks to save it.
 
 ## Additional Resources
 
