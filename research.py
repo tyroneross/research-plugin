@@ -986,11 +986,16 @@ DEPTH_LIGHT_PATTERNS = [
     r"\bbrief\b",
     r"\bshort\b",
     r"\bsimple\b",
-    r"\bjust\b",
     r"\btldr\b",
     r"\bwhat is\b",
     r"\bdefine\b",
     r"\bsummarize\b",
+]
+
+DEPTH_STANDARD_PATTERNS = [
+    r"\bresearch\b",
+    r"\binvestigate\b",
+    r"\blook into\b",
 ]
 
 DEPTH_DEEP_PATTERNS = [
@@ -1087,6 +1092,9 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
     if _matches_any(text, DEPTH_COMPARISON_PATTERNS):
         score += 2
         reasons.append("Comparison or evaluation requires criteria and multiple sources.")
+    if _matches_any(text, DEPTH_STANDARD_PATTERNS):
+        score += 2
+        reasons.append("Explicit research language needs a bounded multi-source pass.")
     if _matches_any(text, DEPTH_FRESHNESS_PATTERNS):
         score += 2
         reasons.append("Freshness-sensitive terms require current-source checking.")
@@ -1099,7 +1107,7 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
     if re.search(r"\b(deep|thorough|comprehensive|full)\s+(research|investigation|analysis|review)\b", text):
         score = max(score, 5)
         reasons.append("User explicitly requested deep research depth.")
-    if re.search(r"\b(quick|light|brief|short)\s+(answer|lookup|summary|take|pass)\b", text) and score < 5:
+    if re.search(r"\b(quick|light|brief|short)\s+(research|answer|lookup|summary|take|pass)\b", text) and score < 5:
         score = min(score, 1)
         reasons.append("User explicitly requested light research depth.")
     if len(words) >= 28:

@@ -38,6 +38,20 @@ def main() -> int:
     require(light["depth"] == "light", f"expected light, got {light}", failures)
     require(light["persist"] is False, f"light task should not persist: {light}", failures)
 
+    default_research = classify("just research Redis")
+    require(
+        default_research["depth"] == "standard",
+        f"plain research request should default to standard: {default_research}",
+        failures,
+    )
+
+    quick_research = classify("quick research Redis")
+    require(
+        quick_research["depth"] == "light",
+        f"explicit quick research should stay light: {quick_research}",
+        failures,
+    )
+
     explicit_deep = classify("deep research Redis")
     require(
         explicit_deep["depth"] == "deep",
