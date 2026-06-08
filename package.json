@@ -5,7 +5,7 @@
   "author": "Tyrone Ross, Jr <46267523+tyroneross@users.noreply.github.com>",
   "license": "Apache-2.0",
   "bin": {
-    "research-plugin": "./research.py"
+    "research-plugin": "research.py"
   },
   "files": [
     ".claude-plugin",
