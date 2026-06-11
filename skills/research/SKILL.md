@@ -7,7 +7,7 @@ description: Use to research, investigate, evaluate, compare options, extract fi
 
 Structured research methodology for web and technical investigations. Produces cited, verified findings with confidence markers, persisted to a central knowledge base.
 
-Supports four workflows: **general research** (full 5-phase + persist), **collection** (source → evidence), **synthesis** (evidence → output), and **quantitative/database analysis** (data/schema → generated Python analysis → certainty-graded results). All four end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
+Supports four core workflows: **general research** (full 5-phase + persist), **collection** (source → evidence), **synthesis** (evidence → output), and **quantitative/database analysis** (data/schema → generated Python analysis → certainty-graded results). Use the **active-project ingestion overlay** when source materials need to become durable project wiki memory with chronology, contradictions, evolving themes, and decision relevance. All workflows end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
 
 ## Workflow Detection
 
@@ -17,6 +17,7 @@ Route to the appropriate workflow based on user language:
 |-----------------|----------|-----------|
 | "research", "investigate", "evaluate", "compare", "look into", "what's better X or Y" | **General Research** | Phases 1-6 below |
 | "extract", "collect", "what does this say", "pull data from", "analyze this document", "key claims" | **Collection** | `references/collection.md` |
+| "ingest into project wiki", "active project wiki", "project memory ingestion", "preserve chronology", "evolving themes", "contradictions over time" | **Active Project Ingestion Overlay** | `references/active-project-ingestion.md` |
 | "synthesize", "summarize findings", "executive summary", "what should we do", "combine findings" | **Executive/Authorial Synthesis** | `references/synthesis.md` |
 | "calculate", "quantitative", "analyze this CSV", "database", "SQL", "table", "schema", "metrics", "what does the data show" | **Quantitative / Database Analysis** | `references/quantitative-analysis.md` |
 | "save research", "add to research library", "record this" | **Persist existing findings** | `references/persistence.md` |
@@ -49,6 +50,7 @@ Depth controls effort, not quality. Even light research must be accurate, cite e
 
 Steps 2-3 can be invoked independently when the user already has sources or evidence.
 Quantitative/database analysis can be inserted after collection whenever claims require calculations, SQL, table joins, or schema inspection.
+For active project wiki ingestion, run Collection first, apply `references/active-project-ingestion.md` before synthesis, then persist durable outputs as separate wiki-ready entries instead of one giant package unless requested.
 
 ---
 
@@ -77,13 +79,14 @@ Deterministic scoring pipeline: `references/source_scoring.md`
 
 When the user has sources and needs structured evidence extraction.
 
-**Modes:** Standard, Technical PDF, Concise, Large Corpus — auto-selected by source type, user-overridable.
+**Modes:** Standard, Technical PDF, Concise, Large Corpus — auto-selected by source type, user-overridable. Add the Active Project Wiki Overlay when the user wants project memory ingestion, chronology, contradictions, concepts, or wiki update recommendations.
 
 **Core principle:** Source-faithful extraction. Preserve meaning precisely, capture quantitative data exactly, never flatten distinct claims.
 
 **Output:** Evidence package with typed items (claim, source, tier, corroboration, date, extraction type).
 
 Full collection methodology and mode details: `references/collection.md`
+Active project wiki ingestion overlay: `references/active-project-ingestion.md`
 Output format specification: `references/output-contracts.md`
 
 ---

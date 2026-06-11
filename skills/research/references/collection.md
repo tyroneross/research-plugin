@@ -1,6 +1,6 @@
 # Collection Modes — Evidence Extraction Reference
 
-Collection is the phase where raw sources become structured evidence. This file defines 4 modes optimized for different source types and failure modes.
+Collection is the phase where raw sources become structured evidence. This file defines 4 modes optimized for different source types and failure modes, plus an active-project wiki overlay for durable project memory ingestion.
 
 ## Mode Selection
 
@@ -10,11 +10,13 @@ Collection is the phase where raw sources become structured evidence. This file 
 | PDFs with tables, figures, technical specs | **Technical PDF** | Layout-aware extraction, completeness logging |
 | Quick decision support, time-constrained | **Concise** | Brevity filter, bullet-only, decision-relevance |
 | 5+ sources, large document sets, literature | **Large Corpus** | Triage first, tiered depth, deduplication |
+| Active project wiki ingestion, evolving research corpus | **Active Project Wiki Overlay** | Preserves chronology, contradictions, concepts, and decision relevance |
 
 **Auto-selection:** Default to Standard. Switch when:
 - User provides PDFs or mentions technical documents → Technical PDF
 - User asks for "quick", "brief", "just the key points" → Concise
 - Source count exceeds 5 or user mentions "survey", "review", "all the literature" → Large Corpus
+- User mentions active project wiki, project memory, chronology, evolving themes, contradictions, or wiki update recommendations → apply the Active Project Wiki Overlay after Standard or Large Corpus extraction
 
 **User override:** Always accept explicit mode requests. If ambiguous, ask.
 
@@ -210,3 +212,23 @@ Sources classified as "Light" or "Skip" go into an appendix:
 - Reason for exclusion (for Skip)
 
 This preserves the research trail without cluttering the main evidence package.
+
+---
+
+## Active Project Wiki Overlay
+
+Use `active-project-ingestion.md` when the source set should update durable project memory, not just answer the immediate question. This overlay usually rides on Standard mode for small source sets and Large Corpus mode for bigger source sets.
+
+The overlay adds these outputs after source-level extraction:
+
+- source register before synthesis
+- document-level extractions with assumptions, risks, stakeholders, decisions, and open questions
+- cross-document theme discovery from repeated observations
+- timeline of theme evolution
+- concept map and relationship table
+- contradictions and tensions
+- active project implications
+- wiki entry recommendations and draft entries
+- decision support brief
+
+Persist durable outputs as separate plugin entries when useful. Do not save one giant ingestion package unless the user explicitly asks for a single archival report.
