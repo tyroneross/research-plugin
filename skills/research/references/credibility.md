@@ -82,3 +82,16 @@ The two dimensions combine into an overall credibility signal:
 ### Tier Inflation
 **Wrong:** Promoting a source to a higher tier because its conclusion matches your hypothesis.
 **Right:** Tier reflects the source type, not the conclusion. A T4 source doesn't become T2 because it says what you expected.
+
+## Mapping External Ingestion Labels
+
+Some ingestion prompts use a flat claim-label vocabulary. Map it onto the two dimensions above — do **not** run a parallel scheme.
+
+| External label | Maps to |
+|----------------|---------|
+| SOURCE-SUPPORTED | Corroboration PRIMARY or SUPPORTED, at the source's tier |
+| INFERRED | SPECULATIVE + TAG:INFERRED |
+| UNVERIFIED | SINGLE-SOURCE (⚠️) — note no corroboration was found |
+| CONTRADICTED | CONTESTED — present all positions with tiers + dates |
+| OUTDATED / SUPERSEDED | CORRECTED — preserve the change chain; on a wiki page set `status: superseded` + link |
+| MISSING | Not a credibility state — record under synthesis **Gaps** |

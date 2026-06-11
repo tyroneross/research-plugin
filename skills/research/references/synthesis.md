@@ -1,6 +1,6 @@
 # Synthesis Modes — Evidence Transformation Reference
 
-Synthesis transforms a collection of evidence into structured, actionable output. This file defines 2 modes optimized for different audiences and purposes.
+Synthesis transforms a collection of evidence into structured, actionable output. This file defines 3 modes optimized for different audiences and purposes.
 
 ## Mode Selection
 
@@ -8,8 +8,9 @@ Synthesis transforms a collection of evidence into structured, actionable output
 |-------------|------|-----------------|
 | "What does the research say?" / "Summarize the findings" / "What did the author argue?" | **Authorial** | Faithful account of what sources say |
 | "What should we do?" / "Synthesize for decision-makers" / "Executive summary" / "Recommendations" | **Executive** | Action-oriented brief with implications |
+| "How did our understanding evolve?" / "Ingest these into the project wiki" / active-project ingestion across many sources over time | **Temporal / Research-Arc** | Time-ordered account of how themes, assumptions, and risks changed |
 
-**Sequential recommendation:** For complex research, run **authorial first** to establish ground truth, then **executive** to derive implications. This prevents interpretation from contaminating the evidence summary.
+**Sequential recommendation:** For complex research, run **authorial first** to establish ground truth, then **executive** to derive implications. This prevents interpretation from contaminating the evidence summary. For active-project wiki ingestion across many sources, add **temporal** last to capture how the understanding changed.
 
 **Default:** If ambiguous, ask the user. If they say "just synthesize it," default to authorial — it's the safer choice (no unwanted interpretation).
 
@@ -178,6 +179,52 @@ Every strategic statement needs a specific anchor — a number, a date, a thresh
 
 ---
 
+## Temporal / Research-Arc Mode
+
+**Purpose:** Active-project wiki ingestion across many sources over time, where the *evolution* of understanding is itself the finding — how themes, assumptions, risks, and metrics changed as new evidence arrived. Pairs with the **Chronological** MECE dimension. Run AFTER authorial (ground truth); add executive if decisions are in play.
+
+**When to pick:** ingesting a project's accumulated reports/decks/memos into the wiki; "how did our read on X change?"; reconciling a new source against existing wiki entries.
+
+### Structure
+
+```
+## Organizing Dimension
+Chronological — [why time is the story here]
+
+## Theme Evolution
+| Theme | First seen (source, date) | Latest evidence (source, date) | Direction of change | Confidence | Project implication |
+|-------|---------------------------|--------------------------------|---------------------|------------|---------------------|
+
+## Research Arc
+### Starting Understanding
+[What the earliest sources supported — dates + evidence IDs]
+### Emerging Pattern
+[What began to repeat across sources]
+### Shift or Reframe
+[What changed as new evidence arrived, and the source/date that triggered it]
+### Current Best Understanding
+[Strongest synthesis the evidence now supports]
+### Residual Uncertainty
+[What remains disputed, under-evidenced, or projected]
+
+## Superseded Record
+| Earlier claim (source, date) | Superseded by (source, date) | Why it changed |
+|------------------------------|------------------------------|----------------|
+```
+
+### Direction-of-change vocabulary
+Emerging · Strengthening · Stable · Weakening · Contradicted · Reframed · Superseded · Unknown.
+
+### Rules
+
+1. **Date every row.** Distinguish *source date* (publication), *event date* (what it describes), and *data-collection period* — they often differ, and the gap is itself signal.
+2. **Supersede, don't overwrite.** When newer evidence replaces older, record both with the change reason (mirrors the wiki's `status: superseded` + link and the memory ledger's supersede rule). Never silently drop the earlier read.
+3. **Anchor every arc step to evidence IDs + dates.** "Current best understanding" is a claim like any other — it carries its tier/corroboration from `credibility.md`, not a fresh confidence scheme.
+4. **A reframe is not a resolution.** If sources still disagree, mark CONTESTED — don't smooth it into a clean arc.
+5. **Tie each theme to the project.** Every theme row names its implication for an active decision or workstream, or it's noise — cut it.
+
+---
+
 ## Mode Interaction
 
 When running both modes sequentially:
@@ -188,3 +235,5 @@ When running both modes sequentially:
 4. **No contradiction** — Executive mode cannot contradict authorial findings. It can only add interpretation and questions on top.
 
 This two-pass approach ensures that interpretation never contaminates the evidence record.
+
+**Temporal mode** runs last and is additive: it reads authorial (and, if present, executive) output plus the dated evidence and arranges it on a timeline. It introduces no new claims — only ordering, direction-of-change, and the supersede record — so it cannot contradict the earlier modes either.

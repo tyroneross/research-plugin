@@ -77,6 +77,8 @@ Compact reference for the fields on each evidence item:
 | **Date** | Yes | Date | Publication or access date |
 | **Extraction** | Yes | Enum | direct quote, paraphrased, quantitative |
 | **Context** | Optional | String | Surrounding context if needed for interpretation |
+| **Claim Type** | Optional | Enum | fact, metric, forecast, assumption, recommendation, risk, decision, or signal subtype (market / customer / competitive / technical / financial / regulatory) |
+| **Decision Relevance** | Optional | String | Which active decision question or workstream this bears on (active-project ingestion) |
 
 ---
 
@@ -184,6 +186,94 @@ TAG:UNSUPPORTED
 - [Source 1](URL) — T[n], accessed YYYY-MM-DD
 - [Source 2](URL) — T[n], accessed YYYY-MM-DD
 ```
+
+---
+
+## Wiki Ingestion Output (AI Wiki Template)
+
+When the output mode is **wiki ingestion** (persist research into an active-project AI wiki), emit one file per page in the **AI Wiki Template** schema (`_system/TAXONOMY.md`) — NOT a freeform report. The syntheses above are the *input*; this contract is how they land as durable, indexable pages. Pairs with **Temporal mode** for the arc.
+
+### Page-type mapping
+
+| Research artifact | Wiki page type | Notes |
+|-------------------|----------------|-------|
+| Each ingested document | `source` | one per document; carries raw_ref + tier + corroboration + dates |
+| A derived idea / definition / operating model | `concept` | `concept-` id if it could collide with an entity/project name |
+| A reusable playbook distilled from multiple sources | `framework` | lives in `wiki/frameworks/`; required sections per TAXONOMY |
+| Person / org / product / tool / market | `entity` | |
+| The active project, decision, or research arc | `work` | `work_category: decision-record` or `strategy-project`; holds the Research Arc + decision relevance |
+
+### Source page (one per ingested document)
+
+```markdown
+---
+id: <domain>-<slug>-YYYY
+title: "..."
+type: source
+status: seedling
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+tags: []
+raw_ref: "raw/<domain>/<path>"
+raw_doc_id: "<domain>-<slug>-YYYY"
+source_type: report            # report | article | deck | transcript | dataset | memo
+artifact_kind: markdown
+source_storage: tracked
+classification_signal: 2       # see TAXONOMY classification table
+classification_confidence: high
+source_date: YYYY-MM-DD        # publication date
+event_date: YYYY-MM-DD         # what it describes, if different
+data_period: "YYYY-Qn..YYYY-Qn"
+tier: T2                       # credibility.md source quality
+---
+
+## Thesis
+[one sentence]
+
+## Takeaways
+- [finding] — §loc — corroboration: SUPPORTED — decision-relevance: <which active question>
+
+## Evidence
+- [E-id] [claim] — §loc — Tier/Corroboration — date
+
+## Open questions / gaps
+- ...
+
+## Links
+- concept:: [[concept-...]]   entity:: [[...]]   work:: [[...]]
+```
+
+### Work page (project / decision record — holds the arc)
+
+```markdown
+---
+id: <project-slug>
+title: "..."
+type: work
+work_category: decision-record
+project_status: active
+status: seedling
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+tags: [work]
+---
+
+## Decision question(s)
+## Current best understanding
+## Research arc            # from Temporal mode: starting → emerging → shift → current → residual
+## Contradictions still open
+## Decision-relevant implications
+## Source pages            # [[source ...]] links, with tier + date
+## Confidence              # credibility.md language
+```
+
+### Rules
+
+1. **Use the TAXONOMY, not an invented schema.** Page types, status (`seedling → sprout → evergreen → superseded`), and the frontmatter baseline come from `_system/TAXONOMY.md`. Output the indexer can ingest beats output that only reads well.
+2. **Supersede via status + link.** An updated read sets the prior page `status: superseded` and links forward; never overwrite provenance (matches Temporal mode + the memory ledger).
+3. **One confidence system.** Reuse credibility tiers/corroboration; do not introduce parallel labels (see the mapping in `credibility.md`).
+4. **Link the graph.** Every page cross-links its related concept/entity/work pages — links are the wiki's recall graph.
+5. **Date everything**, distinguishing source / event / data-period dates.
 
 ---
 
