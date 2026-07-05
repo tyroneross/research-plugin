@@ -1,6 +1,6 @@
 ---
 name: research
-description: Use to research, investigate, evaluate, compare options, extract findings, synthesize, analyze CSV/databases, or save to the research library. Sourced, verified, persisted to ~/dev/research/.
+description: Use when the user asks to research, investigate, evaluate, compare options, extract findings, synthesize, analyze CSV/databases, or save to the research library. Sourced, verified, persisted to ~/dev/research/.
 ---
 
 # Research
@@ -29,7 +29,7 @@ Route to the appropriate workflow based on user language:
 Before sourcing, classify the request as `light`, `standard`, or `deep`:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/research.py depth "<user request>"
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" depth "<user request>"
 ```
 
 Use the classifier as a transparent pre-flight, not as a hidden override. If the user explicitly asks for "quick", "light", "deep", "thorough", or "comprehensive", honor that language.
@@ -254,13 +254,13 @@ Always include:
 
 5. **Persist** — Invoke:
    ```bash
-   python ${CLAUDE_PLUGIN_ROOT}/research.py save --file <path-to-entry>
+   python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" save --file <path-to-entry>
    ```
    The script upserts into SQLite, creates project symlink + INDEX.md line when `projects[]` is non-empty, and the PostToolUse hook regenerates `~/dev/research/index.md`, `by-topic.md`, `by-project.md`, and per-topic MOCs.
 
 6. **Verify (v0.2+)** — For entries with numeric, citation, symbolic, or code claims:
    ```bash
-   python ${CLAUDE_PLUGIN_ROOT}/research.py verify <slug>
+   python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" verify <slug>
    ```
    Updates `verification.*` frontmatter and writes per-atom artifacts to `~/dev/research/verifier-log/<slug>/`.
 
