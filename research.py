@@ -10,7 +10,7 @@ Subcommands (bridges): extract (Omniparse)
 
 Canonical markdown lives under a configurable content root (default:
 ~/dev/research). SQLite FTS5 and other operational state can live under a
-separate configurable index root. Claude Code's WebFetch/Read are
+separate configurable index root. The host agent's WebFetch/Read tools are
 assumed to have already extracted source content into entry files; this
 script persists, queries, scores, and verifies.
 """
@@ -634,7 +634,7 @@ def _index_linked_project_files(project_name: str, files: list[dict]) -> int:
         if desired_paths:
             placeholders = ",".join("?" for _ in desired_paths)
             conn.execute(
-                f"DELETE FROM linked_files WHERE project = ? AND source_path NOT IN ({placeholders})",
+                f"DELETE FROM linked_files WHERE project = ? AND source_path NOT IN ({placeholders})",  # nosec: parameterized IN-clause, values bound as params
                 [project_name, *sorted(desired_paths)],
             )
         else:
@@ -1002,11 +1002,18 @@ DEPTH_DEEP_PATTERNS = [
     r"\bdeep\b",
     r"\bthorough\b",
     r"\bcomprehensive\b",
+    r"\bexpansive\b",
+    r"\bexhaustive\b",
     r"\bfull\b",
+    r"\bsystematic\b",
+    r"\bwide[- ]?ranging\b",
     r"\blandscape\b",
     r"\bstrategy\b",
     r"\brecommend\b",
     r"\brecommendation\b",
+    r"\bdecision[- ]?grade\b",
+    r"\bsource[- ]?backed\b",
+    r"\bliterature\b",
     r"\barchitecture\b",
     r"\btrade[- ]?off",
     r"\brisk\b",
@@ -1068,6 +1075,77 @@ def _matches_any(text: str, patterns: list[str]) -> bool:
     return any(re.search(pattern, text) for pattern in patterns)
 
 
+def _coverage_requirements(depth: str, workflow: str, web_required: bool) -> dict[str, Any]:
+    if depth == "deep":
+        source_mix = {
+            "primary_or_official": 2,
+            "independent_analysis": 3,
+            "counter_evidence": 2,
+            "freshness_check": 1 if web_required else 0,
+        }
+        lanes = [
+            "Primary/original sources for the core facts",
+            "Independent expert, academic, or industry sources for corroboration",
+            "Counter-evidence covering risks, criticism, failures, and alternatives",
+            "Temporal coverage for changing facts, including recent updates when relevant",
+            "Explicit gaps plus what evidence would change the answer",
+        ]
+        evidence = [
+            "Maintain a source register with tier, date, role, and independence notes",
+            "Extract a claim-level evidence matrix before synthesis",
+            "Verify critical numeric, technical, legal, financial, medical, or security claims",
+            "Persist by default with Raw source extracts retained",
+        ]
+    elif depth == "standard":
+        source_mix = {
+            "primary_or_official": 1,
+            "independent_analysis": 1,
+            "counter_evidence": 1,
+            "freshness_check": 1 if web_required else 0,
+        }
+        lanes = [
+            "Primary/official source where available",
+            "At least one independent source for corroboration or contrast",
+            "Counter-evidence or limitations search when the answer affects a decision",
+            "Date check for time-sensitive facts",
+            "Gaps and limitations stated explicitly",
+        ]
+        evidence = [
+            "Record each source's role before synthesis",
+            "Extract specific claims and data points rather than impressions",
+            "Persist when the result is reusable, report-sized, or project-relevant",
+        ]
+    else:
+        source_mix = {
+            "primary_or_official": 0,
+            "independent_analysis": 0,
+            "counter_evidence": 0,
+            "freshness_check": 1 if web_required else 0,
+        }
+        lanes = [
+            "Answer the exact question",
+            "Use a source only when the fact is external, current, or uncertain",
+            "State uncertainty instead of expanding scope silently",
+        ]
+        evidence = [
+            "Cite any external source used",
+            "Skip persistence unless the user asks or the answer is reusable",
+        ]
+
+    if workflow == "quantitative":
+        evidence.append("Profile data and run deterministic calculations before quantitative claims")
+    elif workflow == "collection":
+        evidence.append("Preserve source-faithful extraction and avoid claim flattening")
+    elif workflow == "synthesis":
+        evidence.append("Separate authorial findings from executive interpretation")
+
+    return {
+        "source_mix": source_mix,
+        "lanes": lanes,
+        "evidence_expectations": evidence,
+    }
+
+
 def _research_depth_profile(query: str) -> dict[str, Any]:
     text = " ".join(query.lower().split())
     words = re.findall(r"\b[\w-]+\b", text)
@@ -1082,13 +1160,14 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
             "web_required": False,
             "persist": False,
             "source_budget": {"target": 0, "minimum": 0, "maximum": 0},
+            "coverage": _coverage_requirements("light", "general", False),
             "phases": ["ask-for-question"],
             "reasons": ["No research question provided."],
         }
 
     if _matches_any(text, DEPTH_DEEP_PATTERNS):
         score += 3
-        reasons.append("Deep-work language: strategy, recommendation, validation, risk, architecture, or similar.")
+        reasons.append("Deep-work language: thorough, expansive, strategy, recommendation, validation, risk, architecture, or similar.")
     if _matches_any(text, DEPTH_COMPARISON_PATTERNS):
         score += 2
         reasons.append("Comparison or evaluation requires criteria and multiple sources.")
@@ -1104,11 +1183,15 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
     if _matches_any(text, DEPTH_QUANT_PATTERNS):
         score += 3
         reasons.append("Quantitative or tabular claims require profiling and computed validation.")
-    if re.search(r"\b(deep|thorough|comprehensive|full)\s+(research|investigation|analysis|review)\b", text):
+    if re.search(r"\b(deep|thorough|comprehensive|expansive|exhaustive|systematic|full)\s+(research|investigation|analysis|review)\b", text):
         score = max(score, 5)
         reasons.append("User explicitly requested deep research depth.")
     if re.search(r"\b(quick|light|brief|short)\s+(research|answer|lookup|summary|take|pass)\b", text) and score < 5:
         score = min(score, 1)
+        reasons = [
+            reason for reason in reasons
+            if reason != "Explicit research language needs a bounded multi-source pass."
+        ]
         reasons.append("User explicitly requested light research depth.")
     if len(words) >= 28:
         score += 2
@@ -1137,13 +1220,13 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
 
     if score >= 5:
         depth = "deep"
-        source_budget = {"target": 6, "minimum": 4, "maximum": 10}
-        phases = ["frame", "source-plan", "collect", "synthesize", "verify", "persist"]
+        source_budget = {"target": 10, "minimum": 7, "maximum": 15}
+        phases = ["frame", "coverage-plan", "source-register", "collect", "synthesize", "verify", "persist"]
         persist = True
     elif score >= 2:
         depth = "standard"
-        source_budget = {"target": 3, "minimum": 2, "maximum": 5}
-        phases = ["frame", "source", "synthesize", "persist-if-reusable"]
+        source_budget = {"target": 5, "minimum": 3, "maximum": 8}
+        phases = ["frame", "coverage-plan", "source", "synthesize", "persist-if-reusable"]
         persist = not re.search(r"\b(no need to save|inline only|don't save|do not save)\b", text)
     else:
         depth = "light"
@@ -1161,6 +1244,7 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
         "web_required": web_required,
         "persist": persist,
         "source_budget": source_budget,
+        "coverage": _coverage_requirements(depth, workflow, web_required),
         "phases": phases,
         "reasons": reasons,
     }
@@ -1183,6 +1267,16 @@ def cmd_depth(args: argparse.Namespace) -> int:
         f"(min {budget['minimum']}, max {budget['maximum']})"
     )
     print("Phases: " + " -> ".join(profile["phases"]))
+    coverage = profile["coverage"]
+    print("Coverage lanes:")
+    for lane in coverage["lanes"]:
+        print(f"  - {lane}")
+    print("Source mix minimums:")
+    for lane, minimum in coverage["source_mix"].items():
+        print(f"  - {lane}: {minimum}")
+    print("Evidence expectations:")
+    for expectation in coverage["evidence_expectations"]:
+        print(f"  - {expectation}")
     print("Reasons:")
     for reason in profile["reasons"]:
         print(f"  - {reason}")
@@ -2239,7 +2333,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
         if seen:
             placeholders = ",".join("?" for _ in seen)
             pruned = conn.execute(
-                f"DELETE FROM entries WHERE slug NOT IN ({placeholders})",
+                f"DELETE FROM entries WHERE slug NOT IN ({placeholders})",  # nosec: parameterized IN-clause, values bound as params
                 seen,
             ).rowcount
         else:
@@ -2437,11 +2531,11 @@ def _profile_sqlite_db(path: Path, sample_size: int = 5) -> dict[str, Any]:
     for table in tables:
         name = table["name"]
         quoted = '"' + name.replace('"', '""') + '"'
-        row_count = conn.execute(f"SELECT COUNT(*) AS n FROM {quoted}").fetchone()["n"]
+        row_count = conn.execute(f"SELECT COUNT(*) AS n FROM {quoted}").fetchone()["n"]  # nosec: identifier from sqlite_master, quote-escaped
         cols = [dict(r) for r in conn.execute(f"PRAGMA table_info({quoted})").fetchall()]
         fks = [dict(r) for r in conn.execute(f"PRAGMA foreign_key_list({quoted})").fetchall()]
         indexes = [dict(r) for r in conn.execute(f"PRAGMA index_list({quoted})").fetchall()]
-        sample = [dict(r) for r in conn.execute(f"SELECT * FROM {quoted} LIMIT ?", (sample_size,)).fetchall()]
+        sample = [dict(r) for r in conn.execute(f"SELECT * FROM {quoted} LIMIT ?", (sample_size,)).fetchall()]  # nosec: identifier from sqlite_master, quote-escaped
         table_profile = {
             "name": name,
             "type": table["type"],
@@ -2639,11 +2733,11 @@ def profile_sqlite(path: Path) -> dict[str, Any]:
     for table in tables:
         name = table["name"]
         quoted = '"' + name.replace('"', '""') + '"'
-        row_count = conn.execute(f"SELECT COUNT(*) AS n FROM {quoted}").fetchone()["n"]
+        row_count = conn.execute(f"SELECT COUNT(*) AS n FROM {quoted}").fetchone()["n"]  # nosec: identifier from sqlite_master, quote-escaped
         cols = [dict(r) for r in conn.execute(f"PRAGMA table_info({quoted})")]
         fks = [dict(r) for r in conn.execute(f"PRAGMA foreign_key_list({quoted})")]
         indexes = [dict(r) for r in conn.execute(f"PRAGMA index_list({quoted})")]
-        sample = [dict(r) for r in conn.execute(f"SELECT * FROM {quoted} LIMIT 5")]
+        sample = [dict(r) for r in conn.execute(f"SELECT * FROM {quoted} LIMIT 5")]  # nosec: identifier from sqlite_master, quote-escaped
         out.append({
             "name": name,
             "type": table["type"],
@@ -3210,7 +3304,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
     if target.startswith(("http://", "https://")):
         print(
-            "This is a URL. Use Claude's WebFetch tool for HTML pages. If you "
+            "This is a URL. Use the host agent's WebFetch tool for HTML pages. If you "
             "downloaded the file locally, re-run with the local path.",
             file=sys.stderr,
         )
@@ -3677,7 +3771,7 @@ def main() -> int:
         description=(
             "Routes all extraction through @tyroneross/omniparse. HTML URLs and "
             ".md/.txt/.json/.yaml files are rejected with a pointer to "
-            "Claude's WebFetch/Read tools. Results are cached at "
+            "the host agent's WebFetch/Read tools. Results are cached at "
             "<index-root>/.extract-cache/ keyed by file SHA-256 + flag signature."
         ),
     )
