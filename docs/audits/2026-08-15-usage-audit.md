@@ -146,6 +146,32 @@ Other recurring failures, each repeating across months rather than once:
 - **Install is duplicated.** Claude Code resolves `research` through the dev-repo symlink, while `installed_plugins.json` points at a marketplace cache entry. Of the two cache dirs, `e97091896725/research.py` is byte-identical to HEAD (`50248c59…`) but its manifest **has no `version` field**, and the sibling `0.5.1/` copy is genuinely stale (3,699 vs 3,793 lines) (✅ `md5 -q`). Functionally benign today; a trap the moment someone edits the wrong copy.
 - **`research.py` is a 3,793-line, 111-function monolith** mixing argparse, schema, SQLite, markdown generation, and Omniparse routing in one file, sectioned only by comment banners (⚠️ subagent measurement).
 
+### 3.7 Phase 1 collapses several questions into one (added 2026-08-15 after user review)
+
+`skills/research/SKILL.md:151` instructs: **"Research question — One clear question. Restate vague requests as specific questions."** `references/methodology.md:109` mentions sub-questions only as a fallback when a question proves intractable. There is no step that identifies the *meta-question(s)* behind a request, no decision card, and no MECE decomposition into sub-question groups that map to sections of the output (✅ grep of `SKILL.md` + `references/`).
+
+The user's stated preference is the opposite default: do **not** force distinct questions into one; name the meta-question(s), then break each into sub-questions organized into MECE themes. Two existing artifacts already encode this and were not consulted when the skill was written:
+
+- **WorkWiki `communications-alphasights-goal-led-question-guide`** (2026-07-19, confidence medium-high, read-only source): a *decision card* filled before drafting (decision → "by the end we need to know" → flagship question → required scope/basis → minimum useful answer → what changes depending on the answer), then **project decision components as MECE section headings**, with five evidence checks (scope · direct answer · drivers · boundaries · confidence) applied *within* sections rather than as section titles, and a per-question standard (one ask · short · concrete · basis-defined · neutral first). Built for expert calls; the framing discipline transfers directly to a research brief.
+- **The work-machine fork of this plugin** (see §3.8) already ships an `optimize` phase and "section contracts with exact questions, evidence requirements, expected outputs, and completion rules" plus a query ledger — i.e., the meta-question → sub-question → section mapping this repo lacks.
+
+Consequence today: multi-part requests ("compare X and Y and tell me whether Z still holds") get flattened into a single restated question, the output has no section-per-sub-question structure to be MECE against, and coverage gaps are invisible because there is no list of sub-questions to check off.
+
+### 3.8 The plugin has forked: the work machine runs 0.5.3 with features this repo does not have (added 2026-08-15)
+
+WorkWiki `wiki/tools/tool-research-plugin.md` (updated 2026-07-27) documents a **second canonical source** at `/Users/trossjr/work-dev/research`, shared release **0.5.3**, installed in both Codex (`research@personal`, `0.5.3+codex.20260727150324`) and Claude Code (`research@personal-shared`) via local marketplaces, with source/cache parity verified 2026-07-27. This repo is **0.5.2** (`plugin.json`, `package.json` ✅). The work fork's documented capabilities absent here (✅ grep of `commands/`, `skills/`, `tests/` returns nothing for `optimize`, `section contract`, `query ledger`, `readiness`):
+
+| Work fork 0.5.3 (per WorkWiki card) | This repo 0.5.2 |
+|---|---|
+| `/research:optimize` — Q0–Q4 optimization levels, 0–24 readiness score across scope/time/definitions/evidence/metrics/comparisons/output; separates user facts, hypotheses, requested tests, unsupported assumptions | absent |
+| Deep-research orchestration: section contracts, query ledger, source + claim registers, cross-section synthesis, explicit unresolved gaps | partial (`deep-research-architecture.md`, untracked) |
+| Financial/operating-model controls: term authority, period/currency/numerator/denominator, attribution ladder, cost-bucket overlap groups | absent |
+| Tests: `deep_orchestration_contract_check.py`, `financial_research_contract_check.py` (+ depth, search-quality) | depth, search-quality, connector-policy only |
+| Depth vocabulary: quick / balanced / deep | light / standard / deep |
+| `RESEARCH_CONTENT_DIR` / `RESEARCH_INDEX_DIR` split roots | `RESEARCH_PLUGIN_ROOT` only |
+
+⚠️ The work fork is not on this machine; the comparison rests on the WorkWiki card, not a diff. ❓ Whether the fork was branched from this repo's uncommitted dual-host work (§3.6) or independently is unknown — the WorkWiki card was written 2026-07-27, twelve days after this repo's last commit and during the window the dual-host change set was being edited. Either way: **two 0.5.x lineages, the more capable one undocumented here, and the less capable one is the GitHub-published source of truth.**
+
 ---
 
 ## 4. Suggestions, ranked by leverage
@@ -189,6 +215,17 @@ Other recurring failures, each repeating across months rather than once:
 **10. Close the build-loop double-store.** — effort **M**
 *Where:* `build-loop/scripts/reference_capture.py`, or the ten-week-old `bl-research-plugin-trigger-policy.md` backlog item.
 *Evidence:* 124 parallel files, demonstrated duplicate capture of the same Groq catalog facts (§3.5). Pick one store. ❓ Which direction is correct is a design decision this audit does not have the standing to make.
+
+**11. Reframe Phase 1 as decision → meta-question(s) → MECE sub-question groups; port `optimize` from the work fork.** — effort **S** (skill text) / **M** (with `optimize` port) · *added 2026-08-15 after user review; leverage places it directly after #1*
+*Where:* `skills/research/SKILL.md` §Phase 1 (line 151) and §Phase 2; `references/methodology.md`; new `commands/optimize.md` mirroring the work fork.
+*Change:* replace "One clear question" with: (a) a decision card (decision the research informs · what we must know by the end · flagship question · scope + basis · minimum useful answer · what changes with the answer); (b) identify one or more **meta-questions** — never merge distinct questions; (c) decompose each meta-question into sub-questions grouped into **MECE themes that become the output's section headings**, with scope/direct-answer/drivers/boundaries/confidence as evidence checks inside each theme; (d) carry the sub-question list into Phase 2 as section contracts (exact question · evidence required · completion rule) and check it off at Phase 4/5 as the coverage summary.
+*Evidence:* §3.7 — the skill's own instruction collapses questions; the goal-led MECE guide and the work fork's `optimize` already solve this; `deep-research-architecture.md:198` already assumes "major subquestions" exist that no upstream step produces.
+*UX:* multi-part asks stop being flattened; the delivered answer is sectioned per sub-question so gaps are visible; the same sub-question list drives Codex section fan-out.
+
+**12. Reconcile the fork.** — effort **M**
+*Where:* this repo ↔ `/Users/trossjr/work-dev/research` (work machine).
+*Change:* diff 0.5.3 against this tree (including the uncommitted dual-host set), decide the canonical lineage, and land the delta here — at minimum `optimize`, the two contract tests, the split content/index roots, and the quick/balanced/deep vocabulary decision. Record the outcome in this repo's CHANGELOG and the WorkWiki tool card (read-only from here — update from the work machine).
+*Evidence:* §3.8. Suggestion #4 (commit the dual-host work) is a prerequisite: reconciling against a dirty tree hides which side introduced what.
 
 ### Do not do these
 
@@ -260,6 +297,13 @@ grep -c 'research.py' ~/.zsh_history ~/.bash_history  # 0, 0
 - Claude Code wiring: `~/.claude/plugins/research` → dev repo; `~/.claude/settings.json:531`; caches at `~/.claude/plugins/cache/rosslabs-ai-toolkit/research/{0.5.1,e97091896725}/`
 - Competing store: `build-loop-memory/projects/*/research/` (124 files); backlog item `build-loop-memory/projects/build-loop/issues/bl-research-plugin-trigger-policy.md`
 - Parsers used: `mine2.py`, `mine3.py`, `mine4.py`, `cx2.py`, `cx3.py` (session scratchpad, not committed)
+
+### 5.3b Sources added after user review (2026-08-15)
+
+- `~/WorkWiki/wiki/tools/tool-research-plugin.md` (2026-07-27) — work-fork status card. Read-only.
+- `~/WorkWiki/wiki/communications/interviews/communications-alphasights-goal-led-question-guide.md` (2026-07-19) — decision-card + MECE section method.
+- `~/WorkWiki/wiki/communications/interviews/communications-alphasights-expert-calls.md` (2026-07-19) — five-artifact evidence chain; note the WorkWiki live-log corrected "AlphaSense" → "AlphaSights" for the expert-network vendor; AlphaSense (the platform) appears separately as a T4 lead-sheet source in the hyperscale research pack.
+- `grep -rn -i "one clear question\|sub-question" skills/` · `grep -rli "optimize\|section contract\|query ledger\|readiness" commands skills research.py tests` (no hits beyond a methodology anti-example) · `plugin.json` / `package.json` version fields.
 
 ### 5.4 What could not be verified
 
