@@ -17,7 +17,7 @@ from urllib.parse import quote, urlsplit
 
 HERE = Path(__file__).resolve().parent
 THEME = HERE.parent / "assets" / "dashboard-theme.css"
-KINDS = {"plugin", "app", "library", "platform"}
+KINDS = {"skill", "plugin", "app", "library", "platform", "surface", "prototype"}
 HEALTH_STATES = {"ok", "warn", "bad"}
 MARKS = {"verified", "inferred", "unknown"}
 SEVERITIES = {"high", "normal", "low"}
@@ -93,11 +93,13 @@ def expect_integer(value: Any, path: str) -> int:
     return value
 
 
-def require_fields(obj: dict[str, Any], path: str, fields: tuple[str, ...]) -> None:
+def require_fields(
+    obj: dict[str, Any], path: str, fields: tuple[str, ...], optional: tuple[str, ...] = ()
+) -> None:
     for field in fields:
         if field not in obj:
             fail(json_path(path, field), "required field is missing")
-    unexpected = sorted(set(obj) - set(fields))
+    unexpected = sorted(set(obj) - set(fields) - set(optional))
     if unexpected:
         fail(json_path(path, unexpected[0]), "field is not allowed")
 
@@ -141,7 +143,10 @@ def validate_audit(payload: Any) -> dict[str, Any]:
             "recommendation",
             "confidence",
         ),
+        ("schemaVersion", "stages"),
     )
+    if "schemaVersion" in root and root["schemaVersion"] != 2:
+        fail("$.schemaVersion", "must be 2 when present")
     expect_string(root["title"], "$.title")
     expect_string(root["subtitle"], "$.subtitle")
     validate_iso(root["generatedAt"], "$.generatedAt")
@@ -204,6 +209,7 @@ def validate_audit(payload: Any) -> dict[str, Any]:
                 "reuse",
                 "role",
             ),
+            ("kindNote", "plain", "pipeline"),
         )
         subject_id = expect_string(subject["id"], f"{path}.id")
         if subject_id in subject_ids:
@@ -235,7 +241,7 @@ def validate_audit(payload: Any) -> dict[str, Any]:
             if dimension_id not in scores:
                 fail(score_path, "required dimension score is missing")
             score_entry = expect_object(scores[dimension_id], score_path)
-            require_fields(score_entry, score_path, ("score", "evidence", "cite", "mark"))
+            require_fields(score_entry, score_path, ("score", "evidence", "cite", "mark"), ("plain",))
             score = expect_integer(score_entry["score"], f"{score_path}.score")
             if not minimum <= score <= maximum:
                 fail(f"{score_path}.score", f"must be between {minimum} and {maximum}")
@@ -244,6 +250,8 @@ def validate_audit(payload: Any) -> dict[str, Any]:
             mark = expect_string(score_entry["mark"], f"{score_path}.mark")
             if mark not in MARKS:
                 fail(f"{score_path}.mark", f"expected one of {sorted(MARKS)}")
+            if "plain" in score_entry:
+                expect_string(score_entry["plain"], f"{score_path}.plain")
 
         string_array(subject["strengths"], f"{path}.strengths")
         string_array(subject["gaps"], f"{path}.gaps")
@@ -255,6 +263,34 @@ def validate_audit(payload: Any) -> dict[str, Any]:
             expect_string(reuse_item["path"], f"{reuse_path}.path")
             expect_string(reuse_item["what"], f"{reuse_path}.what")
         expect_string(subject["role"], f"{path}.role")
+        if "kindNote" in subject:
+            expect_string(subject["kindNote"], f"{path}.kindNote")
+        if "plain" in subject:
+            plain = expect_object(subject["plain"], f"{path}.plain")
+            require_fields(plain, f"{path}.plain", ("whatItDoes", "howUsed", "unique"))
+            for field in ("whatItDoes", "howUsed", "unique"):
+                expect_string(plain[field], f"{path}.plain.{field}")
+        if "pipeline" in subject:
+            pipeline = expect_object(subject["pipeline"], f"{path}.pipeline")
+            require_fields(pipeline, f"{path}.pipeline", ("overview", "effectiveness", "flow"))
+            expect_string(pipeline["overview"], f"{path}.pipeline.overview")
+            effectiveness = expect_object(pipeline["effectiveness"], f"{path}.pipeline.effectiveness")
+            require_fields(effectiveness, f"{path}.pipeline.effectiveness", ("score", "why"))
+            value = expect_integer(effectiveness["score"], f"{path}.pipeline.effectiveness.score")
+            if not minimum <= value <= maximum:
+                fail(f"{path}.pipeline.effectiveness.score", f"must be between {minimum} and {maximum}")
+            expect_string(effectiveness["why"], f"{path}.pipeline.effectiveness.why")
+            flow = expect_array(pipeline["flow"], f"{path}.pipeline.flow")
+            for flow_index, flow_item in enumerate(flow):
+                flow_path = f"{path}.pipeline.flow[{flow_index}]"
+                flow_item = expect_object(flow_item, flow_path)
+                require_fields(flow_item, flow_path, ("stage", "how", "effectiveness", "why"))
+                expect_string(flow_item["stage"], f"{flow_path}.stage")
+                expect_string(flow_item["how"], f"{flow_path}.how")
+                value = expect_integer(flow_item["effectiveness"], f"{flow_path}.effectiveness")
+                if not minimum <= value <= maximum:
+                    fail(f"{flow_path}.effectiveness", f"must be between {minimum} and {maximum}")
+                expect_string(flow_item["why"], f"{flow_path}.why")
 
     valid_subjects = set(subject_ids)
     overlaps = expect_array(root["overlaps"], "$.overlaps")
@@ -300,7 +336,7 @@ def validate_audit(payload: Any) -> dict[str, Any]:
         expect_string(finding["record"], f"{path}.record")
 
     recommendation = expect_object(root["recommendation"], "$.recommendation")
-    require_fields(recommendation, "$.recommendation", ("bottomLine", "spine", "layers", "nextActions"))
+    require_fields(recommendation, "$.recommendation", ("bottomLine", "spine", "layers", "nextActions"), ("flow",))
     expect_string(recommendation["bottomLine"], "$.recommendation.bottomLine")
     expect_string(recommendation["spine"], "$.recommendation.spine")
     layers = expect_array(recommendation["layers"], "$.recommendation.layers", minimum=1)
@@ -312,6 +348,50 @@ def validate_audit(payload: Any) -> dict[str, Any]:
         string_array(layer["donors"], f"{path}.donors", minimum=1)
         expect_string(layer["new"], f"{path}.new")
     string_array(recommendation["nextActions"], "$.recommendation.nextActions", minimum=1)
+
+    stages: list[dict[str, Any]] = []
+    if "stages" in root:
+        raw_stages = expect_array(root["stages"], "$.stages", minimum=1)
+        used_dimensions: list[str] = []
+        stage_ids: set[str] = set()
+        for index, raw_stage in enumerate(raw_stages):
+            stage_path = f"$.stages[{index}]"
+            stage = expect_object(raw_stage, stage_path)
+            require_fields(stage, stage_path, ("id", "label", "dimensionIds", "best", "optimal"))
+            stage_id = expect_string(stage["id"], f"{stage_path}.id")
+            if stage_id in stage_ids:
+                fail(f"{stage_path}.id", "duplicate stage id")
+            stage_ids.add(stage_id)
+            expect_string(stage["label"], f"{stage_path}.label")
+            ids = string_array(stage["dimensionIds"], f"{stage_path}.dimensionIds", minimum=1)
+            for dimension_id in ids:
+                if dimension_id not in dimension_ids:
+                    fail(f"{stage_path}.dimensionIds", f"unknown dimension id {dimension_id!r}")
+                used_dimensions.append(dimension_id)
+            best_subject = expect_string(stage["best"], f"{stage_path}.best")
+            if best_subject not in valid_subjects:
+                fail(f"{stage_path}.best", f"unknown subject id {best_subject!r}")
+            expect_string(stage["optimal"], f"{stage_path}.optimal")
+            stages.append(stage)
+        if Counter(used_dimensions) != Counter(dimension_ids):
+            fail("$.stages", "dimensionIds must cover every dimension exactly once")
+        for subject_index, subject in enumerate(subjects):
+            if "pipeline" in subject:
+                for flow_index, item in enumerate(subject["pipeline"]["flow"]):
+                    if item["stage"] not in stage_ids:
+                        fail(f"$.subjects[{subject_index}].pipeline.flow[{flow_index}].stage", "unknown stage id")
+        if "flow" in recommendation:
+            flow = expect_array(recommendation["flow"], "$.recommendation.flow")
+            for index, item in enumerate(flow):
+                flow_path = f"$.recommendation.flow[{index}]"
+                item = expect_object(item, flow_path)
+                require_fields(item, flow_path, ("stage", "title", "approach", "source", "what", "why"))
+                if expect_string(item["stage"], f"{flow_path}.stage") not in stage_ids:
+                    fail(f"{flow_path}.stage", "unknown stage id")
+                for field in ("title", "source", "what", "why"):
+                    expect_string(item[field], f"{flow_path}.{field}")
+                if expect_string(item["approach"], f"{flow_path}.approach") not in {"existing", "new", "hybrid"}:
+                    fail(f"{flow_path}.approach", "expected one of ['existing', 'hybrid', 'new']")
 
     confidence = expect_object(root["confidence"], "$.confidence")
     require_fields(confidence, "$.confidence", ("context", "verification", "evidence", "overall", "note"))
@@ -576,6 +656,86 @@ def render_findings(audit: dict[str, Any]) -> str:
 </section>"""
 
 
+def kind_label(kind: str) -> str:
+    return kind.replace("-", " ").title()
+
+
+def dots(score: int, maximum: int) -> str:
+    return f'<span class="dot-run" aria-hidden="true">{score_dots(score, maximum)}</span>'
+
+
+def popout(dialog_id: str, subject: dict[str, Any], dimension: dict[str, Any], entry: dict[str, Any], scale: dict[str, Any]) -> str:
+    score = entry["score"]
+    label = scale["labels"][str(score)]
+    mark = {"verified": "✅", "inferred": "⚠️", "unknown": "❓"}[entry["mark"]]
+    plain = entry.get("plain", entry["evidence"])
+    return f'''<dialog class="score-popout" id="{dialog_id}" aria-labelledby="{dialog_id}-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="{dialog_id}-title">{esc(subject["name"])} · {esc(dimension["label"])}</h2>
+  <p class="popout-score">{dots(score, scale["max"])} <strong>{score}</strong> {esc(label)}</p>
+  <p>{esc(plain)}</p>
+  <p class="popout-cite">Where we looked: {esc(entry["cite"])} · {mark} {esc(entry["mark"])}</p>
+</dialog>'''
+
+
+def render_score_cell(subject: dict[str, Any], dimension: dict[str, Any], scale: dict[str, Any], best: dict[str, list[dict[str, Any]]], index: int) -> tuple[str, str]:
+    entry = subject["scores"][dimension["id"]]
+    score = entry["score"]
+    label = scale["labels"][str(score)]
+    is_best = subject in best[dimension["id"]]
+    dialog_id = f"score-{index}"
+    cell = f'''<td class="score-cell{' is-best' if is_best else ''}"><button class="score-trigger" type="button" data-dialog="{dialog_id}" aria-haspopup="dialog" aria-label="{esc(subject['name'])}, {esc(dimension['label'])}: {score} of {scale['max']}, {esc(label)}">
+{dots(score, scale["max"])} <span class="score-number">{score}</span>{'<span class="best-marker">Best</span>' if is_best else ''}<span class="score-label">{esc(label)}</span>
+</button></td>'''
+    return cell, popout(dialog_id, subject, dimension, entry, scale)
+
+
+def render_recommended_flow(audit: dict[str, Any]) -> str:
+    recommendation = audit["recommendation"]
+    steps = "".join(f'''<li><h3>{esc(step["title"])}</h3><span class="approach approach-{esc(step["approach"])}">{esc(step["approach"].title())}</span><p class="flow-source">{esc(step["source"])}</p><p>{esc(step["what"])}</p><p class="muted">{esc(step["why"])}</p></li>''' for step in recommendation.get("flow", []))
+    return f'''<section class="area" id="overview" aria-labelledby="overview-heading"><header class="page-header"><p class="eyebrow">{esc(audit["source"]["label"])} · {esc(audit["generatedAt"])} </p><h1>{esc(audit["title"])}</h1><p class="subtitle">{esc(audit["subtitle"])}</p></header><div class="section-heading"><h2 id="overview-heading">Recommended flow</h2><p>{esc(recommendation["bottomLine"])}</p><p class="spine"><strong>Spine:</strong> {esc(recommendation["spine"])}</p></div><ol class="flow-stepper">{steps}</ol><ol class="next-actions">{''.join(f'<li>{esc(item)}</li>' for item in recommendation["nextActions"])}</ol></section>'''
+
+
+def render_pipelines(audit: dict[str, Any]) -> str:
+    rows = []
+    for index, subject in enumerate(audit["subjects"]):
+        pipeline = subject["pipeline"]
+        effectiveness = pipeline["effectiveness"]
+        flow = "".join(f'<li><strong>{esc(item["stage"])}</strong><p>{esc(item["how"])}</p><p>{dots(item["effectiveness"], audit["scale"]["max"])} {esc(item["why"])}</p></li>' for item in pipeline["flow"])
+        rows.append(f'''<article class="pipeline-row"><div><h3>{esc(subject["name"])} <span class="kind">{esc(kind_label(subject["kind"]))}</span></h3><p class="muted">{esc(subject.get("kindNote", ""))}</p></div><p>{esc(pipeline["overview"])}</p><div><p>{dots(effectiveness["score"], audit["scale"]["max"])} <strong>{effectiveness["score"]}</strong> {esc(audit["scale"]["labels"][str(effectiveness["score"])])}</p><p class="muted">{esc(effectiveness["why"])}</p><details><summary>Show flow</summary><ol class="mini-stepper">{flow}</ol></details></div></article>''')
+    return f'<section class="area" id="subjects" aria-labelledby="subjects-heading"><div class="section-heading"><h2 id="subjects-heading">Pipelines today</h2><p>Each row shows the current pipeline and its assessed effectiveness.</p></div><div class="pipeline-list">{"".join(rows)}</div></section>'
+
+
+def render_v2_matrix(audit: dict[str, Any], best: dict[str, list[dict[str, Any]]]) -> tuple[str, str]:
+    dimensions = {item["id"]: item for item in audit["dimensions"]}
+    stages = audit["stages"]
+    headers = "".join(f'<th class="stage-header" scope="colgroup" colspan="{len(stage["dimensionIds"])}">{esc(stage["label"])}</th>' for stage in stages)
+    subheaders = "".join(f'<th scope="col"><span class="dimension-label">{esc(dimensions[dimension_id]["short"])}</span></th>' for stage in stages for dimension_id in stage["dimensionIds"])
+    dialogs: list[str] = []
+    rows: list[str] = []
+    index = 0
+    for subject in audit["subjects"]:
+        cells = []
+        for stage in stages:
+            for dimension_id in stage["dimensionIds"]:
+                cell, dialog = render_score_cell(subject, dimensions[dimension_id], audit["scale"], best, index)
+                cells.append(cell); dialogs.append(dialog); index += 1
+        plain = subject["plain"]
+        rows.append(f'<tr><th scope="row"><strong>{esc(subject["name"])}</strong> <span class="kind">{esc(kind_label(subject["kind"]))}</span><p class="clamp">{esc(plain["whatItDoes"])}</p><button class="more-trigger" data-dialog="subject-{index}">More</button></th>{"".join(cells)}</tr>')
+        dialogs.append(f'<dialog class="score-popout" id="subject-{index}"><form method="dialog"><button class="dialog-close">Close</button></form><h2>{esc(subject["name"])}</h2><p>{esc(plain["whatItDoes"])}</p><p>{esc(plain["howUsed"])}</p><p>{esc(plain["unique"])}</p></dialog>')
+    optimal = "".join(f'<tr class="optimal-row"><th scope="row">Optimal · {esc(stage["best"])}</th><td colspan="{len(stage["dimensionIds"])}">{esc(stage["optimal"])}</td></tr>' for stage in stages)
+    fallback = ''.join(f'<li>{esc(subject["name"])} · {esc(dimension["label"])}: {esc(subject["scores"][dimension["id"]].get("plain", subject["scores"][dimension["id"]]["evidence"]))}</li>' for subject in audit["subjects"] for dimension in audit["dimensions"])
+    section = f'''<section class="area" id="matrix" aria-labelledby="matrix-heading"><div class="section-heading"><h2 id="matrix-heading">Comparison</h2><p>Select a score to read its plain-language reason and evidence location.</p></div><div class="table-wrap"><table class="matrix-table"><caption>Capability comparison grouped by pipeline stage.</caption><thead><tr><th rowspan="2" scope="col">Subject</th>{headers}</tr><tr>{subheaders}</tr></thead><tbody>{"".join(rows)}{optimal}</tbody></table></div><details class="no-js-fallback"><summary>All score details</summary><ul>{fallback}</ul></details></section>'''
+    return section, "".join(dialogs)
+
+
+def render_v2(audit: dict[str, Any], best: dict[str, list[dict[str, Any]]]) -> str:
+    matrix, dialogs = render_v2_matrix(audit, best)
+    css = THEME.read_text(encoding="utf-8")
+    script = '''<script>let last;document.addEventListener('click',e=>{const b=e.target.closest('[data-dialog]');if(!b)return;last=b;document.getElementById(b.dataset.dialog).showModal()});document.querySelectorAll('dialog').forEach(d=>d.addEventListener('close',()=>last&&last.focus()));document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.score-trigger,.more-trigger'))e.target.click()});</script>'''
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(audit["title"])}</title><style>{css}</style></head><body><a class="skip-link" href="#main-content">Skip to content</a><div class="app-shell"><nav class="sidebar" aria-label="Audit sections"><ul class="nav-list"><li><a class="nav-link" href="#overview">Recommended flow</a></li><li><a class="nav-link" href="#subjects">Pipelines today</a></li><li><a class="nav-link" href="#matrix">Comparison</a></li><li><a class="nav-link" href="#findings">Notes</a></li></ul></nav><main class="workspace" id="main-content">{render_recommended_flow(audit)}{render_pipelines(audit)}{matrix}{render_findings(audit)}</main></div>{dialogs}{script}</body></html>'''
+
+
 def render_dashboard(audit: dict[str, Any]) -> str:
     css = THEME.read_text(encoding="utf-8")
     best: dict[str, list[dict[str, Any]]] = {}
@@ -586,6 +746,8 @@ def render_dashboard(audit: dict[str, Any]) -> str:
             subject for subject in audit["subjects"]
             if subject["scores"][dimension_id]["score"] == top_score
         ]
+    if "stages" in audit and "pipeline" in audit["subjects"][0] and "flow" in audit["recommendation"]:
+        return render_v2(audit, best)
     return f"""<!doctype html>
 <html lang="en">
 <head>

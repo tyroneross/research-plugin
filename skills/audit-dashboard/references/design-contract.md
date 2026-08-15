@@ -85,3 +85,7 @@ evidence-led projection of its source payload; it does not edit the audit.
 - Do not derive raw DOM identifiers, CSS, or JavaScript from payload strings.
 - Include no remote fonts, styles, scripts, images, analytics, or chart libraries.
 - Do not add decorative charts for single facts or controls that imply mutation.
+
+## v2 pipeline-first layout
+
+When `stages`, subject pipelines, and recommendation flow are present, render Recommended flow, Pipelines today, Comparison, then Notes. Use native dialog pop-outs for score details with a no-JavaScript details fallback. Group comparison columns by stages, place an Optimal row under each group, and use one left-aligned monospace dot run in every score cell. Visible body copy uses full sentences and excludes file paths; cites appear only in the muted pop-out footer.

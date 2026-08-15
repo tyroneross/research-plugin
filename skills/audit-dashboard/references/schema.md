@@ -126,3 +126,9 @@ Key annotations:
 3. `mark` states how the evidence was established; it does not change the score.
 4. Empty overlap and finding arrays are valid and render as empty sections.
 5. Subject references in overlaps and findings use `id`, not display `name`.
+
+## v2 optional fields
+
+Set `schemaVersion: 2` and add `stages` when grouping dimensions into the current pipeline. Each stage lists unique `dimensionIds`, a declared `best` subject, and an `optimal` full-sentence recommendation; the stage lists must cover every dimension exactly once. `recommendation.flow` uses declared stages and an `existing`, `new`, or `hybrid` approach.
+
+Subjects may add `kindNote`, a `plain` block (`whatItDoes`, `howUsed`, `unique`), and a current `pipeline` with an overall effectiveness score and ordered stage flow. A score may add `plain`; it is the reader-facing reason while evidence and cite remain the evidence location.

@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RENDERER = ROOT / "skills" / "audit-dashboard" / "scripts" / "render_dashboard.py"
 EXAMPLE = ROOT / "skills" / "audit-dashboard" / "data" / "example-seven-repo-audit.json"
+V2_EXAMPLE = ROOT / "skills" / "audit-dashboard" / "data" / "example-v2-minimal.json"
 AREA_IDS = {"overview", "matrix", "subjects", "findings"}
 
 
@@ -137,6 +138,29 @@ def main() -> int:
             check_rendered_example(rendered.read_text(encoding="utf-8"), failures)
         else:
             failures.append("example render did not create an HTML file")
+
+        v2_rendered = temp / "v2.html"
+        require(run([str(V2_EXAMPLE), "--validate-only"]).returncode == 0, "v2 validation failed", failures)
+        v2_result = run([str(V2_EXAMPLE), "--out", str(v2_rendered)])
+        require(v2_result.returncode == 0, f"v2 render failed: {v2_result.stderr}", failures)
+        if v2_rendered.exists():
+            v2_text = v2_rendered.read_text(encoding="utf-8")
+            score_cells = re.findall(r'<td class="score-cell(?: is-best)?">(.*?)</td>', v2_text, re.DOTALL)
+            dialogs = re.findall(r'<dialog class="score-popout" id="score-\d+"', v2_text)
+            require('class="stage-header"' in v2_text, "v2 stage group headers missing", failures)
+            require(len(score_cells) == 6 and len(dialogs) == 6, "v2 score pop-outs do not match cells", failures)
+            require(v2_text.count('class="dot-run"') >= 6, "dot runs do not share one class", failures)
+            cite_free = re.sub(r'<[^>]*class="popout-cite"[^>]*>.*?</[^>]+>', '', v2_text, flags=re.DOTALL)
+            require(re.search(r'\S+\.(py|ts|tsx|md|json|css|js):\d+', cite_free) is None, "path-like cite outside popout-cite", failures)
+            malformed = json.loads(V2_EXAMPLE.read_text(encoding="utf-8"))
+            malformed["stages"][0]["dimensionIds"].pop()
+            malformed_json = temp / "bad-mece.json"
+            malformed_json.write_text(json.dumps(malformed), encoding="utf-8")
+            require(run([str(malformed_json), "--validate-only"]).returncode != 0, "missing stage dimension validated", failures)
+            malformed = json.loads(V2_EXAMPLE.read_text(encoding="utf-8"))
+            malformed["recommendation"]["flow"][0]["approach"] = "other"
+            malformed_json.write_text(json.dumps(malformed), encoding="utf-8")
+            require(run([str(malformed_json), "--validate-only"]).returncode != 0, "invalid approach validated", failures)
 
         payload = json.loads(EXAMPLE.read_text(encoding="utf-8"))
         payload["subtitle"] = '<script>alert("payload")</script>'

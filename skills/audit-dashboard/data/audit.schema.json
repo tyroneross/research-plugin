@@ -19,6 +19,8 @@
     "confidence"
   ],
   "properties": {
+    "schemaVersion": {"const": 2},
+    "stages": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/stage"}},
     "title": {"$ref": "#/definitions/nonEmptyString"},
     "subtitle": {"$ref": "#/definitions/nonEmptyString"},
     "generatedAt": {
@@ -111,7 +113,8 @@
         "score": {"type": "integer", "minimum": 0, "maximum": 3},
         "evidence": {"$ref": "#/definitions/nonEmptyString"},
         "cite": {"$ref": "#/definitions/nonEmptyString"},
-        "mark": {"enum": ["verified", "inferred", "unknown"]}
+        "mark": {"enum": ["verified", "inferred", "unknown"]},
+        "plain": {"$ref": "#/definitions/nonEmptyString"}
       }
     },
     "reuse": {
@@ -142,7 +145,10 @@
         "id": {"$ref": "#/definitions/nonEmptyString"},
         "name": {"$ref": "#/definitions/nonEmptyString"},
         "oneLiner": {"$ref": "#/definitions/nonEmptyString"},
-        "kind": {"enum": ["plugin", "app", "library", "platform"]},
+        "kind": {"enum": ["skill", "plugin", "app", "library", "platform", "surface", "prototype"]},
+        "kindNote": {"$ref": "#/definitions/nonEmptyString"},
+        "plain": {"$ref": "#/definitions/plain"},
+        "pipeline": {"$ref": "#/definitions/pipeline"},
         "health": {"$ref": "#/definitions/health"},
         "scores": {
           "type": "object",
@@ -220,6 +226,7 @@
         "bottomLine": {"$ref": "#/definitions/nonEmptyString"},
         "spine": {"$ref": "#/definitions/nonEmptyString"},
         "layers": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/layer"}},
+        "flow": {"type": "array", "items": {"$ref": "#/definitions/recommendationFlow"}},
         "nextActions": {
           "type": "array",
           "minItems": 1,
@@ -227,6 +234,12 @@
         }
       }
     },
+    "stage": {"type": "object", "additionalProperties": false, "required": ["id", "label", "dimensionIds", "best", "optimal"], "properties": {"id": {"$ref": "#/definitions/nonEmptyString"}, "label": {"$ref": "#/definitions/nonEmptyString"}, "dimensionIds": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/nonEmptyString"}}, "best": {"$ref": "#/definitions/nonEmptyString"}, "optimal": {"$ref": "#/definitions/nonEmptyString"}}},
+    "plain": {"type": "object", "additionalProperties": false, "required": ["whatItDoes", "howUsed", "unique"], "properties": {"whatItDoes": {"$ref": "#/definitions/nonEmptyString"}, "howUsed": {"$ref": "#/definitions/nonEmptyString"}, "unique": {"$ref": "#/definitions/nonEmptyString"}}},
+    "pipeline": {"type": "object", "additionalProperties": false, "required": ["overview", "effectiveness", "flow"], "properties": {"overview": {"$ref": "#/definitions/nonEmptyString"}, "effectiveness": {"$ref": "#/definitions/effectiveness"}, "flow": {"type": "array", "items": {"$ref": "#/definitions/pipelineFlow"}}}},
+    "effectiveness": {"type": "object", "additionalProperties": false, "required": ["score", "why"], "properties": {"score": {"type": "integer", "minimum": 0, "maximum": 3}, "why": {"$ref": "#/definitions/nonEmptyString"}}},
+    "pipelineFlow": {"type": "object", "additionalProperties": false, "required": ["stage", "how", "effectiveness", "why"], "properties": {"stage": {"$ref": "#/definitions/nonEmptyString"}, "how": {"$ref": "#/definitions/nonEmptyString"}, "effectiveness": {"type": "integer", "minimum": 0, "maximum": 3}, "why": {"$ref": "#/definitions/nonEmptyString"}}},
+    "recommendationFlow": {"type": "object", "additionalProperties": false, "required": ["stage", "title", "approach", "source", "what", "why"], "properties": {"stage": {"$ref": "#/definitions/nonEmptyString"}, "title": {"$ref": "#/definitions/nonEmptyString"}, "approach": {"enum": ["existing", "new", "hybrid"]}, "source": {"$ref": "#/definitions/nonEmptyString"}, "what": {"$ref": "#/definitions/nonEmptyString"}, "why": {"$ref": "#/definitions/nonEmptyString"}}},
     "confidence": {
       "type": "object",
       "additionalProperties": false,

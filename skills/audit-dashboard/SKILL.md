@@ -38,6 +38,8 @@ For an existing Markdown or HTML audit report:
 6. Validate before rendering. A missing dimension or cell fails with its JSON
    path so the source gap can be resolved.
 
+For v2 authoring, use plain full sentences without file names in visible text. Give each subject a two- to three-sentence overview and give every score cell a `plain` reason that explains the assessed score.
+
 Apply [references/design-contract.md](references/design-contract.md) when
 reviewing the output. Do not copy names or claims from an unrelated dashboard.
 
