@@ -1,0 +1,243 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.invalid/research-plugin/audit-dashboard.schema.json",
+  "title": "Capability Audit Dashboard",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "subtitle",
+    "generatedAt",
+    "source",
+    "scale",
+    "dimensions",
+    "subjects",
+    "overlaps",
+    "gaps",
+    "findings",
+    "recommendation",
+    "confidence"
+  ],
+  "properties": {
+    "title": {"$ref": "#/definitions/nonEmptyString"},
+    "subtitle": {"$ref": "#/definitions/nonEmptyString"},
+    "generatedAt": {
+      "type": "string",
+      "anyOf": [{"format": "date"}, {"format": "date-time"}]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "path"],
+      "properties": {
+        "label": {"$ref": "#/definitions/nonEmptyString"},
+        "path": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "scale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max", "labels"],
+      "properties": {
+        "min": {"const": 0},
+        "max": {"const": 3},
+        "labels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["0", "1", "2", "3"],
+          "properties": {
+            "0": {"$ref": "#/definitions/nonEmptyString"},
+            "1": {"$ref": "#/definitions/nonEmptyString"},
+            "2": {"$ref": "#/definitions/nonEmptyString"},
+            "3": {"$ref": "#/definitions/nonEmptyString"}
+          }
+        }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/dimension"}
+    },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/definitions/subject"}
+    },
+    "overlaps": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/overlap"}
+    },
+    "gaps": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/gap"}
+    },
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/definitions/finding"}
+    },
+    "recommendation": {"$ref": "#/definitions/recommendation"},
+    "confidence": {"$ref": "#/definitions/confidence"}
+  },
+  "definitions": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "short", "question"],
+      "properties": {
+        "id": {"$ref": "#/definitions/nonEmptyString"},
+        "label": {"$ref": "#/definitions/nonEmptyString"},
+        "short": {"$ref": "#/definitions/nonEmptyString"},
+        "question": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "summary", "lastCommit", "tests"],
+      "properties": {
+        "state": {"enum": ["ok", "warn", "bad"]},
+        "summary": {"$ref": "#/definitions/nonEmptyString"},
+        "lastCommit": {"$ref": "#/definitions/nonEmptyString"},
+        "tests": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "evidence", "cite", "mark"],
+      "properties": {
+        "score": {"type": "integer", "minimum": 0, "maximum": 3},
+        "evidence": {"$ref": "#/definitions/nonEmptyString"},
+        "cite": {"$ref": "#/definitions/nonEmptyString"},
+        "mark": {"enum": ["verified", "inferred", "unknown"]}
+      }
+    },
+    "reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "what"],
+      "properties": {
+        "path": {"$ref": "#/definitions/nonEmptyString"},
+        "what": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "oneLiner",
+        "kind",
+        "health",
+        "scores",
+        "strengths",
+        "gaps",
+        "reuse",
+        "role"
+      ],
+      "properties": {
+        "id": {"$ref": "#/definitions/nonEmptyString"},
+        "name": {"$ref": "#/definitions/nonEmptyString"},
+        "oneLiner": {"$ref": "#/definitions/nonEmptyString"},
+        "kind": {"enum": ["plugin", "app", "library", "platform"]},
+        "health": {"$ref": "#/definitions/health"},
+        "scores": {
+          "type": "object",
+          "additionalProperties": {"$ref": "#/definitions/score"}
+        },
+        "strengths": {"type": "array", "items": {"$ref": "#/definitions/nonEmptyString"}},
+        "gaps": {"type": "array", "items": {"$ref": "#/definitions/nonEmptyString"}},
+        "reuse": {"type": "array", "items": {"$ref": "#/definitions/reuse"}},
+        "role": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "where"],
+      "properties": {
+        "subject": {"$ref": "#/definitions/nonEmptyString"},
+        "where": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "overlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "implementations", "keep"],
+      "properties": {
+        "capability": {"$ref": "#/definitions/nonEmptyString"},
+        "implementations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/implementation"}
+        },
+        "keep": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "detail"],
+      "properties": {
+        "title": {"$ref": "#/definitions/nonEmptyString"},
+        "detail": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "severity", "text", "state", "record"],
+      "properties": {
+        "subject": {"$ref": "#/definitions/nonEmptyString"},
+        "severity": {"enum": ["high", "normal", "low"]},
+        "text": {"$ref": "#/definitions/nonEmptyString"},
+        "state": {"enum": ["fixed", "waived", "escalated", "open"]},
+        "record": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "donors", "new"],
+      "properties": {
+        "name": {"$ref": "#/definitions/nonEmptyString"},
+        "donors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/nonEmptyString"}
+        },
+        "new": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bottomLine", "spine", "layers", "nextActions"],
+      "properties": {
+        "bottomLine": {"$ref": "#/definitions/nonEmptyString"},
+        "spine": {"$ref": "#/definitions/nonEmptyString"},
+        "layers": {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/layer"}},
+        "nextActions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/nonEmptyString"}
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["context", "verification", "evidence", "overall", "note"],
+      "properties": {
+        "context": {"$ref": "#/definitions/nonEmptyString"},
+        "verification": {"$ref": "#/definitions/nonEmptyString"},
+        "evidence": {"$ref": "#/definitions/nonEmptyString"},
+        "overall": {"$ref": "#/definitions/nonEmptyString"},
+        "note": {"$ref": "#/definitions/nonEmptyString"}
+      }
+    }
+  }
+}
