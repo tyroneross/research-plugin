@@ -807,7 +807,7 @@ td {
   <article class="panel answer-panel">
     <div class="panel-header"><h2>Bottom line</h2></div>
     <div class="panel-body">
-      <p class="bottom-line">You already own every layer of the workflow except one — but each layer is implemented two to five times, in two languages, and no repo covers more than four of the seven dimensions well. The universal hole is graph / relationship structure (best score anywhere: 2/3, research-plugin&#x27;s wikilink backlinks; MRP&#x27;s Kuzu entity graph never populates relations). Insight extraction is prompt-encoded everywhere with no deterministic engine.</p>
+      <p class="bottom-line">You already own every layer of the workflow except one — but each layer is implemented two to five times, in two languages, and no repo is mature or central in more than two of the seven dimensions. The universal hole is graph / relationship structure (best score anywhere: 2/3, research-plugin&#x27;s wikilink backlinks; MRP&#x27;s Kuzu graph pipeline never reaches the live app). Insight extraction is prompt-encoded everywhere with no deterministic engine.</p>
       <p class="spine"><strong>Recommended spine:</strong> research-plugin (the only live, dual-host Codex + Claude Code plugin, 187 entries, written to yesterday) as the knowledge substrate and agent surface, fed by Omniparse (already vendored there) and stratagem&#x27;s SEC/scrape tools, with three donor modules bolted on: local-smartz/runners/ for a headless local/cloud provider router, market-research-platform/backend/app/storage/vector_store.py for sqlite-vec embeddings, and stratagem/tools/reports.py + presentation.py (plus MRP&#x27;s email/notes/outline generators) as the one renderer set. Build the graph layer once, on top of research-plugin&#x27;s SQLite. Retire market-intel; park market-research&#x27;s web UI.</p>
     </div>
   </article>
@@ -846,11 +846,11 @@ td {
   <div class="overview-grid">
     <article class="panel">
       <div class="panel-header"><h3>Confidence</h3><p>Coverage and evidence limits from the source audit.</p></div>
-      <div class="panel-body"><dl class="confidence-list"><dt>Context coverage</dt><dd>high — every repo read at code level with citations; local-smartz (24K LOC) and stratagem (14K) sampled by targeted greps rather than exhaustively.</dd><dt>Verification coverage</dt><dd>medium-high — assessors ran tests where feasible (5 of 7; MRP not executed, market-intel cannot run); four cross-repo claims re-verified by hand (market-intel git state, local-smartz MCP flags, stratagem Anthropic-only dep, MRP provider classes).</dd><dt>Evidence quality</dt><dd>high — all claims are first-party repo reads (T1 for this purpose); no external claims made.</dd><dt>Overall</dt><dd>medium-high. Ratings are judgment calls on a 0–3 scale; a ±1 disagreement on any single cell would not change the column-best picks or the spine recommendation.</dd></dl><p class="health-summary">Related work: a separate session today is auditing research-plugin usage and friction across Codex/Claude Code (build-loop-memory decision records dated 2026-08-15). This report covers capability; the two are complementary.</p></div>
+      <div class="panel-body"><dl class="confidence-list"><dt>Context coverage</dt><dd>high — every repo read at code level with citations; local-smartz (24K LOC) and stratagem (14K) sampled by targeted greps rather than exhaustively.</dd><dt>Verification coverage</dt><dd>medium-high — assessors ran tests where feasible (5 of 7; MRP not executed, market-intel cannot run); cross-repo claims were re-verified by hand, and the later MRP graph follow-up corrected D3 to runtime-empty.</dd><dt>Evidence quality</dt><dd>high — all claims are first-party repo reads (T1 for this purpose); no external claims made.</dd><dt>Overall</dt><dd>medium-high. Ratings are judgment calls on a 0–3 scale; a ±1 disagreement could alter some tied column-best picks, but the evidence still supports the spine recommendation.</dd></dl><p class="health-summary">Related work: a separate session today is auditing research-plugin usage and friction across Codex/Claude Code (build-loop-memory decision records dated 2026-08-15). This report covers capability; the two are complementary.</p></div>
     </article>
     <article class="panel">
       <div class="panel-header"><h3>Next actions</h3><p>Ordered recommendations from the source audit.</p></div>
-      <div class="panel-body"><ol class="next-actions"><li>Decide the spine (recommendation: research-plugin). This is the one choice that changes everything downstream.</li><li>/build-loop:run in research-plugin: “add engine/ with embeddings + sqlite-vec store ported from MRP, and an entity/relation schema + extraction contract” — the graph layer is the only net-new build and the largest gap.</li><li>Extract renderers (stratagem + MRP generators) into the spine behind a synthesize --register CLI; wire deck = outline + slide text + optional .pptx.</li><li>Graft local-smartz runners/ + MRP MLXProvider as the headless model layer; keep host mode stdlib-only.</li><li>File the seven findings above as Operations Center tasks (done alongside this report) and retire market-intel after salvaging its two assets.</li></ol></div>
+      <div class="panel-body"><ol class="next-actions"><li>Decide the spine (recommendation: research-plugin). This is the one choice that changes everything downstream.</li><li>/build-loop:run in research-plugin: “add engine/ with embeddings + sqlite-vec store ported from MRP, and an entity/relation schema + extraction contract” — the graph layer is the largest net-new build and the largest gap.</li><li>Extract renderers (stratagem + MRP generators) into the spine behind a synthesize --register CLI; wire deck = outline + slide text + optional .pptx.</li><li>Graft local-smartz runners/ + MRP MLXProvider as the headless model layer; keep host mode stdlib-only.</li><li>File the seven findings above as Operations Center tasks (done alongside this report) and retire market-intel after salvaging its two assets.</li></ol></div>
     </article>
   </div>
 </section>
@@ -1143,18 +1143,18 @@ td {
       <p class="evidence-mark">✅ verified</p>
     </div>
   </details>
-</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
   <details class="score-disclosure">
-    <summary aria-label="market-research-platform, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research-platform · Graphs &amp; structures · 1 of 3: stub / partial / prompt-only">
+    <summary aria-label="market-research-platform, Graphs &amp; structures: 0 of 3, absent. Evidence details." title="market-research-platform · Graphs &amp; structures · 0 of 3: absent">
       <span class="score-summary-content">
-        <span class="score-dots" aria-hidden="true">●○○</span>
-        <span class="score-number">1</span>
-        <span class="score-label">stub / partial / prompt-only</span>
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
       </span>
     </summary>
     <div class="score-evidence">
-      <p>spaCy NER (ORG/PERSON/GPE/PRODUCT/EVENT/WORK_OF_ART) → Kuzu Entity+MENTIONS (backend/app/graph/ingestion.py:119-165); Kuzu is an optional import that degrades to empty (backend/app/storage/graph_store.py:15-21). RELATED_TO table is declared and queried but add_relation (graph_store.py:131) has zero callers → get_related_entities always returns []. No viz, no timelines.</p>
-      <p><strong>Cite:</strong> <code>backend/app/graph/ingestion.py:119-165; backend/app/storage/graph_store.py:15-21; graph_store.py:131</code></p>
+      <p>Graph code exists but the runtime graph is empty. graph_store is imported only by graph/ingestion.py and graph/research.py; both are reachable only through graph/pipeline.py, whose ingestion and research entry points have no callers. The live api/documents.py path never touches graph_store, Kuzu, spaCy, or entity extraction. add_relation also has zero callers, so no relations can be written.</p>
+      <p><strong>Cite:</strong> <code>market-research-platform-findings.md:53-61; backend/app/storage/graph_store.py:131; backend/app/graph/ingestion.py:131-160; backend/app/graph/pipeline.py; backend/app/api/documents.py</code></p>
       <p class="evidence-mark">✅ verified</p>
     </div>
   </details>
@@ -1759,8 +1759,8 @@ td {
   <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
 </div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
   <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
-  <span class="score-dots" aria-hidden="true">●○○</span>
-  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
 </div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
   <span class="mini-label"><strong>D4</strong> Insight extraction</span>
   <span class="score-dots" aria-hidden="true">●○○</span>
@@ -1780,7 +1780,7 @@ td {
 </div></div>
   <div class="subject-columns">
     <div><h4>Strengths</h4><ul class="clean-list"><li>Provider abstraction is real, not cosmetic: one LLMProvider interface, streaming opt-in via supports_streaming, per-call model= override, and a processing_mode gate that makes &quot;local&quot; mean local (factory.py:442-458).</li><li>Vector store namespaces dense tables by (project_id, embedder_name) so changing embedding models can&#x27;t corrupt prior data; FTS survives re-embedding (vector_store.py:1-16).</li><li>Deterministic, no-LLM verification + quality layers (source tiering, claim support, 5-dim rubric) that other repos could bolt on unchanged.</li><li>Ollama model self-healing: if the configured tag isn&#x27;t installed, it auto-selects the strongest installed one instead of silently 404-ing every map call (factory.py:131-157).</li></ul></div>
-    <div><h4>Gaps</h4><ul class="clean-list"><li>MLX integration stops at the factory. grep -rl mlx hits only config, factory, embeddings, tests, docs/mlx.md — nothing in api/health.py, api/models.py, or the frontend. Worse, tier selection still asks Ollama for tags (strategy.py:198-220, _list_installed_ollama_tags), so with local_llm_provider=&quot;mlx&quot; and Ollama also running, an Ollama tag is sent to the MLX server as model. Tests are mocked-httpx only — no live MLX run ⚠️.</li><li>get_embedder() under embedding_provider=&quot;mlx&quot; logs _active.dim, which forces the probe HTTP call at selection time and raises if the MLX server is down — no graceful fallback, unlike the Ollama path (embeddings/__init__.py:216-221).</li><li>Dead pipeline: run_ingestion / run_research / build_research_graph have no callers outside graph/pipeline.py; api/documents.py re-implements parse→chunk→embed itself. graph/research.py docstring still cites LanceDB/A-RAG that no longer exist.</li><li>Knowledge-graph relations never populated (add_relation uncalled), so D3 is entity-mentions only; api/research.py:25 still advertises &quot;LanceDB cosine&quot;.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>MLX integration stops at the factory. grep -rl mlx hits only config, factory, embeddings, tests, docs/mlx.md — nothing in api/health.py, api/models.py, or the frontend. Worse, tier selection still asks Ollama for tags (strategy.py:198-220, _list_installed_ollama_tags), so with local_llm_provider=&quot;mlx&quot; and Ollama also running, an Ollama tag is sent to the MLX server as model. Tests are mocked-httpx only — no live MLX run ⚠️.</li><li>get_embedder() under embedding_provider=&quot;mlx&quot; logs _active.dim, which forces the probe HTTP call at selection time and raises if the MLX server is down — no graceful fallback, unlike the Ollama path (embeddings/__init__.py:216-221).</li><li>Dead pipeline: run_ingestion / run_research / build_research_graph have no callers outside graph/pipeline.py; api/documents.py re-implements parse→chunk→embed itself. graph/research.py docstring still cites LanceDB/A-RAG that no longer exist.</li><li>The graph pipeline is unreachable from the live app, so the runtime Kuzu store is empty; add_relation is also uncalled. api/research.py:25 still advertises &quot;LanceDB cosine&quot;.</li></ul></div>
   </div>
   <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>backend/app/llm/factory.py</code> — self-contained httpx-only Ollama/MLX/Claude provider + factory with local/cloud enforcement; drop-in for any repo needing local-first generation.</li><li><code>backend/app/embeddings/__init__.py</code> — embedder interface + auto-probe selection (Ollama preference table, MLX, ST fallback) returning L2-normalized vectors.</li><li><code>backend/app/storage/vector_store.py</code> — sqlite-vec + FTS5 hybrid search with RRF fusion, embedder-namespaced tables, reembed_project(); zero heavy deps.</li><li><code>backend/app/verification/ (source_scoring.py + brief.py)</code> — deterministic T1–T4 domain tiering and numeric/text claim-support checking; input is plain dicts + a pydantic brief.</li><li><code>backend/app/reporting/ renderers (pptx_generator.py, docx_generator.py, email_generator.py, notes_generator.py, outline_generator.py)</code> — all share generate_X(brief, path) -&gt; {&quot;path&quot;, …}; pure Python, no LLM, callable off any object matching reporting/models.py:StrategyBrief.</li></ul></div>
   <p class="role-callout"><strong>Role:</strong> Donor for vector store, embeddings, MLX provider, email/notes/outline renderers, OCR. Its React UI is the natural “platform” face later; not needed for the agent workflow.</p>
@@ -1826,7 +1826,7 @@ td {
 </article><article class="subject-card">
   <div class="subject-heading"><h3>local-smartz</h3><span class="kind">app</span></div>
   <p class="one-liner">A local-first multi-agent research application (Ollama + LangGraph/DeepAgents) that routes a query through planner→researcher→analyzer→fact-checker→writer specialists and saves markdown/HTML/DOCX reports — shipped as a CLI, an HTTP+SSE web UI, and a native macOS app.</p>
-  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">Python app + macOS shell</span><span class="health-summary">Last commit: 2026-07-16 · Tests: 1003/1003 pass</span></div>
+  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">Python app + macOS shell</span><span class="health-summary">Last commit: 2026-07-16 · Tests: 1003 passed / 4 skipped</span></div>
   <div class="mini-scores" aria-label="Scores for local-smartz"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
   <span class="mini-label"><strong>D1</strong> Data collection</span>
   <span class="score-dots" aria-hidden="true">●●○</span>
@@ -1956,7 +1956,7 @@ td {
         <table><caption>Capability overlap, current implementations, and the implementation to keep.</caption><thead><tr><th scope="col">Capability</th><th scope="col">Implementations</th><th scope="col">Keep</th></tr></thead><tbody><tr>
   <th scope="row">Document parsing (PDF/XLSX/PPTX/DOCX)</th>
   <td><strong>Omniparse:</strong> TS, tested, published<br><strong>market-research:</strong> parsers/ (TS)<br><strong>market-research-platform:</strong> backend/app/parsers/ (Py, +OCR)<br><strong>stratagem:</strong> tools/{pdf,spreadsheet,pptx,docx} (Py)<br><strong>local-smartz:</strong> tools/documents.py (Py)</td>
-  <td>Omniparse as the front door (research-plugin already vendors it); MRP&#x27;s OCR path is the one thing Omniparse lacks</td>
+  <td>Omniparse as the front door (research-plugin already vendors it); use MRP&#x27;s OCR and DOCX paths for formats Omniparse lacks</td>
 </tr><tr>
   <th scope="row">LLM provider abstraction</th>
   <td><strong>local-smartz:</strong> runners/ (ollama/anthropic/openai/groq, fail-closed)<br><strong>market-research-platform:</strong> llm/factory.py (ollama/mlx/claude)<br><strong>market-research:</strong> constants.ts + aggregationEngine.resolveProvider (ollama/openai/groq)</td>
@@ -1990,7 +1990,7 @@ td {
     </article>
     <article class="panel">
       <div class="panel-header"><h3>Cross-subject gaps</h3><p>Capabilities absent or incomplete across the audited set.</p></div>
-      <div class="panel-body"><ul class="gap-list"><li><strong>Entity / relationship graph</strong><p>Best anywhere is 2/3. research-plugin: wikilink backlinks + MOC hierarchies, no entities. MRP: spaCy NER → Kuzu entities, relations never written. Nobody links entities across documents or visualizes a knowledge graph (stratagem&#x27;s only graph is its own code architecture).</p></li><li><strong>Deterministic insight engine</strong><p>Contradiction, trend, comparison, and gap detection exist only as prompt instructions (stratagem source_verifier.md, local-smartz analyzer.md, research-plugin synthesis.md). Closest to code: local-smartz&#x27;s bounded fact-check→re-research loop and research-plugin&#x27;s atom verifier. Nothing compares atoms across entries.</p></li><li><strong>Continuous / scheduled collection</strong><p>Every repo is on-demand. market-intel was meant to be the RSS feed and is dead. No watcher, cron, or feed reader anywhere — your LaunchAgent fleet is the obvious host for one.</p></li><li><strong>Web search in headless mode</strong><p>Only local-smartz (ddgs) and stratagem (Claude WebSearch builtin) search the web from code; research-plugin delegates to host tools by policy — fine interactively, absent when running headless.</p></li><li><strong>Multi-length synthesis as a first-class register</strong><p>Renderers exist; what&#x27;s missing is one contract that says “long report / short report / key highlights / deck outline” and routes to templates. research-plugin&#x27;s output-contracts.md + stratagem&#x27;s output_formats.md format-routing table are the two halves.</p></li></ul></div>
+      <div class="panel-body"><ul class="gap-list"><li><strong>Entity / relationship graph</strong><p>Best anywhere is 2/3. research-plugin has wikilink backlinks + MOC hierarchies, but no entities. MRP defines spaCy NER and Kuzu graph code, but the pipeline is unreachable and the runtime graph is empty. Nobody links entities across documents or visualizes a knowledge graph (stratagem&#x27;s only graph is its own code architecture).</p></li><li><strong>Deterministic insight engine</strong><p>Contradiction, trend, comparison, and gap detection exist only as prompt instructions (stratagem source_verifier.md, local-smartz analyzer.md, research-plugin synthesis.md). Closest to code: local-smartz&#x27;s bounded fact-check→re-research loop and research-plugin&#x27;s atom verifier. Nothing compares atoms across entries.</p></li><li><strong>Continuous / scheduled collection</strong><p>Every repo is on-demand. market-intel was meant to be the RSS feed and is dead. No watcher, cron, or feed reader anywhere — your LaunchAgent fleet is the obvious host for one.</p></li><li><strong>Web search in headless mode</strong><p>Only local-smartz (ddgs) and stratagem (Claude WebSearch builtin) search the web from code; research-plugin delegates to host tools by policy — fine interactively, absent when running headless.</p></li><li><strong>Multi-length synthesis as a first-class register</strong><p>Renderers exist; what&#x27;s missing is one contract that says “long report / short report / key highlights / deck outline” and routes to templates. research-plugin&#x27;s output-contracts.md + stratagem&#x27;s output_formats.md format-routing table are the two halves.</p></li></ul></div>
     </article>
     <article class="panel">
       <div class="panel-header"><h3>Findings needing disposition</h3><p>Severity and state are always written, never color-only.</p></div>
@@ -2016,13 +2016,13 @@ td {
 </tr><tr>
   <th scope="row">market-research-platform</th>
   <td><span class="pill pill-normal">normal</span></td>
-  <td>MLX half-wired (tier selection sends Ollama tags to MLX; embedder probe raises without fallback); add_relation never called; dead run_research pipeline; no README.</td>
+  <td>MLX half-wired (tier selection sends Ollama tags to MLX; embedder probe raises without fallback); the graph pipeline is unreachable and the runtime Kuzu store is empty; no README.</td>
   <td><span class="pill pill-escalated">escalated</span></td>
   <td><code class="record">oc:006f476c</code></td>
 </tr><tr>
   <th scope="row">local-smartz</th>
   <td><span class="pill pill-normal">normal</span></td>
-  <td>MCP + plugin tools disabled on the default pipeline (pipeline.py:30-31) while README advertises them.</td>
+  <td>MCP + plugin tools are disabled on the default graph pipeline (pipeline.py:151-159; default selected at pipeline.py:65-78) while README advertises them.</td>
   <td><span class="pill pill-escalated">escalated</span></td>
   <td><code class="record">oc:0a4b1914</code></td>
 </tr><tr>
