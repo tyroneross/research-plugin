@@ -78,13 +78,32 @@ sources:
   - url: https://arxiv.org/abs/2201.11903
     tier: T1
     domain: arxiv.org
+    role: primary/original
+    independence: original paper
     primary: true
     doi: 10.48550/arXiv.2201.11903
+    content_hash: null
+    parser: WebFetch
+    parser_version: null
+    extraction_status: success
+    extraction_confidence: high
+    provenance_granularity: section
+    raw_ref: "# https://arxiv.org/abs/2201.11903"
+    parse_notes: []
     captured: 2026-04-17
   - url: https://www.anthropic.com/research/...
     tier: T2
     domain: anthropic.com
+    role: independent-corroboration
+    independence: separate author and dataset
     primary: false
+    content_hash: null
+    parser: WebFetch
+    extraction_status: success
+    extraction_confidence: high
+    provenance_granularity: section
+    raw_ref: "# https://www.anthropic.com/research/..."
+    parse_notes: []
     captured: 2026-04-17
 related: []                             # slugs of related entries
 inbound: []                             # auto-maintained by research.py index
@@ -98,6 +117,10 @@ verification:                           # populated by research.py verify (v0.2+
 ```
 
 **Required fields:** slug, title, topics, projects, status, created, reviewed, sources. Everything else defaults.
+
+For standard and deep research, each `sources[]` item should preserve the source register fields when known: `role` (primary/original, independent-corroboration, counter-evidence, temporal/currentness, gap-lead) and `independence` (why it is independent, shared-lineage, derivative, or original).
+
+For extracted, uploaded, local, or mixed-file sources, also preserve intake fields when known: `content_hash`, `parser`, `parser_version`, `extraction_status`, `extraction_confidence`, `provenance_granularity`, `raw_ref`, and `parse_notes`. These fields let future searches distinguish a high-quality source from a weak extraction of a good source.
 
 ## Extraction — which tool for which source
 
@@ -114,6 +137,8 @@ Phase 2-3 research populates the `## Raw` section. Pick the right extractor per 
 | Whole docs directory | `/research:extract <dir> -r` | Omniparse recursive walk |
 | Markdown / plain text / JSON / YAML | `Read` | Stdlib covers it; `/research:extract` rejects these |
 
+For mixed, visual-heavy, table-heavy, or reusable source sets, apply `deep-research-architecture.md` before synthesis. The result should be an intake manifest plus normalized evidence records, not only a pasted text blob.
+
 ### Omniparse
 
 `/research:extract` routes everything through `@tyroneross/omniparse` — a user-authored Node.js CLI (FSL-1.1-MIT) that ships **vendored** inside this plugin at `vendor/omniparse/dist/bin/omniparse.js`. The vendored build is self-contained: all runtime deps (xlsx, sax, p-limit) are inlined, so no `npm install` is needed. Only `node >= 18` must be on PATH. No external Python extraction libraries are used. PDF handling is basic text extraction (no table or formula recognition). If academic PDF fidelity ever blocks real work, the right fix is to extend Omniparse rather than add another dependency.
@@ -128,7 +153,25 @@ If neither resolves, the command explains that the vendored copy is missing or `
 
 Every successful extract is cached at `~/dev/research/.extract-cache/<sha256>-<flags>.md`. The cache key combines the file's SHA-256 (or a directory-listing hash for directories) with the active flag signature (`-f`, `-r`, `--sheet`, `--no-notes`). Re-reading the same file with the same flags is instant. Use `--no-cache` to force re-extract. Safe to delete the cache dir at any time.
 
-Guiding rule: **non-LLM parsers do extraction, Claude does synthesis.** Paste the markdown verbatim into `## Raw`, under a heading with the source path + capture date. The verifier chunks this later.
+Guiding rule: **non-LLM parsers do extraction, the host agent does synthesis.** Paste the markdown verbatim into `## Raw`, under a heading with the source path, capture date, parser, flags, content hash/cache key, extraction confidence, and parse notes. The verifier chunks this later.
+
+### Parse provenance
+
+Each raw source block should start with a compact provenance header when available:
+
+```markdown
+### /path/to/source.pdf (captured 2026-07-08)
+- source_id: S1
+- content_hash: sha256:...
+- parser: omniparse
+- parser_flags: -f markdown
+- extraction_status: success
+- extraction_confidence: medium
+- provenance_granularity: page/section
+- parse_notes: tables may be flattened; charts not independently extracted
+```
+
+Use `high` confidence for native text with stable section/page provenance, `medium` for parser output that appears usable but may flatten layout, and `low` for OCR/scans/visual tables/formulas where meaning may be incomplete.
 
 ## Three-layer template
 

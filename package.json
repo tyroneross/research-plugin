@@ -1,6 +1,6 @@
 {
   "name": "@tyroneross/research-plugin",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Structured research with central persistence, source scoring, claim verification, quantitative analysis, and project-linked views.",
   "author": "Tyrone Ross, Jr <46267523+tyroneross@users.noreply.github.com>",
   "license": "Apache-2.0",
@@ -18,6 +18,8 @@
     "research.py",
     "requirements.txt",
     "README.md",
+    "PRIVACY.md",
+    "TERMS.md",
     "LICENSE"
   ],
   "keywords": [

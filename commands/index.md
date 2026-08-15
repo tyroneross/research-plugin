@@ -15,7 +15,7 @@ Rebuild every auto-generated index and refresh every symlink:
 - `inbound:` frontmatter on each entry (scans Notes for `[[slug]]` refs)
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" index
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" index
 ```
 
 One call keeps the entire knowledge base current — both plugin-authored entries and linked external directories. Invoke manually after bulk file edits, after `/research:save --no-index`, or after re-organizing slugs.

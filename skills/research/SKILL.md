@@ -7,7 +7,7 @@ description: Use when the user asks to research, investigate, evaluate, compare 
 
 Structured research methodology for web and technical investigations. Produces cited, verified findings with confidence markers, persisted to a central knowledge base.
 
-Supports four core workflows: **general research** (full 5-phase + persist), **collection** (source → evidence), **synthesis** (evidence → output), and **quantitative/database analysis** (data/schema → generated Python analysis → certainty-graded results). Use the **active-project ingestion overlay** when source materials need to become durable project wiki memory with chronology, contradictions, evolving themes, and decision relevance. All workflows end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
+Supports four core workflows: **general research** (full 5-phase + persist), **collection** (source -> evidence), **synthesis** (evidence -> output), and **quantitative/database analysis** (data/schema -> generated Python analysis -> certainty-graded results). Use the **deep research architecture overlay** when sources need deterministic intake, parser routing, provenance, search/fetch-style evidence records, and claim QA. Use the **active-project ingestion overlay** when source materials need to become durable project wiki memory with chronology, contradictions, evolving themes, and decision relevance. All workflows end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
 
 ## Workflow Detection
 
@@ -17,6 +17,7 @@ Route to the appropriate workflow based on user language:
 |-----------------|----------|-----------|
 | "research", "investigate", "evaluate", "compare", "look into", "what's better X or Y" | **General Research** | Phases 1-6 below |
 | "extract", "collect", "what does this say", "pull data from", "analyze this document", "key claims" | **Collection** | `references/collection.md` |
+| "index credible sources", "source intake", "parser routing", "deep research architecture", "mixed files", "parse quality", "search/fetch evidence" | **Deep Research Architecture Overlay** | `references/deep-research-architecture.md` |
 | "ingest into project wiki", "active project wiki", "project memory ingestion", "preserve chronology", "evolving themes", "contradictions over time" | **Active Project Ingestion Overlay** | `references/active-project-ingestion.md` |
 | "synthesize", "summarize findings", "executive summary", "what should we do", "combine findings" | **Executive/Authorial Synthesis** | `references/synthesis.md` |
 | "calculate", "quantitative", "analyze this CSV", "database", "SQL", "table", "schema", "metrics", "what does the data show" | **Quantitative / Database Analysis** | `references/quantitative-analysis.md` |
@@ -37,10 +38,17 @@ Use the classifier as a transparent pre-flight, not as a hidden override. If the
 | Depth | Use when | Source budget | Persistence |
 |-------|----------|---------------|-------------|
 | **Light** | Definition, quick lookup, one-file summary, narrow factual answer | 0-2 sources | Skip unless reusable or user asks |
-| **Standard** | Bounded multi-source question, current-state check, ordinary comparison | 2-5 sources | Persist if more than a short answer |
-| **Deep** | Decision-grade recommendation, architecture, strategy, risks, high-stakes domain, quantitative claims, large corpus | 4-10 sources | Persist by default; verify critical claims |
+| **Standard** | Bounded multi-source question, current-state check, ordinary comparison | 3-8 sources; target 5 | Persist if more than a short answer |
+| **Deep** | Decision-grade recommendation, architecture, strategy, risks, high-stakes domain, quantitative claims, large corpus, explicitly thorough/expansive request | 7-15 sources; target 10 | Persist by default; verify critical claims |
 
 Depth controls effort, not quality. Even light research must be accurate, cite external sources when used, and mark uncertainty.
+
+**Coverage requirements:** Standard and deep research must plan source breadth before fetching. Cover these lanes or explicitly explain why a lane is unavailable:
+- **Primary/original** — official docs, original papers, primary datasets, source code, release notes, standards, or first-party records.
+- **Independent corroboration** — academic, expert, industry, or reputable reporting that does not share the same upstream source.
+- **Counter-evidence** — risks, criticism, failures, limitations, migration-away stories, negative cases, or credible alternatives.
+- **Temporal/currentness** — source dates, changelogs, recent status, and superseded material when facts may have changed.
+- **Gaps** — what no source answered and what evidence would change the conclusion.
 
 **Sequential workflow:** For thorough research on a topic, the full pipeline is:
 1. **General Research** (Phase 1-3) to identify and gather sources
@@ -50,6 +58,7 @@ Depth controls effort, not quality. Even light research must be accurate, cite e
 
 Steps 2-3 can be invoked independently when the user already has sources or evidence.
 Quantitative/database analysis can be inserted after collection whenever claims require calculations, SQL, table joins, or schema inspection.
+For mixed-source or deep research intake, apply `references/deep-research-architecture.md` before synthesis: create a source/intake register, route each file through the right parser, preserve raw output, record extraction confidence, and treat the resulting evidence as searchable/fetchable records.
 For active project wiki ingestion, run Collection first, apply `references/active-project-ingestion.md` before synthesis, then persist durable outputs as separate wiki-ready entries instead of one giant package unless requested.
 
 ---
@@ -79,13 +88,14 @@ Deterministic scoring pipeline: `references/source_scoring.md`
 
 When the user has sources and needs structured evidence extraction.
 
-**Modes:** Standard, Technical PDF, Concise, Large Corpus — auto-selected by source type, user-overridable. Add the Active Project Wiki Overlay when the user wants project memory ingestion, chronology, contradictions, concepts, or wiki update recommendations.
+**Modes:** Standard, Technical PDF, Concise, Large Corpus — auto-selected by source type, user-overridable. Add the Deep Research Architecture Overlay when the source set includes mixed binaries, spreadsheets, visual-heavy docs, parser-confidence risk, or reusable evidence indexing. Add the Active Project Wiki Overlay when the user wants project memory ingestion, chronology, contradictions, concepts, or wiki update recommendations.
 
 **Core principle:** Source-faithful extraction. Preserve meaning precisely, capture quantitative data exactly, never flatten distinct claims.
 
 **Output:** Evidence package with typed items (claim, source, tier, corroboration, date, extraction type).
 
 Full collection methodology and mode details: `references/collection.md`
+Deep research intake, parsing, search/fetch, and QA gates: `references/deep-research-architecture.md`
 Active project wiki ingestion overlay: `references/active-project-ingestion.md`
 Output format specification: `references/output-contracts.md`
 
@@ -153,6 +163,13 @@ Before searching, define:
 
 Select sources based on research type. Always prefer higher-tier sources.
 
+Before searching, create a **coverage map**:
+1. Name the required source lanes for this query: primary/original, independent, counter-evidence, temporal/currentness, and gaps.
+2. Assign a source-count target from the depth profile. Standard targets 5 sources; deep targets 10.
+3. State what counts as independent for this topic. Two articles that repeat the same announcement, paper, benchmark, or vendor claim are not independent.
+4. Identify likely counter-evidence queries before searching, not after a preferred answer emerges.
+5. If a lane cannot be filled, keep it as an explicit gap instead of smoothing it away.
+
 **Source strategy by research type:**
 
 | Type | Primary sources | Verification |
@@ -167,22 +184,33 @@ Select sources based on research type. Always prefer higher-tier sources.
 - 2-source minimum for statistics, competitor claims, disputed facts
 - Date-check all sources — reject anything stale without flagging it
 - No T1/T2 available → mark finding as TAG:INFERRED
+- Deep research minimum: at least 2 primary/original sources when available, 3 independent sources, 2 counter-evidence sources, and a dated source register.
 
 ### Phase 3: Execute Research
 
 Run searches and fetches in parallel where independent. Minimize sequential round-trips.
 
+**Host tool routing:**
+- Start technical and codebase research with the coding agent's local file, shell, and repository tools. Do not send local source code through a web connector.
+- On Codex, use the on-device in-app Browser for public HTML source reading and exact-page capture when it is available. Use the host's structured web search/open connector (`web__run`) as the backup for discovery or when Browser cannot retrieve a public page.
+- On Claude Code, use native `WebSearch` for discovery and `WebFetch` for public HTML source reading.
+- On other hosts, prefer the host's local/on-device browser or purpose-built connector, then its structured web search/fetch tool.
+- Invoke connectors through their published structured schema. Never construct or evaluate a hand-written wrapper around a connector call.
+- If the backup connector rejects a request, retry once with the smallest valid request containing only the required operation and query or URL. Treat an empty result as a valid result, but treat schema or invocation errors as connector failures and fall back to Browser or a known official URL.
+
 **For web research:**
-1. Start with 2-3 targeted web searches using different angles
-2. Fetch the most promising results directly with `WebFetch` — output is markdown; capture it verbatim for the Raw layer
-3. Extract specific data points, not general impressions
-4. Track source URL and date for every finding
+1. Start with targeted web searches across the coverage lanes: primary, independent, counter-evidence, and temporal/currentness
+2. Open the most promising results with the host-appropriate source-reading tool above and capture the relevant source text for the Raw layer
+3. Build a source register with URL, source tier, date, role in the coverage map, and independence notes
+4. Extract specific data points, not general impressions
+5. Track source URL and date for every finding
 
 **For non-HTML sources** (PDFs, Excel, PowerPoint, Python source, whole docs directories):
 Use `/research:extract <path>` — routes everything through `@tyroneross/omniparse` (user-authored, MIT) with a content-hash cache.
 - Handles PDF, `.xlsx/.xls/.csv/.tsv/.ods/.xlsb`, `.pptx`, `.py`, and directories (`-r`).
-- Short PDFs (≤10 pages, simple text) are often better served by Claude's native `Read` with `pages=` — no extraction needed.
-- HTML URLs are rejected with a pointer to `WebFetch`. Plain text formats (`.md`/`.txt`/`.json`/`.yaml`) are rejected with a pointer to `Read`.
+- Short PDFs (≤10 pages, simple text) are often better served by the host agent's native `Read` with `pages=` — no extraction needed.
+- HTML URLs are rejected with a pointer to the host's Browser or native web fetch tool. Plain text formats (`.md`/`.txt`/`.json`/`.yaml`) are rejected with a pointer to `Read`.
+- For mixed, visual-heavy, table-heavy, or reusable source sets, follow `references/deep-research-architecture.md`: preserve an intake manifest, parse notes, extraction confidence, and provenance before making claims.
 - See `references/persistence.md` for the full decision table and cache behavior.
 
 **For technical/codebase research:**
@@ -202,7 +230,7 @@ Use `/research:extract <path>` — routes everything through `@tyroneross/omnipa
 - Preserve failure evidence — if a promising lead was wrong, note it
 - When sources conflict, present both with their tiers
 - Never extrapolate version numbers, dates, or pricing from memory
-- **Preserve the raw extracted text** (`WebFetch` markdown output, `Read` PDF text) for the Raw layer in Phase 6
+- **Preserve the raw extracted text** (Browser/native web-fetch output, `Read` PDF text) for the Raw layer in Phase 6
 
 ### Phase 4: Synthesize
 
@@ -218,6 +246,7 @@ Compile findings into structured output. Use the appropriate template from `refe
 - Lead with the answer, then evidence
 - Separate facts from interpretation
 - Flag stale data explicitly
+- Include a coverage summary: lanes covered, lanes missing, and strongest counter-evidence
 - Include a "Limitations" section for what couldn't be verified
 - End with actionable next steps or recommendations
 
@@ -248,7 +277,7 @@ Always include:
    - Frontmatter schema: see `references/persistence.md`.
    - `## TL;DR` (≤150 words, extractive — use bolded phrases from Notes).
    - `## Notes` (body with **bolded** key passages, `[[backlinks]]`, inline `[T1: url]` citations).
-   - `## Raw` (verbatim source extracts from `WebFetch` / `Read` outputs, each tagged with URL + capture date).
+   - `## Raw` (verbatim source extracts from Browser/native web-fetch/`Read` outputs, each tagged with URL + capture date).
 
 4. **Source tiers** — v0.1: tag manually using the T1–T4 framework. v0.2+: `python research.py score --auto` fills tiers deterministically from `domain_scores` cache → rules → LLM residue.
 
@@ -271,7 +300,7 @@ Always include:
 - Never claim information is current without checking. Today's date matters.
 - For dates, version numbers, pricing, and status: search or fetch — never guess.
 - If a search returns nothing useful, say so. Empty findings are valid findings.
-- Prefer depth on fewer sources over shallow coverage of many.
+- Prefer source-faithful extraction over source-count theater. Be expansive by covering the necessary lanes, then go deep on the sources that carry the decision.
 - Research is complete when the question is answered, not when all sources are exhausted.
 - **Phase 6 follows depth** — deep persists by default; standard persists when reusable; light stays inline unless the user asks to save it.
 
@@ -281,6 +310,7 @@ For detailed methodology and output formats, consult:
 - **`references/credibility.md`** — Two-dimensional credibility framework (source quality + claim corroboration)
 - **`references/source_scoring.md`** — Deterministic tier scoring pipeline (domain cache → rules → LLM residue)
 - **`references/collection.md`** — 4 collection modes (standard, technical PDF, concise, large corpus)
+- **`references/deep-research-architecture.md`** — Intake, parser routing, normalized evidence, search/fetch interface, and QA gates for expansive deep research
 - **`references/synthesis.md`** — 2 synthesis modes (authorial, executive) with MECE operationalization
 - **`references/quantitative-analysis.md`** — Quantitative/database workflow with generated Python analysis scripts and certainty rubric
 - **`references/output-contracts.md`** — Evidence package and synthesis output format specifications

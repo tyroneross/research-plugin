@@ -16,6 +16,21 @@ This is what collection produces and synthesis consumes. Structure ensures no ev
 - **Collection date**: [YYYY-MM-DD]
 - **Collector notes**: [Any observations about the collection process]
 
+## Intake Manifest
+
+Include this section when sources passed through `/research:extract`, table/database profiling, mixed-file intake, active-project ingestion, or the deep research architecture overlay.
+
+| Source ID | Location | Type | Content Hash | Parser / Flags | Extraction Status | Extraction Confidence | Provenance Granularity | Raw Ref | Parse Notes |
+|-----------|----------|------|--------------|----------------|-------------------|-----------------------|------------------------|---------|-------------|
+| S1 | [URL/path] | pdf | sha256:... | omniparse -f markdown | success | medium | page/section | Raw/S1 | Tables may be flattened |
+
+## Coverage Summary
+- **Primary/original**: [covered/missing/not applicable] — [source IDs or gap]
+- **Independent corroboration**: [covered/missing/not applicable] — [source IDs or gap]
+- **Counter-evidence**: [covered/missing/not applicable] — [source IDs or gap]
+- **Temporal/currentness**: [covered/missing/not applicable] — [source IDs or gap]
+- **Gaps**: [unanswered lanes or questions]
+
 ## Evidence Items
 
 ### E1
@@ -32,12 +47,12 @@ This is what collection produces and synthesis consumes. Structure ensures no ev
 ### E2
 ...
 
-## Source Map
+## Source Register
 
-| ID | Source | Type | Tier | Items Extracted |
-|----|--------|------|------|-----------------|
-| S1 | [Name](URL) | [Doc/Blog/Paper/Code/...] | T[n] | E1, E3, E5 |
-| S2 | [Name](URL) | [Doc/Blog/Paper/Code/...] | T[n] | E2, E4 |
+| ID | Source | Type | Tier | Date | Coverage Role | Independence Note | Disposition | Items Extracted |
+|----|--------|------|------|------|---------------|-------------------|-------------|-----------------|
+| S1 | [Name](URL) | [Doc/Blog/Paper/Code/...] | T[n] | YYYY-MM-DD | Primary/original | [why independent or shared lineage] | Deep-read | E1, E3, E5 |
+| S2 | [Name](URL) | [Doc/Blog/Paper/Code/...] | T[n] | YYYY-MM-DD | Counter-evidence | [why independent or shared lineage] | Standard extract | E2, E4 |
 
 ## Collection Notes
 
@@ -79,6 +94,21 @@ Compact reference for the fields on each evidence item:
 | **Context** | Optional | String | Surrounding context if needed for interpretation |
 | **Claim Type** | Optional | Enum | fact, metric, forecast, assumption, recommendation, risk, decision, or signal subtype (market / customer / competitive / technical / financial / regulatory) |
 | **Decision Relevance** | Optional | String | Which active decision question or workstream this bears on (active-project ingestion) |
+| **Element Type** | Optional | Enum | paragraph, list, table, chart, image, formula, note, code, metadata |
+| **Extraction Confidence** | Optional | Enum | high, medium, low; required when parser quality affects trust |
+| **Provenance** | Optional | String | Page, slide, sheet, cell range, section, line, or bounding-box reference |
+| **Structured Data Ref** | Optional | String | Path or artifact ID for table/profile/analysis output |
+| **Parse Notes** | Optional | String | OCR, layout, table, chart, formula, or hidden-data caveats |
+
+## Claim QA Addendum
+
+For deep, decision-grade, or high-stakes outputs, add this table before synthesis or persistence:
+
+| Claim ID | Claim | Support Status | Supporting Evidence | Contradicting Evidence | Citation Precision | Parse Confidence | Action |
+|----------|-------|----------------|---------------------|------------------------|--------------------|------------------|--------|
+| C1 | [Atomic factual claim] | supported / contradicted / insufficient / qualified | E1, E4 | E7 | pass / fail | high / medium / low | ship / qualify / retrieve more / remove |
+
+Do not carry `insufficient` claims into final synthesis as facts. Convert them to open questions, qualify them, or remove them.
 
 ---
 
@@ -91,6 +121,13 @@ Compact reference for the fields on each evidence item:
 - **Evidence package**: [Reference to source evidence package]
 - **Organizing dimension**: [Chronological | Structural | Stakeholder | Thematic] — [rationale]
 - **Synthesis date**: [YYYY-MM-DD]
+
+## Evidence Coverage
+- **Primary/original**: [covered/missing/not applicable]
+- **Independent corroboration**: [covered/missing/not applicable]
+- **Counter-evidence**: [covered/missing/not applicable]
+- **Temporal/currentness**: [covered/missing/not applicable]
+- **Confidence impact**: [how coverage affects confidence]
 
 ## [Section 1: First grouping under chosen dimension]
 
@@ -149,6 +186,13 @@ Key findings:
 - **Complication**: [What changed or what's at stake]
 - **Question**: [Research question restated]
 - **Answer**: [Bottom line with supporting nuance]
+
+## Evidence Coverage
+- **Primary/original**: [covered/missing/not applicable]
+- **Independent corroboration**: [covered/missing/not applicable]
+- **Counter-evidence**: [covered/missing/not applicable]
+- **Temporal/currentness**: [covered/missing/not applicable]
+- **Confidence impact**: [how coverage affects recommendation strength]
 
 ## Key Insights
 

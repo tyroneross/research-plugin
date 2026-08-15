@@ -6,8 +6,10 @@ allowed-tools: Bash, Read, Write
 
 Walk a file or directory of `.md` files and produce draft entries. The Python layer is purely deterministic (slug from filename, title from first H1, body wrapped into TL;DR/Notes/Raw skeleton). Anything semantic — picking topics, tagging sources by tier, pruning the body — is for you (the LLM) to do after seeing the drafts.
 
+This command is for markdown intake only. For PDFs, Office files, spreadsheets, directories of mixed binaries, scans, charts, or visual-heavy decks, run `/research:extract` first and use `skills/research/references/deep-research-architecture.md` to record parser route, raw reference, extraction confidence, and provenance.
+
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" ingest $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" ingest $ARGUMENTS
 ```
 
 **Modes**
@@ -17,6 +19,19 @@ python3 "${CLAUDE_PLUGIN_ROOT}/research.py" ingest $ARGUMENTS
 - `--inbox`: copy raw files to `~/dev/research/inbox/` without any drafting or DB write. Use this to "park" sources you want to review later.
 - `--project foo`: auto-tag drafts with the named project (must match a directory under `~/dev/git-folder/`).
 - `--topics a,b,c`: comma-separated topic list applied to every draft.
+
+**Source-intake fields to preserve when known**
+
+- `source_location`
+- `source_type`
+- `content_hash`
+- `captured_at`
+- `parser` / `parser_version`
+- `extraction_status`
+- `extraction_confidence`
+- `parse_notes`
+- `raw_ref`
+- page, slide, sheet, cell range, section, or line provenance
 
 **Recommended LLM-assisted flow (slash command):**
 

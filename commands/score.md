@@ -7,7 +7,7 @@ allowed-tools: Bash
 Look up a domain's current tier, or set it manually.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" score $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" score $ARGUMENTS
 ```
 
 Without `--tier`: reads the stored tier from `domain_scores`, applies deterministic rules if not cached, else reports unknown (flag for LLM judgment).

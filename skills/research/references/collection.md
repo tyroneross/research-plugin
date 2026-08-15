@@ -1,6 +1,6 @@
 # Collection Modes — Evidence Extraction Reference
 
-Collection is the phase where raw sources become structured evidence. This file defines 4 modes optimized for different source types and failure modes, plus an active-project wiki overlay for durable project memory ingestion.
+Collection is the phase where raw sources become structured evidence. This file defines 4 modes optimized for different source types and failure modes, plus a deep research architecture overlay for deterministic intake/parsing and an active-project wiki overlay for durable project memory ingestion.
 
 ## Mode Selection
 
@@ -8,12 +8,14 @@ Collection is the phase where raw sources become structured evidence. This file 
 |-------------|------|-----|
 | General web sources, mixed documents | **Standard** | Balanced depth, multi-source extraction |
 | PDFs with tables, figures, technical specs | **Technical PDF** | Layout-aware extraction, completeness logging |
+| Mixed binaries, spreadsheets, scans, visual-heavy decks, reusable source indexes | **Deep Research Architecture Overlay** | Parser routing, normalized evidence records, provenance, extraction confidence, search/fetch readiness |
 | Quick decision support, time-constrained | **Concise** | Brevity filter, bullet-only, decision-relevance |
 | 5+ sources, large document sets, literature | **Large Corpus** | Triage first, tiered depth, deduplication |
 | Active project wiki ingestion, evolving research corpus | **Active Project Wiki Overlay** | Preserves chronology, contradictions, concepts, and decision relevance |
 
 **Auto-selection:** Default to Standard. Switch when:
 - User provides PDFs or mentions technical documents → Technical PDF
+- Source set includes mixed file types, Excel/tables, scans, charts, visual-heavy slides, or future source indexing → apply the Deep Research Architecture Overlay before synthesis
 - User asks for "quick", "brief", "just the key points" → Concise
 - Source count exceeds 5 or user mentions "survey", "review", "all the literature" → Large Corpus
 - User mentions active project wiki, project memory, chronology, evolving themes, contradictions, or wiki update recommendations → apply the Active Project Wiki Overlay after Standard or Large Corpus extraction
@@ -52,6 +54,20 @@ Collector notes capture observations *about* the evidence, not interpretations o
 - "Table on page 12 appears to have inconsistent units" — valid
 - "Author seems biased toward their own product" — valid (observation about source, not claim)
 
+### Source Register
+
+Before synthesis, maintain a source register for standard and deep collection:
+- **Source**: Name + URL/path
+- **Tier**: T1-T4 with short rationale
+- **Date**: Publication/update date plus access date when relevant
+- **Coverage role**: Primary/original, independent corroboration, counter-evidence, temporal/currentness, or gap lead
+- **Independence note**: Whether it shares authorship, dataset, benchmark, citation chain, press release, or vendor origin with another source
+- **Disposition**: Deep-read, standard extract, skimmed for unique claim, or skipped with reason
+- **Extraction status/confidence**: success/partial/failed/skipped/cached plus high/medium/low confidence when the source came through a parser
+- **Parser/provenance**: tool, flags, content hash/cache key, and the strongest available location granularity
+
+The register is part of the evidence package. A missing coverage lane is recorded as a gap, not hidden.
+
 ### Evidence Item Fields
 
 Every evidence item must have:
@@ -63,6 +79,37 @@ Every evidence item must have:
 - **Date**: Publication or access date
 - **Context**: Where in the source this appears (section, page, paragraph)
 - **Extraction type**: `[direct quote]` | `[paraphrased]` | `[quantitative]`
+- **Extraction confidence**: high, medium, or low when parser quality matters
+- **Provenance**: page, slide, sheet, cell range, section, line, or bounding-box reference when known
+- **Parse notes**: OCR/layout/table/chart/formula limitations that affect confidence
+
+---
+
+## Deep Research Architecture Overlay
+
+Use `deep-research-architecture.md` when the collection must support expansive future research, reusable source indexing, mixed-file intake, or high-confidence citation binding.
+
+### Required Additions
+
+1. **Intake manifest** — one row per source with `source_id`, location, source type, permissions, content hash, parser, capture date, extraction status, extraction confidence, raw reference, and parse notes.
+2. **Parser routing** — explicitly choose WebFetch, Read, `/research:extract`, table profile, database profile, or generated analysis before extracting claims.
+3. **Normalized evidence elements** — preserve element type (`paragraph`, `table`, `chart`, `image`, `formula`, `note`, `code`), structured data when available, and provenance.
+4. **Search/fetch readiness** — record enough metadata that a future search result can be fetched back to the exact source element.
+5. **QA gates** — before synthesis, check source authority, retrieval coverage, parse confidence, contradiction status, and citation support.
+
+### When to Escalate
+
+Escalate from ordinary collection to this overlay when any of these are true:
+
+- The source set is intended to seed a reusable index of credible/helpful sources.
+- A file has tables, charts, formulas, OCR, scans, hidden sheets, or slide visuals that may be lost in plain text.
+- A final answer needs claim-level citations with high confidence.
+- The user asks for "deep research", "more expansive", "more thorough", "index sources", "ingest and parse", or "future use".
+- The output will become a persistent corpus rather than a one-time summary.
+
+### Fail-Closed Rule
+
+If parser quality is uncertain, the evidence item can still be saved, but synthesis must mark the claim as low confidence, partial, or unsupported until a better extraction path verifies it.
 
 ---
 
@@ -72,20 +119,22 @@ Default for general multi-source research.
 
 ### Workflow
 
-1. **Source identification** — List all sources to be collected from
-2. **Sequential extraction** — For each source:
+1. **Coverage map** — Identify primary/original, independent, counter-evidence, temporal/currentness, and gap lanes for the question
+2. **Source register** — List all sources to be collected from, with tier, date, coverage role, independence note, and disposition
+3. **Sequential extraction** — For each source:
    a. Read/fetch the full source
    b. Identify all relevant claims, data points, and findings
    c. Extract each as a separate evidence item with full fields
    d. Note what the source does NOT address (gaps are evidence)
-3. **Cross-source notes** — After all sources collected:
+4. **Cross-source notes** — After all sources collected:
    a. Flag where sources agree (potential SUPPORTED)
    b. Flag where sources disagree (potential CONTESTED)
    c. Note independence relationships between sources
-4. **Package** — Assemble into evidence package format (see `output-contracts.md`)
+   d. Identify the strongest counter-evidence and whether it changes the answer
+5. **Package** — Assemble into evidence package format (see `output-contracts.md`)
 
 ### Depth Target
-- 3-8 evidence items per substantial source
+- 4-10 evidence items per substantial source
 - Fewer for brief sources, more for dense ones
 - Every claim that answers or informs the research question gets extracted
 
@@ -171,7 +220,7 @@ Optimized for 5+ sources. Prevents drowning in low-value extraction by triaging 
 
 ### Phase 1: Source Triage
 
-Before extracting anything, scan all sources and classify:
+Before extracting anything, scan all sources and classify. Deep research usually targets 10 sources and may triage up to 15 when the topic is broad, high-stakes, or contradictory.
 
 | Priority | Criteria | Extraction Depth |
 |----------|----------|-----------------|

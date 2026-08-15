@@ -9,7 +9,7 @@ Verify the atomic claims in an entry.
 **Prerequisite**: an atoms file must exist next to the entry at `<entry-dir>/<slug>.atoms.json` (JSON array of `{atom_id, type, claim, doi?, code?}`). If it doesn't exist, extract atoms first by reading the entry's Notes section and producing the atoms JSON — then re-run this command.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" verify $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" verify $ARGUMENTS
 ```
 
 Routes each atom to its verifier:

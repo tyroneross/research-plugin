@@ -7,7 +7,7 @@ allowed-tools: Bash
 Create a quantitative analysis run directory.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" analyze-plan $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" analyze-plan $ARGUMENTS
 ```
 
 This profiles declared inputs and writes:
@@ -22,6 +22,6 @@ The generated script is stdlib-only and local by default. Do not install package
 Next step:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" analyze-run --plan <analysis-plan.yaml>
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" analyze-run --plan <analysis-plan.yaml>
 ```
 

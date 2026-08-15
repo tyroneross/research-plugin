@@ -11,7 +11,7 @@ Compact an entry whose `## Raw` section has grown large.
 3. The user (or you, in the next turn) should read the archived Raw and rewrite each source block as a 2–3 sentence summary with its URL and capture date preserved.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" compress $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" compress $ARGUMENTS
 ```
 
 After the script runs, edit the entry file to regenerate the summaries. TL;DR and Notes sections are left untouched.

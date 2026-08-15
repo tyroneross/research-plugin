@@ -6,9 +6,12 @@ Before delivering findings, verify:
 
 - [ ] Research question was clearly defined before searching
 - [ ] Sources consulted match the appropriate tier for the claim type
+- [ ] Standard/deep work has a coverage map: primary/original, independent, counter-evidence, temporal/currentness, and gaps
+- [ ] Source register records each source's tier, date, role, and independence relationship
 - [ ] Every factual claim has a source citation
 - [ ] Dates are checked — no stale data presented as current without warning
 - [ ] Conflicting sources are presented with their tiers, not silently resolved
+- [ ] Strongest counter-evidence is represented, even when it does not change the recommendation
 - [ ] Confidence markers (✅/⚠️/❓) are applied consistently
 - [ ] Limitations section acknowledges gaps honestly
 - [ ] Recommendations follow from evidence, not assumptions
@@ -31,9 +34,9 @@ Before delivering findings, verify:
 **Wrong:** "Redis is single-threaded" (was true pre-6.0, now multi-threaded I/O).
 **Right:** Date-check all claims. Technology evolves faster than documentation.
 
-### 5. Breadth Over Depth
+### 5. Breadth Theater
 **Wrong:** Skimming 20 sources and summarizing headlines.
-**Right:** Deep-read 3-5 high-quality sources. Extract specific data points.
+**Right:** Cover the necessary source lanes, triage the full source set, then deep-read the sources that carry the decision. Extract specific data points and record why lower-value sources were skipped.
 
 ### 6. Missing the Question
 **Wrong:** Delivering a comprehensive overview when the user asked a yes/no question.
@@ -77,6 +80,16 @@ When evaluating risks:
 3. Search for migration stories ("migrating away from [tool]")
 4. Check if there are active forks (signals community dissatisfaction)
 
+### Coverage Map
+For standard and deep research, define the coverage lanes before fetching:
+1. **Primary/original** — official docs, source code, primary datasets, original papers, standards, release notes, or first-party records
+2. **Independent** — sources with separate authorship, data, methodology, or field experience
+3. **Counter-evidence** — credible criticism, failures, limitations, risks, migration-away stories, negative benchmarks, or alternatives
+4. **Temporal/currentness** — source dates, changelogs, recent issues, version history, and superseded claims
+5. **Gaps** — lanes or questions no source answers
+
+For deep research, use the coverage map as a source register. Each source gets a role, tier, date, and independence note before synthesis. If the map is incomplete, the missing lane is a finding.
+
 ## Handling Common Situations
 
 ### "I can't find authoritative information"
@@ -113,11 +126,13 @@ When evaluating risks:
 ### Know When to Stop
 Research is complete when:
 - The specific question is answered with appropriate confidence
+- The source lanes required by the depth profile are covered or explicitly listed as gaps
 - Further searching returns diminishing information
 - The user's decision can be made with current findings
 
 Research is NOT complete when:
 - Key claims have no source
+- Counter-evidence was never searched for on a decision-grade question
 - Obvious follow-up questions are unanswered
 - Only one side of a comparison has been researched
 

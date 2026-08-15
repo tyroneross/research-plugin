@@ -8,12 +8,12 @@ Central, token-efficient research knowledge base. Persists findings to `~/dev/re
 - Data lives at `~/dev/research/` (separate from this plugin dir so the plugin can be replaced without touching knowledge).
 - One Python script (`research.py`) with subcommands handles all mutations.
 - SQLite FTS5 (stdlib `sqlite3`) is the index. No external search service.
-- Codex's built-in `WebFetch` and `Read` tools do source extraction — no Python extraction library needed.
+- Codex uses local coding tools first for repository evidence, the on-device in-app Browser for public HTML source reading, and the structured `web__run` search/open connector as backup. `Read` handles local text and supported documents; no Python HTML extraction library is needed.
 
 ## Entry point
 
 - Slash commands: `/research:research` (top-of-funnel — run the full research flow on a topic: frame, source, execute, synthesize, deliver, persist to `~/dev/research/`), `/research:depth` (classify a research request as light, standard, or deep before sourcing), `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`
-- Direct: `python ${CLAUDE_PLUGIN_ROOT}/research.py <subcommand>`
+- Direct: `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" <subcommand>`
 - Via skill: user language matching the `research` skill's description triggers the full-flow, which ends by persisting via Phase 6.
 
 ## How research gets persisted
@@ -47,6 +47,7 @@ Legacy v0.3.0 artifacts — `<project>/research/` file copies, `<project>/resear
 ## Not to do
 
 - Don't call external LLM APIs from scripts. Codex (this runtime) does any LLM work.
+- Don't construct ad-hoc wrappers around connector calls. Use the connector's published structured schema; after an invocation error, retry one minimal valid request and then fall back to Browser or a known official URL.
 - Don't add extraction libraries (trafilatura/pymupdf/etc.) — WebFetch and Read cover it.
 - Don't add a vector database. SQLite FTS5 with BM25 is sufficient at personal-scale corpora.
 - Don't delete research files. Archive via redirect stub (`status: archived`) so inbound links still resolve.

@@ -29,10 +29,17 @@ case "$content_root" in
   "~"/*) content_root="$HOME/${content_root#~/}" ;;
 esac
 
+# Resolve the installed plugin root. Hosted installs set one of the root
+# variables; direct script execution can fall back to this file's location.
+plugin_root="${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-${CLAUDE_PROJECT_DIR:-}}}}"
+if [ -z "$plugin_root" ]; then
+  plugin_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+
 # Only fire for research entries under <content-root>/topics/**.md
 case "$file_path" in
   "$content_root"/topics/*/*.md)
-    python3 "${CLAUDE_PLUGIN_ROOT}/research.py" save --file "$file_path" --skip-symlink >/dev/null 2>&1 || true
+    python3 "$plugin_root/research.py" save --file "$file_path" --skip-symlink >/dev/null 2>&1 || true
     ;;
   *)
     ;;

@@ -1,8 +1,10 @@
 # research
 
-Personal research plugin for Claude Code. Keeps a central, searchable, lifecycle-managed knowledge base of everything you research — with project-local symlinks so research stays visible alongside code.
+Personal research plugin for Claude Code and Codex. Keeps a central, searchable, lifecycle-managed knowledge base of everything you research, with project-linked views so research stays visible alongside code.
 
 ## Install
+
+### Claude Code
 
 ```
 /plugin marketplace add tyroneross/research-plugin
@@ -18,12 +20,22 @@ pip install sympy             # optional (v0.2 symbolic verification)
 
 Restart Claude Code. The `/research:*` slash commands should autocomplete; the `research` skill activates on phrases like "research X", "investigate Y", "what's the current state of Z".
 
+### Codex
+
+Install from a configured Codex marketplace that points at this repository:
+
+```bash
+codex plugin add research@ross-labs-local
+```
+
+Codex loads the same plugin root: `.codex-plugin/plugin.json`, `commands/`, `skills/`, `hooks/`, `data/`, `vendor/omniparse/`, and `research.py`. Commands and skills resolve the runtime root from `RESEARCH_PLUGIN_ROOT`, `CLAUDE_PLUGIN_ROOT`, or `CODEX_PLUGIN_ROOT`.
+
 ## First run
 
 By default, any `/research ...` session writes its markdown corpus to `~/dev/research/` and keeps its SQLite index there too. Or bootstrap explicitly:
 
 ```bash
-python ~/.claude/plugins/research/research.py init
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" init
 ```
 
 ## Roots
@@ -93,7 +105,7 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:analyze-run --plan <analysis-plan.yaml>` | Run the generated analysis script and write results/audit artifacts |
 | `/research:review` | Surface stale / review-due entries |
 | `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
-| `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse |
+| `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse and capture source-intake metadata |
 
 ## Search
 
@@ -101,11 +113,15 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 
 ## Research depth
 
-`/research:depth` is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, workflow, web requirement, persistence guidance, and rationale.
+`/research:depth` is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, coverage requirements, workflow, web requirement, persistence guidance, and rationale.
 
 - `light` — quick answer, usually 0-2 sources, skip persistence unless reusable.
-- `standard` — bounded research, usually 2-5 sources, persist when the answer becomes report-sized.
-- `deep` — decision-grade research, usually 4-10 sources, verify and persist by default.
+- `standard` — bounded research, usually 3-8 sources with a target of 5, persist when the answer becomes report-sized.
+- `deep` — decision-grade or explicitly thorough/expansive research, usually 7-15 sources with a target of 10, verify and persist by default.
+
+Standard and deep runs plan source coverage before fetching: primary/original sources, independent corroboration, counter-evidence, temporal/currentness checks, and explicit gaps. The goal is wider evidence coverage plus source-faithful extraction, not shallow source-count padding.
+
+For expansive deep research, the skill now includes a deep research architecture overlay: deterministic intake, parser routing, normalized evidence records, search/fetch-style source access, and QA gates for claim support and citation precision. See `skills/research/references/deep-research-architecture.md`.
 
 ## Vendored dependencies
 
@@ -119,21 +135,20 @@ A user-installed `omniparse` on `PATH` will be preferred over the vendored copy 
 
 ## Philosophy
 
-- **Non-LLM parsers first, LLM for judgment** — Claude's WebFetch/Read extract content; scripts compute what can be computed.
+- **Non-LLM parsers first, LLM for judgment** — the host agent's WebFetch/Read tools and vendored parsers extract content; scripts compute what can be computed.
+- **Parse first, reason second** — mixed files become normalized evidence with provenance and extraction confidence before synthesis.
 - **Code does the math** — quantitative/database claims should go through profile → analysis plan → generated stdlib Python script → results/audit with High/Medium/Low certainty.
 - **Deterministic over clever** — same URL always scores the same tier; same claim always routes to the same verifier.
 - **Never delete** — archive + redirect stubs preserve all inbound links.
 - **Three layers** — TL;DR (≤150 words, extractive), Notes (bolded key passages + citations), Raw (verbatim source excerpts for future verification).
 
-## Codex
+## Plugin surface
 
-This package now ships an additive Codex plugin surface alongside the existing Claude Code package. The Claude package remains authoritative for Claude behavior; the Codex package adds a parallel `.codex-plugin/plugin.json` install surface without changing the Claude runtime.
+The repository root is the package root for both hosts.
 
-Package root for Codex installs:
-- the repository root (`.`)
-
-Primary Codex surface:
-- skills from `./skills` when present
-- MCP config from `(none)` when present
-
-Install the package from this package root using your current Codex plugin install flow. The Codex package is additive only: Claude-specific hooks, slash commands, and agent wiring remain unchanged for Claude Code.
+- Claude Code manifest: `.claude-plugin/plugin.json`
+- Codex manifest: `.codex-plugin/plugin.json`
+- Slash commands: `commands/*.md`
+- Skill: `skills/research/SKILL.md`
+- Advisory hook: `hooks/hooks.json`
+- Runtime: `research.py`

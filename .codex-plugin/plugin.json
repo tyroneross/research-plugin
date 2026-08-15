@@ -23,8 +23,15 @@
     "developerName": "Ross Labs",
     "category": "Research",
     "capabilities": [
+      "Interactive",
       "Read",
       "Write"
+    ],
+    "websiteURL": "https://github.com/tyroneross/research-plugin",
+    "privacyPolicyURL": "https://github.com/tyroneross/research-plugin/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/tyroneross/research-plugin/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "Research a topic with sourced findings, confidence notes, and optional persistence to ~/dev/research/."
     ]
   }
 }

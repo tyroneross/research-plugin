@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "root=\"${CLAUDE_PLUGIN_ROOT:-$CLAUDE_PROJECT_DIR}\"; hook=\"$root/hooks/post-write-reingest.sh\"; if [ -x \"$hook\" ]; then \"$hook\"; else printf '{}'; fi",
+            "command": "root=\"${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT:-$CLAUDE_PROJECT_DIR}}}\"; if [ -n \"$root\" ] && [ -x \"$root/hooks/post-write-reingest.sh\" ]; then \"$root/hooks/post-write-reingest.sh\"; else printf '{}'; fi",
             "timeout": 15
           }
         ]

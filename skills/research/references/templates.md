@@ -26,6 +26,12 @@ Use these templates as starting structures. Adapt to fit the specific research q
 |------|-------|--------|
 | ... | ... | ... |
 
+## Evidence Coverage
+- **Primary/original:** [covered/missing/not applicable]
+- **Independent corroboration:** [covered/missing/not applicable]
+- **Counter-evidence:** [covered/missing/not applicable]
+- **Temporal/currentness:** [latest checked source/date]
+
 ## Limitations
 - [What couldn't be verified]
 - [Stale data warnings]
@@ -60,6 +66,12 @@ Use these templates as starting structures. Adapt to fit the specific research q
 
 ### [Criterion 2]: [Name]
 ...
+
+## Evidence Coverage
+- **Primary/original:** [sources for each option]
+- **Independent corroboration:** [sources not controlled by either option]
+- **Counter-evidence:** [strongest criticism, failure case, or migration-away evidence for each option]
+- **Temporal/currentness:** [latest checked source/date]
 
 ## Recommendation
 [Specific recommendation based on user's context]
@@ -105,6 +117,12 @@ Use these templates as starting structures. Adapt to fit the specific research q
 1. [Step 1]
 2. [Step 2]
 
+## Evidence Coverage
+- **Primary/original:** [covered/missing/not applicable]
+- **Independent corroboration:** [covered/missing/not applicable]
+- **Counter-evidence:** [covered/missing/not applicable]
+- **Temporal/currentness:** [latest checked source/date]
+
 ## Sources
 - [Source 1](URL) — accessed YYYY-MM-DD
 ```
@@ -140,6 +158,12 @@ Use these templates as starting structures. Adapt to fit the specific research q
 | Decision | Rationale | Trade-offs |
 |----------|-----------|------------|
 | [Decision 1] | [Why] | [What was sacrificed] |
+
+## Evidence Coverage
+- **Primary/original:** [source code/specs/original papers/docs]
+- **Independent corroboration:** [covered/missing/not applicable]
+- **Counter-evidence:** [edge cases, critiques, known failures]
+- **Temporal/currentness:** [latest checked source/date]
 
 ## Gotchas and Edge Cases
 - [Non-obvious behavior with evidence]
@@ -179,6 +203,12 @@ Use these templates as starting structures. Adapt to fit the specific research q
 | Option | Reason for Elimination |
 |--------|----------------------|
 | [Option X] | [Why] |
+
+## Evidence Coverage
+- **Primary/original:** [registry/official/source links]
+- **Independent corroboration:** [covered/missing/not applicable]
+- **Counter-evidence:** [weaknesses, abandoned projects, migration-away evidence]
+- **Temporal/currentness:** [latest checked source/date]
 
 ## Recommendation
 [Which to evaluate further and why]

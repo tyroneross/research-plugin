@@ -8,7 +8,7 @@ Synchronize the SQLite index from the markdown files under `~/dev/research/topic
 Use this after migrations, manual file moves, or any case where the database and canonical markdown may have drifted.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" sync $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" sync $ARGUMENTS
 ```
 
 Useful options:

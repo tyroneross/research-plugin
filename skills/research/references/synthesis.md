@@ -46,6 +46,9 @@ Before drafting any synthesis, choose **ONE organizing dimension**:
 ## Organizing Dimension
 [State which dimension and why]
 
+## Coverage Summary
+[Source lanes covered: primary/original, independent, counter-evidence, temporal/currentness, and gaps]
+
 ## [Section 1: First grouping]
 
 [Prose summary of findings in this group]
@@ -79,6 +82,7 @@ Before drafting any synthesis, choose **ONE organizing dimension**:
 3. **Preserve nuance** — If an author hedged ("may," "preliminary," "in certain conditions"), preserve the hedge. Don't upgrade tentative findings to definitive ones.
 4. **Contradictions are findings** — Don't resolve contradictions. Present both sides with their evidence quality. Let the reader (or executive mode) decide.
 5. **No omission by judgment** — Include all evidence from the collection, even if some seems less important. Authorial mode is comprehensive, not curated.
+6. **Coverage before confidence** — State which source lanes were covered before giving an overall confidence assessment. Missing counter-evidence or missing primary sources lowers confidence.
 
 ---
 
@@ -148,6 +152,13 @@ Lead with the answer. Then support with evidence. Then detail.
 TAG:INTERPRETATION — [Broader implications that emerge from the pattern of findings]
 
 Requirement: Every strategic implication must reference specific numerical anchors or concrete evidence from the findings. No generic strategy language ("leverage synergies," "optimize processes") without specific data backing it.
+
+## Evidence Coverage
+- Primary/original sources covered: [yes/no + strongest source]
+- Independent corroboration covered: [yes/no + strongest source]
+- Counter-evidence covered: [yes/no + strongest source]
+- Temporal/currentness covered: [yes/no/not applicable + latest source date]
+- Missing lanes or unresolved gaps: [list]
 
 ## Open Questions
 TAG:UNSUPPORTED

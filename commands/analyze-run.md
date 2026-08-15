@@ -7,7 +7,7 @@ allowed-tools: Bash
 Run a generated quantitative analysis plan.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" analyze-run $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" analyze-run $ARGUMENTS
 ```
 
 Outputs:

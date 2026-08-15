@@ -106,7 +106,7 @@ Optional — set up via the existing `schedule` skill:
 
 ```bash
 # Weekly review surfacing
-0 9 * * 1  python ~/.claude/plugins/research/research.py review --slack-me
+0 9 * * 1  python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" review --slack-me
 ```
 
 (The `--slack-me` flag is a placeholder; wire to any notification you prefer.)

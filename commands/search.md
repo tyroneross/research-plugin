@@ -7,7 +7,7 @@ allowed-tools: Bash
 Search the research library. BM25-ranked across title, TL;DR, Notes, and Raw for canonical entries, plus linked external project markdown files registered through `/research:link-project`.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" search $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" search $ARGUMENTS
 ```
 
 Default mode treats the query as plain text and safely quotes tokens before sending them to FTS5, so terms like `research-plugin` work without special escaping. Results include highlighted snippets.

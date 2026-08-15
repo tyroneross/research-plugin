@@ -7,7 +7,7 @@ allowed-tools: Bash
 Persist the given entry file.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/research.py" save --file $ARGUMENTS
+python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" save --file $ARGUMENTS
 ```
 
 Writes the canonical entry to `~/dev/research/topics/<top>/<slug>.md`. For each project listed in the entry's `projects:` frontmatter:
