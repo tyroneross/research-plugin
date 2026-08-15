@@ -1,0 +1,1293 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Seven-Repo Data Intelligence Audit</title><style>:root {
+  color-scheme: dark;
+  --page: #0b0e13;
+  --surface: #12161d;
+  --card: #1a1f28;
+  --surface-hover: #202733;
+  --border: #262c37;
+  --text: #e8edf3;
+  --muted: #9aa7b5;
+  --accent: #4da3ff;
+  --confirmed: #43c987;
+  --review: #e3b341;
+  --blocker: #f06a6a;
+  --radius: 10px;
+  --sidebar: 250px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--page);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  background: var(--page);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+code,
+.mono {
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 30;
+  top: -80px;
+  left: 12px;
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--page);
+  font-weight: 750;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.product-mark,
+.sidebar-boundary {
+  display: none;
+}
+
+.nav-list {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.nav-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-link:active {
+  opacity: 0.82;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 22px 14px 48px;
+}
+
+.area {
+  max-width: 1500px;
+  margin-inline: auto;
+  padding-block: 6px 42px;
+  scroll-margin-top: 78px;
+}
+
+.area + .area {
+  border-top: 1px solid var(--border);
+  padding-top: 38px;
+}
+
+.page-header {
+  max-width: 980px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(29px, 7vw, 42px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+h4 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.authority {
+  max-width: 820px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.section-heading {
+  max-width: 860px;
+  margin-bottom: 18px;
+}
+
+.section-heading p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 24px 0 18px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.metric-value {
+  display: block;
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+.metric-label {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric-detail {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.panel-header {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel-body {
+  padding: 16px 18px;
+}
+
+.panel-body > :first-child {
+  margin-top: 0;
+}
+
+.panel-body > :last-child {
+  margin-bottom: 0;
+}
+
+.answer-panel {
+  border-left: 3px solid var(--accent);
+}
+
+.bottom-line {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.spine {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.composition-panel {
+  margin-top: 16px;
+}
+
+.layer-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layer-list li + li {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.layer-list p {
+  margin: 4px 0 0;
+}
+
+.layer-list p:last-child {
+  color: var(--muted);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.confidence-list {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) 1fr;
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.confidence-list dt {
+  color: var(--muted);
+}
+
+.confidence-list dd {
+  margin: 0;
+}
+
+.next-actions {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.next-actions li + li {
+  margin-top: 8px;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dimension-id,
+.dimension-label,
+.dimension-short {
+  display: block;
+}
+
+.dimension-label {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.dimension-short {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+td {
+  overflow-wrap: anywhere;
+}
+
+.matrix-table {
+  min-width: 1240px;
+}
+
+.matrix-table th:first-child,
+.matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 165px;
+  background: var(--surface);
+}
+
+.score-cell {
+  min-width: 166px;
+  padding: 0;
+}
+
+.score-cell.is-best {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.score-disclosure {
+  margin: 0;
+}
+
+.score-disclosure summary {
+  min-height: 62px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.score-summary-content {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 3px 8px;
+  align-items: center;
+  min-height: 42px;
+}
+
+.score-disclosure summary:hover {
+  background: var(--surface-hover);
+}
+
+.score-disclosure summary::marker {
+  color: var(--accent);
+}
+
+.score-dots {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.score-number {
+  font-weight: 750;
+}
+
+.score-label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.best-marker {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.score-evidence {
+  padding: 0 12px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.score-evidence p {
+  margin: 8px 0 0;
+}
+
+.evidence-mark {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pill-ok,
+.pill-fixed {
+  color: var(--confirmed);
+}
+
+.pill-warn,
+.pill-normal,
+.pill-escalated,
+.pill-open {
+  color: var(--review);
+}
+
+.pill-bad,
+.pill-high {
+  color: var(--blocker);
+}
+
+.pill-low,
+.pill-waived {
+  color: var(--muted);
+}
+
+.health-summary {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: 16px;
+}
+
+.subject-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.subject-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kind {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.one-liner {
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.subject-health {
+  margin-top: 12px;
+}
+
+.mini-scores {
+  margin: 16px 0 0;
+  border-block: 1px solid var(--border);
+}
+
+.mini-score {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.mini-score + .mini-score {
+  border-top: 1px solid var(--border);
+}
+
+.mini-label,
+.mini-scale-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mini-label strong {
+  color: var(--text);
+}
+
+.subject-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.clean-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.clean-list li + li {
+  margin-top: 6px;
+}
+
+.reuse-list code {
+  color: var(--accent);
+}
+
+.role-callout {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.role-callout strong {
+  color: var(--accent);
+}
+
+.findings-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.gap-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gap-list li {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gap-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.gap-list p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.record {
+  color: var(--muted);
+}
+
+.footer {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (min-width: 520px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (min-width: 760px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: min(var(--sidebar), 30vw) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    height: 100vh;
+    padding: 22px 16px;
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  .product-mark {
+    display: block;
+    margin: 0 8px 24px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-boundary {
+    position: absolute;
+    right: 24px;
+    bottom: 22px;
+    left: 24px;
+    display: block;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .nav-list {
+    display: grid;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .nav-link {
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    border-left-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .workspace {
+    padding: 30px clamp(24px, 4vw, 58px) 64px;
+  }
+
+  .area {
+    scroll-margin-top: 24px;
+  }
+
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1060px) {
+  .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* v2: pipeline-first comparison */
+.flow-stepper, .mini-stepper { display: flex; gap: 12px; margin: 16px 0; padding: 0; list-style: none; }
+.flow-stepper > li, .mini-stepper > li { min-width: 0; flex: 1 1 180px; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.flow-stepper p, .mini-stepper p { margin: 7px 0 0; }
+.flow-source { color: var(--accent); font-weight: 700; }
+.muted { color: var(--muted); }
+.approach { display: inline-flex; min-height: 24px; padding: 2px 8px; border: 1px solid currentColor; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.approach-existing { color: var(--confirmed); }.approach-new { color: var(--review); }.approach-hybrid { color: var(--accent); }
+.pipeline-list { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.pipeline-row { display: grid; grid-template-columns: minmax(160px, .8fr) minmax(220px, 1.5fr) minmax(180px, 1fr); gap: 20px; padding: 18px; }
+.pipeline-row + .pipeline-row { border-top: 1px solid var(--border); }.pipeline-row p { margin: 0; }.pipeline-row details { margin-top: 10px; }.pipeline-row summary { min-height: 44px; padding-top: 10px; cursor: pointer; color: var(--accent); }
+.dot-run { display: inline-block; width: 4.7em; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .05em; text-align: left; white-space: nowrap; }
+.score-trigger, .more-trigger { width: 100%; min-height: 64px; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; }
+.more-trigger { min-height: 44px; color: var(--accent); font: inherit; }.score-trigger:hover { background: var(--surface-hover); }
+.stage-header { text-align: center; }.matrix-table .score-cell { min-width: 145px; }.matrix-table .score-label { display: block; }.optimal-row th, .optimal-row td { background: var(--card); color: var(--muted); }.optimal-row th { position: static !important; }.clamp { display: -webkit-box; overflow: hidden; margin: 7px 0 0; color: var(--muted); font-weight: 400; letter-spacing: normal; text-transform: none; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.score-popout { width: min(560px, calc(100vw - 28px)); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); padding: 22px; }.score-popout::backdrop { background: rgb(0 0 0 / .65); }.score-popout p { line-height: 1.6; }.dialog-close { float: right; min-height: 44px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); padding: 8px 12px; cursor: pointer; }.popout-score { font-size: 16px; }.popout-cite { color: var(--muted); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }.no-js-fallback { margin-top: 12px; }.no-js-fallback summary { min-height: 44px; padding-top: 10px; color: var(--accent); cursor: pointer; }
+@media (max-width: 759px) { .flow-stepper, .mini-stepper { flex-direction: column; }.pipeline-row { grid-template-columns: 1fr; gap: 12px; }.matrix-table { min-width: 820px; } }
+
+/* v2 review fixes */
+.best-marker { margin-left: 6px; }
+.matrix-v2 { table-layout: fixed; width: 100%; min-width: 1240px; }
+.matrix-v2 .col-subject { width: 22%; }
+.matrix-v2 .score-cell { min-width: 0; }
+.optimal-wrap { margin-top: 14px; }
+.optimal-table th:first-child { white-space: nowrap; }
+.optimal-table td:nth-child(2) { white-space: nowrap; }
+.sub-heading { margin: 22px 0 8px; font-size: 14px; }
+.reference-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.reference-grid li { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.reference-grid h4 { margin: 0 0 6px; font-size: 14px; }
+.reference-grid p { margin: 0 0 6px; font-size: 13px; }
+.reference-grid .borrow { color: var(--text); }
+
+.flow-source { color: var(--muted); font-weight: 400; font-size: 13px; }
+.flow-source strong, .flow-stepper .muted strong { color: var(--text); font-weight: 600; }
+</style></head><body><a class="skip-link" href="#main-content">Skip to content</a><div class="app-shell"><nav class="sidebar" aria-label="Audit sections"><ul class="nav-list"><li><a class="nav-link" href="#overview">Recommended flow</a></li><li><a class="nav-link" href="#subjects">Pipelines today</a></li><li><a class="nav-link" href="#matrix">Comparison</a></li><li><a class="nav-link" href="#findings">Notes</a></li></ul></nav><main class="workspace" id="main-content"><section class="area" id="overview" aria-labelledby="overview-heading"><header class="page-header"><p class="eyebrow">Build-loop research packet · 2026-08-15 </p><h1>Seven-Repo Data Intelligence Audit</h1><p class="subtitle">Seven repositories were graded on the same seven-part rubric — collecting data, scoring it, linking it, finding insights, writing outputs at different lengths, choosing which model runs, and working inside Claude Code and Codex — to see how they could combine into one research workflow.</p></header><div class="section-heading"><h2 id="overview-heading">Recommended flow</h2><p>The research plugin already answers basic questions well and should keep doing exactly that. What you do not have is a data-analysis pipeline for the complex, multi-stage jobs — tracking a company&#x27;s quarterly earnings, sizing a new market or business opportunity, reading the financial disclosures behind a merger, or working through a personal decision like which town to move to or which school to pick. You already own a module for nearly every stage of that pipeline, built two to five times over in two languages; the one thing nobody has is a way to link people, companies and products across documents, where the best score anywhere is 2 out of 3.</p><p class="spine"><strong>Spine:</strong> A thin coordinator runs focused stage agents; each stage reuses the strongest existing module and the research plugin remains the store for facts and sources.</p></div><ol class="flow-stepper"><li><h3>Collect data</h3><span class="approach approach-hybrid">Hybrid</span><p>A collector agent gathers the filings, pages and files a question needs and writes what it finds into the research plugin&#x27;s store. A background job runs saved searches and feeds on a schedule, so long-running topics keep updating themselves.</p><p class="flow-source"><strong>From:</strong> The collector agent reuses stratagem&#x27;s SEC (Securities and Exchange Commission) and web collectors plus Omniparse file parsing, and borrows stratagem&#x27;s extractor-specialist shape; the scheduled feed reader is new.</p><p class="muted"><strong>Why:</strong> Every reader already exists and is tested, and stratagem is the only repo that reaches company filings. Only the schedule is missing — nothing here runs unattended today.</p></li><li><h3>Assess and score</h3><span class="approach approach-existing">Existing</span><p>An assessor agent rates how trustworthy each source is, checks the claims behind it, and marks the entry with one confidence level. It grades finished outputs against the same rubric before they leave the pipeline.</p><p class="flow-source"><strong>From:</strong> The assessor agent reuses the research plugin&#x27;s scoring and claim verification unchanged, plus the market research platform&#x27;s five-point quality rubric, and borrows stratagem&#x27;s source-verifier specialist shape.</p><p class="muted"><strong>Why:</strong> The research plugin is the only mature scorer here, it runs without a model, and it already writes its verdict back onto the entry.</p></li><li><h3>Link and structure</h3><span class="approach approach-new">New</span><p>A linker agent records the people, companies and products each entry mentions and how they relate, matches the same thing across entries, and exports the result as data plus a simple web view.</p><p class="flow-source"><strong>From:</strong> The linker agent is new: entity and relationship tables on top of the research plugin&#x27;s existing store, with the market research platform&#x27;s vector store bolted on for search by meaning.</p><p class="muted"><strong>Why:</strong> Nothing existing does this. The market research platform defines a graph but never runs it, and the research plugin links notes to each other rather than the things inside them.</p></li><li><h3>Find insights</h3><span class="approach approach-hybrid">Hybrid</span><p>An analyst agent compares stored facts across entries: the same measure with different values becomes a contradiction to check, a thing with sources but no claims becomes a gap, and a measure with dates becomes a trend. Anything unsupported goes back for another research pass.</p><p class="flow-source"><strong>From:</strong> The analyst agent reuses local-smartz&#x27;s fact-check-and-redo loop and stratagem&#x27;s contradiction and trend prompts, and borrows local-smartz&#x27;s analyser-then-fact-checker shape; the deterministic comparison over verified facts is new.</p><p class="muted"><strong>Why:</strong> Both donors work, but they only narrate. A deterministic pass finds the candidates first, so the model explains rather than discovers.</p></li><li><h3>Write outputs (long, short, highlights, slides)</h3><span class="approach approach-existing">Existing</span><p>A writer agent takes the length you asked for — long report, short report, highlights, or a deck as an outline with slide text — picks the matching template and renders the file. A critic pass grades the draft before it comes back to you.</p><p class="flow-source"><strong>From:</strong> The writer agent reuses stratagem&#x27;s Markdown, PowerPoint (PPTX), Word (DOCX) and web-page renderers plus the market research platform&#x27;s email, notes and outline writers, and borrows stratagem&#x27;s synthesiser-then-critic shape.</p><p class="muted"><strong>Why:</strong> Between them, stratagem and the market research platform already cover every format anyone here produces, including the only real PowerPoint (PPTX) file.</p></li><li><h3>Run models (local or cloud)</h3><span class="approach approach-existing">Existing</span><p>Unattended runs pin a model to each stage agent, prefer your own machine, and refuse cloud calls when the settings say local only. Inside Claude Code or Codex there is no runner at all — the assistant makes the calls.</p><p class="flow-source"><strong>From:</strong> The model-runner reuses local-smartz&#x27;s provider router with the market research platform&#x27;s Apple-silicon runner (MLX) added, and keeps local-smartz&#x27;s per-role model pinning.</p><p class="muted"><strong>Why:</strong> local-smartz&#x27;s router is the most complete here and fails safe, and Apple-silicon support costs one more runner rather than a rewrite.</p></li><li><h3>Work inside Claude Code / Codex</h3><span class="approach approach-existing">Existing</span><p>A thin coordinator decides which stage agents a question needs and runs them in order, each with its own skill and specialty. Simple questions skip the pipeline and stay with the research plugin&#x27;s existing commands.</p><p class="flow-source"><strong>From:</strong> The coordinator ships inside the research plugin&#x27;s existing Claude Code and Codex packaging — its commands, one skill per stage agent, and the save hook.</p><p class="muted"><strong>Why:</strong> The packaging already works in both hosts, so the stage agents ship as skills beside commands people already use, with nothing new to install.</p></li></ol><h3 class="sub-heading">Reference pipelines to borrow from</h3><ul class="reference-grid"><li><h4>Perplexity Deep Research</h4><p>It runs a loop: search, read the documents it found, reason about what is still missing, refine the plan, and repeat across dozens of searches and hundreds of sources before writing a cited report. Most runs finish in two to four minutes.</p><p class="borrow"><strong>Borrow:</strong> Refine the plan as you learn instead of executing a fixed list of sub-questions.</p><p class="muted"><a href="https://www.perplexity.ai/hub/blog/introducing-perplexity-deep-research" rel="noopener">Source</a></p></li><li><h4>AlphaSense Deep Research and Smart Summaries</h4><p>It searches a licensed financial corpus (filings, earnings-call transcripts, broker research, expert-call transcripts, and your uploaded documents), reasons over thousands of hits, and writes a report where every line links to the exact snippet in the source document.</p><p class="borrow"><strong>Borrow:</strong> Snippet-level citations that jump to the exact sentence in the source, and a source-priority order that puts filings and transcripts first.</p><p class="muted"><a href="https://help.alpha-sense.com/hc/en-us/articles/41669307479443-Get-Instant-Insights-and-Save-Time-with-Smart-Summaries" rel="noopener">Source</a></p></li><li><h4>OpenAI Deep Research</h4><p>It clarifies the ask, then plans and issues its own web searches, reads pages and PDFs, shows its reasoning as it decides which claims to verify next, can run code for data work, and returns a structured report with machine-readable citation spans.</p><p class="borrow"><strong>Borrow:</strong> Citations as structured objects (character span, title, URL) so downstream renderers and verifiers can check them, plus a code step for any calculation.</p><p class="muted"><a href="https://openai.com/index/deep-research-system-card/" rel="noopener">Source</a></p></li><li><h4>Google Gemini Deep Research</h4><p>It drafts a multi-point research plan the user can edit and approve, then browses the web (and optionally the user&#x27;s mail and drive), shows its reasoning as it iterates, and delivers a multi-page report that exports to Docs.</p><p class="borrow"><strong>Borrow:</strong> A user-editable plan checkpoint before any search budget is spent.</p><p class="muted"><a href="https://gemini.google/overview/deep-research/" rel="noopener">Source</a></p></li></ul><h3 class="sub-heading">Next actions</h3><ol class="next-actions"><li>Confirm the shape: a thin coordinator that runs one focused agent per stage, with the research plugin kept for basic questions and as the store for facts and sources.</li><li>Build the one missing stage first — the linker that records people, companies and products and how they connect — because no existing pipeline does it and every complex job (earnings, market entry, mergers) needs it.</li><li>Stand up the collector, assessor, writer and model-runner agents from the named existing modules, each as a skill beside the research plugin&#x27;s commands, and add the scheduled feed reader so long-running topics update themselves.</li><li>Borrow from the reference pipelines: refine the plan as you learn (Perplexity), let the user approve the plan before searching (Gemini), cite the exact snippet not just the page (AlphaSense), and keep citations machine-checkable (OpenAI).</li><li>Retire market-intel after saving its two useful pieces, and work the open findings already filed in Operations Center.</li></ol></section><section class="area" id="subjects" aria-labelledby="subjects-heading"><div class="section-heading"><h2 id="subjects-heading">Pipelines today</h2><p>Each row shows the current pipeline and its assessed effectiveness.</p></div><div class="pipeline-list"><article class="pipeline-row"><div><h3>market-intel <span class="kind">Prototype</span></h3><p class="muted">Abandoned Next.js prototype; nothing behind the screens</p></div><p>Nothing moves. The screens are drawn from fixed sample data typed into the source, and each button waits a second or two to imitate work before showing the same values back.</p><div><p><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p><p class="muted">The backend was deleted and never replaced, so no data enters or leaves the app and all 40 tests fail before they run.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> There is no fetcher, feed reader or schedule, and the addresses its data code calls do not exist.</p></li><li><strong>assess</strong><p>It filters sample articles against a hand-typed list of twelve categories.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Filtering is not scoring — nothing rates, tags or de-duplicates anything.</p></li><li><strong>structure</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> There is no linking, clustering or storage; the only database artifact is two permission rules with no tables.</p></li><li><strong>insight</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> The “why it matters” and “bottom line” lines are typed into the sample data by hand.</p></li><li><strong>synthesize</strong><p>It pastes fixed fields into one markdown layout after a two-second pause.</p><p><span class="dot-run" aria-hidden="true">●○○</span> One length, no model, and the only real specification survives in a test.</p></li><li><strong>models</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> The OpenAI package is declared and imported by nothing outside test doubles.</p></li><li><strong>agents</strong><p>It carries a list of shell commands Claude Code is allowed to run, and nothing else.</p><p><span class="dot-run" aria-hidden="true">●○○</span> An agent can only treat it as an ordinary folder of code; nothing in it is callable.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>market-research <span class="kind">App</span></h3><p class="muted">Web app + `mra` command line + Mac shell</p></div><p>You hand it files or web addresses, it extracts the text, splits it into chunks, and indexes them locally for keyword and meaning-based search. A two-pass summariser then clusters the best chunks by theme, merges them, and returns a conclusion-first summary with citations, either in the browser or from the command line.</p><div><p><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p><p class="muted">The read, index and summarise path genuinely works offline end to end, but it produces one shape of answer and the browser interface cannot export it.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>It reads PDF, Excel, CSV, PowerPoint (PPTX) and Word (DOCX) files and scrapes pages, sending sensitive documents to a local parser instead of a cloud one.</p><p><span class="dot-run" aria-hidden="true">●●●</span> Broad format coverage and a real privacy rule, but only when you ask — nothing is scheduled.</p></li><li><strong>assess</strong><p>It scores each parse for confidence, tags themes, and drops near-duplicates within a run.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Useful signals about the parse, but no judgement about the source.</p></li><li><strong>structure</strong><p>It groups chunks by theme and stores them in a local vector database, with citations pointing back to chunk numbers.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Grouping is not linking — nothing connects the same company or product across documents.</p></li><li><strong>insight</strong><p>It asks the model, in one line of prompt, to point out where excerpts disagree.</p><p><span class="dot-run" aria-hidden="true">●○○</span> An instruction, not a detector.</p></li><li><strong>synthesize</strong><p>It writes a conclusion with three to five supporting arguments and cited evidence, exportable as Word (DOCX) or JSON from the command line.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Strong single shape, but no short, highlight or slide variants, and no export from the browser.</p></li><li><strong>models</strong><p>It routes between Ollama on your machine, OpenAI and Groq after a health check, and can be forced local-only.</p><p><span class="dot-run" aria-hidden="true">●●●</span> Real choice with per-model prices and fallbacks, plus a reranker running in the same process.</p></li><li><strong>agents</strong><p>An agent runs its `mra` command line or calls the local web routes.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Clean entry points, but nothing registers with Claude Code or Codex.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>market-research-platform <span class="kind">Platform</span></h3><p class="muted">Web platform: Python API + React front end</p></div><p>Documents are uploaded or scraped, read in Python, chunked, embedded, and stored in a single local database that serves both keyword and meaning-based search. A map-and-reduce pass turns the retrieved chunks into one structured brief, and five writers turn that brief into finished documents.</p><div><p><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p><p class="muted">The path from upload to finished document works and produces the widest range of outputs here, but the knowledge-graph half never runs and its test suite was not executed for this audit.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>It takes uploads and reads PDF, Word (DOCX), Excel, PowerPoint (PPTX) and scanned images, and fetches pages through a small Node helper.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The widest reading list here, scans included, but it only runs when asked.</p></li><li><strong>assess</strong><p>It rates source domains into four trust tiers, checks whether each claim is supported, and grades the finished brief on five dimensions.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Deterministic and reusable, and it needs no model to run.</p></li><li><strong>structure</strong><p>It embeds chunks into a local vector store, but the entity graph it defines never runs.</p><p><span class="dot-run" aria-hidden="true">○○○</span> No live code path reaches the graph, so the store stays empty and no relationship is ever written.</p></li><li><strong>insight</strong><p>It pulls themes, claims, numbers, risks and actions out of the text with the surrounding context re-attached.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Extraction only — the comparison and trend prompts sit in the dead graph code.</p></li><li><strong>synthesize</strong><p>One brief feeds five writers: PowerPoint (PPTX), Word (DOCX), email, meeting notes and outline.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The broadest set of finished documents here, all driven from a single structure.</p></li><li><strong>models</strong><p>One interface covers Ollama, Apple-silicon local models (MLX) and Claude, with cloud calls blocked unless you allow them.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Solid design, but the Apple-silicon path is only half connected and can be sent the wrong model name.</p></li><li><strong>agents</strong><p>An agent calls its web service after reading a handoff document written in prose.</p><p><span class="dot-run" aria-hidden="true">●○○</span> No plugin, no commands and no tool server.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>Omniparse <span class="kind">Library</span></h3><p class="muted">Published TypeScript SDK and command-line tool</p></div><p>You give it a file or a folder, it opens the file format directly, and it returns the same result shape every time: markdown, plain text, structure and a token estimate. Nothing is stored, scored or summarised — it hands the text to whatever called it.</p><div><p><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p><p class="muted">It does one job reliably and is already bundled inside the research plugin, but it stops at extraction, so on its own it answers no research question.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>It reads local Excel, PowerPoint (PPTX), Python and PDF files, and whole folders, several at a time.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Fast and dependable for those formats, but it rejects web addresses and cannot read scans.</p></li><li><strong>assess</strong><p>It labels a file by its extension and estimates its token cost.</p><p><span class="dot-run" aria-hidden="true">●○○</span> That is classification, not judgement — nothing is scored, tagged or de-duplicated.</p></li><li><strong>structure</strong><p>It captures deep structure inside one document, down to merged cells, charts, comments and slide notes.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Nothing connects one document to another.</p></li><li><strong>insight</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> The nearest thing is a count of what a spreadsheet contains, which describes the file rather than saying anything about it.</p></li><li><strong>synthesize</strong><p>Each reader can emit markdown, plain text or JSON, plus sized chunks meant for search.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Format conversion, not writing — no template decides how long the output should be.</p></li><li><strong>models</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> There is no model, embedding or provider code anywhere in it.</p></li><li><strong>agents</strong><p>An agent runs the command line or imports the published package.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Easy to call, but it registers with neither Claude Code nor Codex.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>local-smartz <span class="kind">App</span></h3><p class="muted">Python app with command line, local server, and Mac app</p></div><p>A question goes to a planner, which hands it to a researcher, an analyser, a fact-checker and a writer in turn, each on a model you pin per role. The researcher searches and scrapes, the analyser computes every number by running code, the fact-checker sends the draft back if facts are missing, and the writer saves a Markdown, web page or Word (DOCX) report.</p><div><p><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p><p class="muted">The agent loop and the model router are both mature and heavily tested, but nothing is remembered between runs in a searchable form, so every question starts from zero.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>Its agents scrape pages, search the web, and read PDF, spreadsheet and text files on request.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Good coverage for a live question, but there is no schedule, watcher or database connector.</p></li><li><strong>assess</strong><p>It grades its own drafts with a pass-or-needs-more verdict and a four-axis rubric.</p><p><span class="dot-run" aria-hidden="true">●○○</span> It judges output quality and never the trustworthiness of what it read.</p></li><li><strong>structure</strong><p>It does not do this.</p><p><span class="dot-run" aria-hidden="true">○○○</span> Results are flat JSON files, and the embedding models in its catalogue are never used.</p></li><li><strong>insight</strong><p>The fact-checker names missing facts and the pipeline re-runs the researcher up to twice, while the analyser compares sources and flags outliers.</p><p><span class="dot-run" aria-hidden="true">●●○</span> The loop is wired into the code, not just requested in a prompt.</p></li><li><strong>synthesize</strong><p>It writes Markdown, web page and Word (DOCX) reports and spreadsheets from one template.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Real files, but PowerPoint is a text outline only and there is no email or memo form.</p></li><li><strong>models</strong><p>One interface covers Ollama on your machine plus Anthropic, OpenAI and Groq, with a model pinned per role and a privacy switch that fails closed.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The most complete model layer here, with retries, cost estimates and picks that match your machine&#x27;s memory.</p></li><li><strong>agents</strong><p>It hosts Claude Code plugins and speaks the tool-server protocol (MCP) as a client, and is itself called as a command or over its web interface.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Both of those are switched off on the default path, so most runs never see them.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>research-plugin <span class="kind">Plugin</span></h3><p class="muted">Claude Code + Codex plugin, installed in both</p></div><p>The assistant does the reading and the writing; the plugin does everything deterministic around it. Findings become three-layer markdown notes, indexed in a small local database, scored for source trust and claim support, linked to related notes, and re-checked for staleness as they age.</p><div><p><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p><p class="muted">It is the only tool here in daily use with a live library, and every step it owns runs without a model, so it works the same in either host.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>It reads PDF, Excel, PowerPoint (PPTX), CSV and Python files through a bundled copy of Omniparse, and links whole project folders.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Solid local intake, but it never searches the web itself and the only automatic trigger re-reads a file after you save it.</p></li><li><strong>assess</strong><p>It tiers source domains, blocks known misinformation sites, picks a research depth with a required mix of sources, and verifies claims four ways.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The most complete scoring here, and it writes the verdict back onto the entry as one confidence mark.</p></li><li><strong>structure</strong><p>It turns wiki-style links into a two-way backlink list and rebuilds topic, tag and project hub pages.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Real linking between notes, but it never names the people or companies inside them and cannot search by meaning.</p></li><li><strong>insight</strong><p>Contradiction, gap and trend hunting are written instructions the assistant is told to follow.</p><p><span class="dot-run" aria-hidden="true">●○○</span> The only automatic signals are how stale an entry is and how certain its input data looked.</p></li><li><strong>synthesize</strong><p>It supplies five report templates, three writing modes, and checkable rules for what each output must contain.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Strong guidance, but nothing renders a slide deck or a document file — every output is markdown the assistant writes.</p></li><li><strong>models</strong><p>It does not do this, and that is deliberate.</p><p><span class="dot-run" aria-hidden="true">○○○</span> The written rule is that the assistant hosting the plugin does all model work, which keeps the plugin dependency-free.</p></li><li><strong>agents</strong><p>It installs as a plugin in both Claude Code and Codex with 22 commands, a skill, and a save hook.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The only tool here that is first-class in both hosts, with one code path serving each.</p></li></ol></details></div></article><article class="pipeline-row"><div><h3>stratagem <span class="kind">App</span></h3><p class="muted">Python app; its Claude Code plugin packaging was removed</p></div><p>A question is broken into parts and handed to twelve specialist agents that read documents, scrape pages and pull company filings, each writing findings to files the next agent picks up. A synthesiser and a critic turn those findings into structured sections, which one writer set renders as Markdown, PowerPoint (PPTX), Word (DOCX) or a web page. What it learns is saved as observations and fed back into later runs.</p><div><p><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p><p class="muted">The research method and the document writers are the strongest here, but it only talks to one model provider and its plugin packaging was deleted, so nothing installs into a host.</p><details><summary>Show flow</summary><ol class="mini-stepper"><li><strong>collect</strong><p>Thirteen tools scrape pages, read documents, and search and download SEC (Securities and Exchange Commission) filings, with read-only results cached.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The only repo that reaches company filings, though nothing runs on a schedule.</p></li><li><strong>assess</strong><p>It records observations with a category, a confidence and tags, drops exact duplicates, and promotes agents that stay confident across runs.</p><p><span class="dot-run" aria-hidden="true">●●○</span> It grades its own work well; the trustworthiness of a source is graded by prompt, not by code.</p></li><li><strong>structure</strong><p>It keeps flat topic indexes, a file manifest and a log of observations.</p><p><span class="dot-run" aria-hidden="true">●○○</span> The only graph it draws is a map of its own code, not of what it read.</p></li><li><strong>insight</strong><p>Prompts grade each claim as verified, supported, unsourced, contradicted or stale, compare sources, track multiple periods, and watch for quality drifting down.</p><p><span class="dot-run" aria-hidden="true">●●○</span> Genuine capability, but all of it depends on the model following instructions.</p></li><li><strong>synthesize</strong><p>One set of structured sections renders to Markdown, PowerPoint (PPTX), Word (DOCX) or a web page, with a slide builder that handles titles, bullets and tables.</p><p><span class="dot-run" aria-hidden="true">●●●</span> The only repo that writes a real deck file rather than a text outline.</p></li><li><strong>models</strong><p>You can pick a larger or smaller Claude model per agent, and change it while a run is going.</p><p><span class="dot-run" aria-hidden="true">●○○</span> Provider choice is fixed to Anthropic by the software kit it is built on.</p></li><li><strong>agents</strong><p>An agent runs its command line or its web interface; the tool server still works if you wire it by hand.</p><p><span class="dot-run" aria-hidden="true">●○○</span> The plugin manifests, commands and skills were deleted, and the documentation still points at them.</p></li></ol></details></div></article></div></section><section class="area" id="matrix" aria-labelledby="matrix-heading"><div class="section-heading"><h2 id="matrix-heading">Comparison</h2><p>Select a score to read its plain-language reason and evidence location.</p></div><div class="table-wrap"><table class="matrix-table matrix-v2"><colgroup><col class="col-subject"><col class="col-score"><col class="col-score"><col class="col-score"><col class="col-score"><col class="col-score"><col class="col-score"><col class="col-score"></colgroup><caption>Capability comparison grouped by pipeline stage.</caption><thead><tr><th rowspan="2" scope="col">Subject</th><th class="stage-header" scope="colgroup" colspan="1">Collect data</th><th class="stage-header" scope="colgroup" colspan="1">Assess and score</th><th class="stage-header" scope="colgroup" colspan="1">Link and structure</th><th class="stage-header" scope="colgroup" colspan="1">Find insights</th><th class="stage-header" scope="colgroup" colspan="1">Write outputs (long, short, highlights, slides)</th><th class="stage-header" scope="colgroup" colspan="1">Run models (local or cloud)</th><th class="stage-header" scope="colgroup" colspan="1">Work inside Claude Code / Codex</th></tr><tr><th scope="col"><span class="dimension-label">Collect</span></th><th scope="col"><span class="dimension-label">Assess</span></th><th scope="col"><span class="dimension-label">Graph</span></th><th scope="col"><span class="dimension-label">Insight</span></th><th scope="col"><span class="dimension-label">Synthesis</span></th><th scope="col"><span class="dimension-label">Model flex</span></th><th scope="col"><span class="dimension-label">Codex/CC</span></th></tr></thead><tbody><tr><th scope="row"><strong>market-intel</strong> <span class="kind">Prototype</span><p class="clamp">It shows what a news-brief product would look like: a source list, a grid of articles, and a summary panel. None of it is real — the articles, the categories and the summaries are all fixed text in the source, and every button waits a second or two to imitate work before showing the same values back. No network request is ever made.</p><button class="more-trigger" data-dialog="subject-7">More</button></th><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-0" aria-haspopup="dialog" aria-label="market-intel, Data collection: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-1" aria-haspopup="dialog" aria-label="market-intel, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-2" aria-haspopup="dialog" aria-label="market-intel, Graphs &amp; structures: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-3" aria-haspopup="dialog" aria-label="market-intel, Insight extraction: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-4" aria-haspopup="dialog" aria-label="market-intel, Synthesis at multiple lengths: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-5" aria-haspopup="dialog" aria-label="market-intel, Model flexibility: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-6" aria-haspopup="dialog" aria-label="market-intel, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td></tr><tr><th scope="row"><strong>market-research</strong> <span class="kind">App</span><p class="clamp">You give it files or web addresses and it reads them, splits the text into chunks, and indexes them on your machine so it can find the right passages by keyword and by meaning. It then clusters the best passages by theme, merges them in two passes, and returns a conclusion with three to five supporting arguments and cited evidence. Anything that looks confidential is kept away from the cloud parser.</p><button class="more-trigger" data-dialog="subject-14">More</button></th><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-7" aria-haspopup="dialog" aria-label="market-research, Data collection: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-8" aria-haspopup="dialog" aria-label="market-research, Assessment &amp; categorization: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-9" aria-haspopup="dialog" aria-label="market-research, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-10" aria-haspopup="dialog" aria-label="market-research, Insight extraction: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-11" aria-haspopup="dialog" aria-label="market-research, Synthesis at multiple lengths: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-12" aria-haspopup="dialog" aria-label="market-research, Model flexibility: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-13" aria-haspopup="dialog" aria-label="market-research, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td></tr><tr><th scope="row"><strong>market-research-platform</strong> <span class="kind">Platform</span><p class="clamp">You upload documents or paste web addresses, and it reads them — including scanned pages — chunks the text, and indexes it in one local database that supports both keyword and meaning-based search. It then builds a single structured brief from the retrieved chunks and rates the sources and claims behind it. Five separate writers turn that one brief into finished documents.</p><button class="more-trigger" data-dialog="subject-21">More</button></th><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-14" aria-haspopup="dialog" aria-label="market-research-platform, Data collection: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-15" aria-haspopup="dialog" aria-label="market-research-platform, Assessment &amp; categorization: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-16" aria-haspopup="dialog" aria-label="market-research-platform, Graphs &amp; structures: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-17" aria-haspopup="dialog" aria-label="market-research-platform, Insight extraction: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-18" aria-haspopup="dialog" aria-label="market-research-platform, Synthesis at multiple lengths: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-19" aria-haspopup="dialog" aria-label="market-research-platform, Model flexibility: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-20" aria-haspopup="dialog" aria-label="market-research-platform, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td></tr><tr><th scope="row"><strong>Omniparse</strong> <span class="kind">Library</span><p class="clamp">You point it at a file or a folder and it opens the file format directly and returns the text, the structure, and an estimate of how many tokens the result will cost. Inside a spreadsheet it captures merged cells, links, named ranges, charts, comments and embedded images; inside a deck it captures slide text and speaker notes. It never scores, links, or summarises anything.</p><button class="more-trigger" data-dialog="subject-28">More</button></th><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-21" aria-haspopup="dialog" aria-label="Omniparse, Data collection: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-22" aria-haspopup="dialog" aria-label="Omniparse, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-23" aria-haspopup="dialog" aria-label="Omniparse, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-24" aria-haspopup="dialog" aria-label="Omniparse, Insight extraction: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-25" aria-haspopup="dialog" aria-label="Omniparse, Synthesis at multiple lengths: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-26" aria-haspopup="dialog" aria-label="Omniparse, Model flexibility: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-27" aria-haspopup="dialog" aria-label="Omniparse, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td></tr><tr><th scope="row"><strong>local-smartz</strong> <span class="kind">App</span><p class="clamp">You ask it a research question and five specialist roles work the answer in turn: plan, research, analyse, fact-check, write. It searches and scrapes the web, reads PDF, spreadsheet and text files, and computes every number by running code rather than asserting it. If the fact-checker says facts are missing, the work goes back to the researcher, up to twice.</p><button class="more-trigger" data-dialog="subject-35">More</button></th><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-28" aria-haspopup="dialog" aria-label="local-smartz, Data collection: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-29" aria-haspopup="dialog" aria-label="local-smartz, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-30" aria-haspopup="dialog" aria-label="local-smartz, Graphs &amp; structures: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-31" aria-haspopup="dialog" aria-label="local-smartz, Insight extraction: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span> <span class="best-marker">Best</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-32" aria-haspopup="dialog" aria-label="local-smartz, Synthesis at multiple lengths: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-33" aria-haspopup="dialog" aria-label="local-smartz, Model flexibility: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-34" aria-haspopup="dialog" aria-label="local-smartz, Codex + Claude Code integration: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td></tr><tr><th scope="row"><strong>research-plugin</strong> <span class="kind">Plugin</span><p class="clamp">It saves what you research into one library of markdown notes and indexes them so you can search them later. Before saving, it rates the sources by how trustworthy their domain is, checks the numbers and citations in the claims, and records a single confidence mark on the entry. Over time it flags notes that have gone stale and rebuilds hub pages by topic, tag, and project.</p><button class="more-trigger" data-dialog="subject-42">More</button></th><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-35" aria-haspopup="dialog" aria-label="research-plugin, Data collection: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-36" aria-haspopup="dialog" aria-label="research-plugin, Assessment &amp; categorization: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-37" aria-haspopup="dialog" aria-label="research-plugin, Graphs &amp; structures: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span> <span class="best-marker">Best</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-38" aria-haspopup="dialog" aria-label="research-plugin, Insight extraction: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-39" aria-haspopup="dialog" aria-label="research-plugin, Synthesis at multiple lengths: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-40" aria-haspopup="dialog" aria-label="research-plugin, Model flexibility: 0 of 3, absent">
+<span class="dot-run" aria-hidden="true">○○○</span> <span class="score-number">0</span><span class="score-label">absent</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-41" aria-haspopup="dialog" aria-label="research-plugin, Codex + Claude Code integration: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td></tr><tr><th scope="row"><strong>stratagem</strong> <span class="kind">App</span><p class="clamp">You give it a research question and it plans the work, then runs twelve specialist agents that read documents, scrape web pages and download company filings from the SEC (Securities and Exchange Commission). A synthesiser and a critic turn their findings into structured sections. Those sections render straight into finished files, including real PowerPoint decks and spreadsheets.</p><button class="more-trigger" data-dialog="subject-49">More</button></th><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-42" aria-haspopup="dialog" aria-label="stratagem, Data collection: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-43" aria-haspopup="dialog" aria-label="stratagem, Assessment &amp; categorization: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-44" aria-haspopup="dialog" aria-label="stratagem, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-45" aria-haspopup="dialog" aria-label="stratagem, Insight extraction: 2 of 3, working but narrow">
+<span class="dot-run" aria-hidden="true">●●○</span> <span class="score-number">2</span> <span class="best-marker">Best</span><span class="score-label">working but narrow</span>
+</button></td><td class="score-cell is-best"><button class="score-trigger" type="button" data-dialog="score-46" aria-haspopup="dialog" aria-label="stratagem, Synthesis at multiple lengths: 3 of 3, mature or central">
+<span class="dot-run" aria-hidden="true">●●●</span> <span class="score-number">3</span> <span class="best-marker">Best</span><span class="score-label">mature or central</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-47" aria-haspopup="dialog" aria-label="stratagem, Model flexibility: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td><td class="score-cell"><button class="score-trigger" type="button" data-dialog="score-48" aria-haspopup="dialog" aria-label="stratagem, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only">
+<span class="dot-run" aria-hidden="true">●○○</span> <span class="score-number">1</span><span class="score-label">stub / partial / prompt-only</span>
+</button></td></tr></tbody></table></div><div class="table-wrap optimal-wrap"><table class="optimal-table"><caption>Best subject today and the optimal choice for each stage.</caption><thead><tr><th scope="col">Stage</th><th scope="col">Best today</th><th scope="col">Optimal choice and why</th></tr></thead><tbody><tr><th scope="row">Collect data</th><td>stratagem</td><td>The collector agent should own this stage. Make Omniparse the single front door for files — the research plugin already bundles it and it reads Excel, PowerPoint (PPTX), PDF and Python files in one pass — and add stratagem&#x27;s SEC (Securities and Exchange Commission) filing search plus local-smartz&#x27;s page scraper and web search for the sources Omniparse cannot reach. Three repos tie at the top here, since stratagem, market-research and market-research-platform all read widely, and stratagem wins because it brings the one source nobody else has.</td></tr><tr><th scope="row">Assess and score</th><td>research-plugin</td><td>The assessor agent should own this stage and reuse the research plugin&#x27;s scoring exactly as it stands: it sorts source domains into four trust tiers, blocks known misinformation sites, checks claims four ways, and writes one confidence mark back onto each entry. Fold the market research platform&#x27;s list of roughly 55 rated domains into that seed list, and add its five-point quality rubric and stratagem&#x27;s report critic so finished outputs get graded too. Nothing else here is close — the research plugin is the only repo rated mature on this.</td></tr><tr><th scope="row">Link and structure</th><td>research-plugin</td><td>The linker agent should own this stage, starting from the research plugin&#x27;s store, which already turns wiki-style links into two-way backlinks and rebuilds topic and tag hub pages, with the market research platform&#x27;s vector store bolted on so entries can be found by meaning rather than keyword alone. Then write the missing half: tables for the people, companies and products an entry mentions, and the relationships between them. This is the only stage where no repo has a working answer, so most of the work here is new.</td></tr><tr><th scope="row">Find insights</th><td>local-smartz</td><td>The analyst agent should own this stage. Take local-smartz&#x27;s fact-check loop, which names the facts a draft is missing and sends the researcher back for them up to twice, and pair it with stratagem&#x27;s claim grading and its compare-multiple-periods financial prompts. The two tie on score, and local-smartz wins because its loop runs in code rather than living only in a prompt; on top of both, add a pass that compares stored facts across entries so the prompts narrate findings instead of discovering them.</td></tr><tr><th scope="row">Write outputs (long, short, highlights, slides)</th><td>stratagem</td><td>The writer agent should own this stage, combining stratagem&#x27;s four renderers — Markdown, PowerPoint (PPTX), Word (DOCX) and web page — with the market research platform&#x27;s email, meeting-notes and outline writers into one package. Those two tie at the top, and stratagem leads because it is the only repo that writes a real PowerPoint file instead of a slide outline in text. The agent takes a length and picks the matching template.</td></tr><tr><th scope="row">Run models (local or cloud)</th><td>local-smartz</td><td>The model-runner should own this stage and use local-smartz&#x27;s router: one interface over Ollama on your machine plus Anthropic, OpenAI and Groq in the cloud, with a privacy switch that refuses cloud calls when its own settings cannot be read. Graft the market research platform&#x27;s Apple-silicon local runner (MLX) in as a fifth option. local-smartz ties with market-research here and wins because its router is Python, fails safe, and pins a model per role.</td></tr><tr><th scope="row">Work inside Claude Code / Codex</th><td>research-plugin</td><td>The coordinator should own this stage and ship inside the research plugin&#x27;s existing packaging — it is the only tool here installed in both Claude Code and Codex, with 22 commands, a skill, and a hook that re-reads files as you save them. Each stage agent becomes another skill beside those commands, so nothing new has to be installed. Later, a small tool server following the pattern stratagem already uses would let local-smartz reach the same tools, and its plugin support could then be switched on by default.</td></tr></tbody></table></div><details class="no-js-fallback"><summary>All score details</summary><ul><li>market-intel · Data collection: Nothing in it fetches anything. The “add source” button waits one second and then stores the name in the page&#x27;s own memory, and the code that would call a backend points at web addresses that do not exist.</li><li>market-intel · Assessment &amp; categorization: Categories are a hand-typed list of twelve words, used only to filter the fake articles on screen. There is no scoring, no trust rating, and no duplicate removal.</li><li>market-intel · Graphs &amp; structures: Nothing links, clusters or stores anything. The only trace of a database is two permission rules in a leftover SQL file, with no tables and no connection ever opened.</li><li>market-intel · Insight extraction: The “why it matters” and “bottom line” lines are typed into the fake data by hand and printed straight back out. No comparison, trend or gap logic exists.</li><li>market-intel · Synthesis at multiple lengths: One length only, and it is not written by a model: the panel waits two seconds and pastes the fake fields into a fixed layout. The real summariser was deleted, and only its test survives — recording exactly the model, the settings and the output shape it used to produce.</li><li>market-intel · Model flexibility: The OpenAI package is listed as a dependency and imported by nothing outside test doubles. Three keys sit in the environment file, and no code reads any of them.</li><li>market-intel · Codex + Claude Code integration: It carries a list of 34 shell commands Claude Code is allowed to run, and nothing else — no commands, skills, agents or tool server. An agent can only treat it as an ordinary folder of code.</li><li>market-research · Data collection: It reads PDF, Excel, CSV, PowerPoint (PPTX) and Word (DOCX) files and scrapes web pages, choosing a cloud parser or a local one based on how sensitive the document looks. It only runs when you ask it to — there is no schedule and no web search.</li><li>market-research · Assessment &amp; categorization: Every parse gets a confidence number, documents are tagged by theme, and anything that looks confidential is kept away from cloud parsing. It does not rate how trustworthy a source is, and it only removes near-duplicates within a single run.</li><li>market-research · Graphs &amp; structures: It groups chunks by theme, stores them in a local vector database, and points citations back at chunk numbers. No people, companies or relationships are extracted, and there is no timeline or map of how anything connects.</li><li>market-research · Insight extraction: Contradiction handling is one line of instruction in a prompt asking the model to point out disagreements. Nothing detects trends, compares sources or names what is missing.</li><li>market-research · Synthesis at multiple lengths: It produces exactly one shape of answer — a conclusion, three to five supporting arguments, and cited evidence — and can save it as Word (DOCX) or JSON from the command line. The browser app&#x27;s export button is permanently greyed out because it was never wired up.</li><li>market-research · Model flexibility: It can run entirely on your machine through Ollama or call OpenAI or Groq, with roughly nine Groq models priced in a table, a health check before it chooses, and a local-only switch that forces everything offline. It also reranks results with a small model running in the same process.</li><li>market-research · Codex + Claude Code integration: There is no plugin packaging and no tool server of any kind. An agent reaches it by running the `mra` command line or calling the local web routes.</li><li>market-research-platform · Data collection: It accepts uploads and reads PDF, Word (DOCX), Excel, PowerPoint (PPTX) and scanned images, and fetches web pages through a small Node helper. Everything runs on request: nothing is scheduled and it cannot search the web.</li><li>market-research-platform · Assessment &amp; categorization: It rates source domains into four trust tiers using about 55 known sites, checks whether each claim in a brief is actually supported, and grades the finished brief on five dimensions. It does not remove duplicates or apply a tag taxonomy.</li><li>market-research-platform · Graphs &amp; structures: The code for a knowledge graph exists, but nothing in the running app ever calls it, so the graph stays empty. The function that would write a relationship between two things has no callers at all.</li><li>market-research-platform · Insight extraction: It pulls themes, claims, numbers, risks and actions out of documents and feeds the surrounding text back in for context. The comparison and trend prompts sit in the dead graph code, and the live interface says so itself.</li><li>market-research-platform · Synthesis at multiple lengths: One brief drives five writers: PowerPoint (PPTX), Word (DOCX), an email, meeting notes and an outline. It also answers questions in a conclusion-first structure and carries a template for earnings calls.</li><li>market-research-platform · Model flexibility: One shared interface covers Ollama on your machine, Apple-silicon local models (MLX) and Claude in the cloud, with cloud calls blocked unless you allow them. If the configured Ollama model is missing it picks the strongest one you have installed instead of failing every call.</li><li>market-research-platform · Codex + Claude Code integration: Nothing registers it with Claude Code or Codex — no plugin file, no commands, no tool server. An agent talks to its web service, guided by a handoff document written in prose.</li><li>Omniparse · Data collection: It reads local Excel, PowerPoint (PPTX), Python and PDF files, and whole folders at a time, with a limit on how many run at once. Web addresses are rejected outright, there is no schedule, and PDF reading is text-only with no support for scans.</li><li>Omniparse · Assessment &amp; categorization: It classifies files by their extension and estimates how many tokens each will cost. There is no scoring, tagging, trust rating or duplicate removal.</li><li>Omniparse · Graphs &amp; structures: Inside a single document it captures a lot of structure — merged cells, links, named ranges, charts, comments, embedded images, slide notes, and Python imports and functions. Across documents there is nothing: no entities, no links, no clustering, and storage is a two-table list of projects and documents.</li><li>Omniparse · Insight extraction: It does not analyse anything. The closest artifact is a count of what a spreadsheet contains, which describes the file rather than saying anything about it.</li><li>Omniparse · Synthesis at multiple lengths: Each reader can emit markdown, plain text or JSON, plus sized chunks meant for search. There is no report, summary, memo or slide template — the length of the output is decided by the size of the input.</li><li>Omniparse · Model flexibility: There is no model code at all: no providers, no embeddings, no model settings, and only two small runtime dependencies. “Ready for a language model” here just means markdown with a token count.</li><li>Omniparse · Codex + Claude Code integration: It is not a plugin and has no tool server. An agent uses it by running the command line or importing the published package, which is clean but not a first-class way for an agent to reach it.</li><li>local-smartz · Data collection: It scrapes web pages, searches the web, and reads PDF, spreadsheet and text files as tools its agents can call. Every call happens on request — there is no scheduler, watcher or database connector anywhere in it.</li><li>local-smartz · Assessment &amp; categorization: What it grades is its own output, not the material it reads: a fact-checker returns a pass-or-needs-more verdict naming the facts still missing, and a reflector scores drafts on four axes. There is no source trust rating, tag taxonomy or duplicate removal.</li><li>local-smartz · Graphs &amp; structures: Nothing extracts entities or relationships, and there is no graph and no vector store. Results are saved as flat JSON files, and the embedding models listed in its catalogue have no code behind them.</li><li>local-smartz · Insight extraction: The fact-checker names the facts a draft is missing and the pipeline sends the researcher back for them, capped at two rounds. The analyser must compare sources, flag outliers and compute every number by running code rather than asserting it, but nothing tracks trends over time or compares across a whole collection.</li><li>local-smartz · Synthesis at multiple lengths: It writes Markdown, web page and Word (DOCX) reports plus spreadsheets, all from one template covering title, summary, findings, analysis, recommendations and sources. PowerPoint is text only — the agents are told to write a slide outline and are explicitly forbidden from producing a real deck file.</li><li>local-smartz · Model flexibility: One interface covers Ollama on your machine plus Anthropic, OpenAI and Groq, you can pin a different model to each role, and the privacy switch refuses cloud calls when its own settings cannot be read. It also retries failed turns, estimates cost, and matches model choice to how much memory your machine has.</li><li>local-smartz · Codex + Claude Code integration: It is the host rather than the plugin: it finds Claude Code plugins and skills on disk and speaks the tool-server protocol (MCP) as a client. Both are switched off on the default path, so those tools only reach the model on the older pipeline.</li><li>research-plugin · Data collection: It reads PDF, Excel, CSV, PowerPoint (PPTX) and Python files through a bundled copy of Omniparse, bulk-loads markdown, links whole project folders, and profiles spreadsheets and small databases. It never searches the web itself — that is left to the assistant hosting it — and the only automatic trigger re-reads a file after you save it.</li><li>research-plugin · Assessment &amp; categorization: It sorts source domains into four trust tiers from a 52-site seed list plus a misinformation blocklist, picks a research depth with a required mix of sources, and checks claims four ways — numbers, symbols, citations and code — rolling the result into one confidence mark on the entry. It also scores how stale an entry has become and re-clusters the topic tree.</li><li>research-plugin · Graphs &amp; structures: Notes link to each other with wiki-style links, and those links become a two-way list of what points here, plus rebuilt topic, tag and project hub pages. It does not pull out people, companies or relationships in running code — those tables exist only as instructions for the assistant.</li><li>research-plugin · Insight extraction: Contradiction, gap and trend detection live entirely in written instructions the assistant follows; no code looks for them. The only automatic signals are how stale an entry is and how certain its input data looked.</li><li>research-plugin · Synthesis at multiple lengths: It ships five report templates, three writing modes including a conclusion-first executive form, and machine-checkable rules for what each output must contain. Nothing renders a file, though — every output is markdown the assistant writes.</li><li>research-plugin · Model flexibility: By design it never calls a model, and the rule is written down and enforced by a test. The assistant hosting the plugin does all the thinking, and the only dependency is a YAML reader.</li><li>research-plugin · Codex + Claude Code integration: It ships as a real plugin in both Claude Code and Codex, with 22 commands, one skill backed by 13 reference documents, and a hook that re-reads files as you save them. Every path finds the plugin&#x27;s home folder through three fallbacks, so the same code works in either host.</li><li>stratagem · Data collection: It offers 13 tools to its agents: scraping pages, reading PDF, spreadsheet, PowerPoint (PPTX) and Word (DOCX) files, pulling images, and searching and downloading company filings from the SEC (Securities and Exchange Commission). Web search runs through the built-in tool and read-only results are cached, but nothing runs on a schedule.</li><li>stratagem · Assessment &amp; categorization: It records observations with a category, a confidence between zero and one and tags, drops exact duplicates, keeps the more confident version across runs, and promotes an agent to a higher tier once it has three runs averaging 0.7 confidence. Grading whether a claim is true is done by prompt, not code, and there is no source trust rating.</li><li>stratagem · Graphs &amp; structures: There is no knowledge graph, no entity extraction and no vector store. The only graph it draws is a map of its own code plus a diagram of how its agents ran; everything it learns is stored as flat JSON.</li><li>stratagem · Insight extraction: Its prompts do real work here: one agent grades each claim as verified, supported, unsourced, contradicted or stale, another looks for patterns and contradictions across sources, a third compares several periods rather than one snapshot, and a fourth watches for quality drifting down across runs. Every run ends with an after-action review, but none of it is deterministic code.</li><li>stratagem · Synthesis at multiple lengths: One set of structured sections turns into Markdown, PowerPoint (PPTX), Word (DOCX) or a web page, and the slide builder handles title, bullet and table layouts, including tables typed as plain text. Written guidance covers register, format routing and conclusion-first structure, and finished decks and documents ship in the repository.</li><li>stratagem · Model flexibility: It can only talk to Anthropic, because that is baked into the software kit it is built on. The flexibility it does have is choosing a bigger or smaller Claude model per agent, changeable while a run is going.</li><li>stratagem · Codex + Claude Code integration: The plugin packaging was deleted rather than disabled — the manifests, commands and skills were all removed in one commit, leaving empty folders behind. Its tool server still runs standalone if wired by hand, but today an agent reaches it through the command line or the web interface, and the documentation still tells you to install a plugin that no longer exists.</li></ul></details></section>
+<section class="area" id="findings" aria-labelledby="findings-heading">
+  <div class="section-heading">
+    <h2 id="findings-heading">Notes</h2>
+    <p>What is built more than once, what nobody has yet, and open findings with their record.</p>
+  </div>
+  <div class="findings-stack">
+    <article class="panel">
+      <div class="panel-header"><h3>Built more than once</h3><p>The same capability implemented in several places, and which one to keep.</p></div>
+      <div class="table-wrap">
+        <table><caption>Capability overlap, current implementations, and the implementation to keep.</caption><thead><tr><th scope="col">Capability</th><th scope="col">Implementations</th><th scope="col">Keep</th></tr></thead><tbody><tr>
+  <th scope="row">Reading documents (PDF, Excel, PowerPoint, Word)</th>
+  <td><strong>Omniparse:</strong> TypeScript, tested and published<br><strong>market-research:</strong> TypeScript readers with sensitivity routing<br><strong>market-research-platform:</strong> Python readers, including scanned pages<br><strong>stratagem:</strong> Python tools, one per format<br><strong>local-smartz:</strong> Python tools for PDF, spreadsheets and text</td>
+  <td>Make Omniparse the front door — the research plugin already bundles it. Borrow the market research platform&#x27;s scanned-page reading, which is the one thing Omniparse cannot do.</td>
+</tr><tr>
+  <th scope="row">Choosing which model to run</th>
+  <td><strong>local-smartz:</strong> Ollama, Anthropic, OpenAI and Groq, refusing cloud calls when settings are unreadable<br><strong>market-research-platform:</strong> Ollama, Apple-silicon local models (MLX) and Claude<br><strong>market-research:</strong> Ollama, OpenAI and Groq, with a health check before choosing</td>
+  <td>Keep local-smartz&#x27;s router and graft the market research platform&#x27;s Apple-silicon runner in as a fifth option.</td>
+</tr><tr>
+  <th scope="row">Writing finished documents</th>
+  <td><strong>stratagem:</strong> Markdown, PowerPoint (PPTX), Word (DOCX) and web page, plus a real slide builder<br><strong>market-research-platform:</strong> five writers: PowerPoint (PPTX), Word (DOCX), email, notes, outline<br><strong>local-smartz:</strong> Markdown, web page and Word (DOCX)<br><strong>market-research:</strong> Word (DOCX) and JSON from the command line</td>
+  <td>Merge stratagem&#x27;s four writers with the market research platform&#x27;s email, notes and outline writers into one package.</td>
+</tr><tr>
+  <th scope="row">Rating how trustworthy a source is</th>
+  <td><strong>research-plugin:</strong> rule-based four tiers, 52 seeded domains and a misinformation blocklist<br><strong>market-research-platform:</strong> about 55 rated domains</td>
+  <td>Keep the research plugin&#x27;s version — it has the blocklist and writes the verdict back onto the entry — and fold the market research platform&#x27;s domain list into its seed list.</td>
+</tr><tr>
+  <th scope="row">Searching by meaning as well as keyword</th>
+  <td><strong>market-research:</strong> a local vector database in TypeScript, with a reranker<br><strong>market-research-platform:</strong> one local database file holding both vectors and the keyword index</td>
+  <td>Take the market research platform&#x27;s version, because its store matches the research plugin&#x27;s own. Port the reranking idea later.</td>
+</tr><tr>
+  <th scope="row">Scraping web pages</th>
+  <td><strong>stratagem:</strong> Python scraper that turns tables into markdown<br><strong>local-smartz:</strong> near-identical Python scraper<br><strong>market-research-platform:</strong> a small Node helper service<br><strong>market-research:</strong> a separate published scraper package</td>
+  <td>local-smartz&#x27;s and stratagem&#x27;s scrapers are near-identical; pick one and delete the other.</td>
+</tr><tr>
+  <th scope="row">Conclusion-first writing prompts</th>
+  <td><strong>stratagem:</strong> method references plus an executive synthesiser prompt<br><strong>research-plugin:</strong> three writing modes and five report templates<br><strong>market-research:</strong> prompts held in one constants file<br><strong>market-research-platform:</strong> the question-answering endpoint<br><strong>local-smartz:</strong> the writer role prompt</td>
+  <td>Use the research plugin&#x27;s templates with stratagem&#x27;s role prompts. Both are plain text and work with any host.</td>
+</tr><tr>
+  <th scope="row">Remembering across runs</th>
+  <td><strong>stratagem:</strong> observations rolled up into topic memory and injected into later runs<br><strong>local-smartz:</strong> conversation threads and a checkpoint store, ported from stratagem</td>
+  <td>Keep stratagem&#x27;s model: record observations, then feed a budgeted summary of them into the next run.</td>
+</tr></tbody></table>
+      </div>
+    </article>
+    <article class="panel">
+      <div class="panel-header"><h3>Nobody has this yet</h3><p>Capabilities absent or incomplete across every subject.</p></div>
+      <div class="panel-body"><ul class="gap-list"><li><strong>Linking people, companies and products across documents</strong><p>The best score anywhere is 2 out of 3. The research plugin links notes to each other and rebuilds topic pages, but it never names the things inside them. The market research platform defines entity extraction and a graph store, but no live code path reaches them, so the graph stays empty and no relationship is ever written. Nobody connects the same company across two documents, and nobody draws the result.</p></li><li><strong>Insight detection that does not depend on a prompt</strong><p>Contradiction, trend, comparison and gap detection exist only as written instructions the model is asked to follow. The closest things to code are local-smartz&#x27;s bounded fact-check-and-redo loop and the research plugin&#x27;s claim verifier. Nothing compares stored claims across entries.</p></li><li><strong>Collection that runs on a schedule</strong><p>Every repo waits to be asked. market-intel was meant to be the feed reader and is dead. There is no watcher, timer or feed reader anywhere, and your existing background-job setup is the obvious place to put one.</p></li><li><strong>Web search when no person is watching</strong><p>Only local-smartz and stratagem can search the web from code. The research plugin deliberately leaves search to the assistant hosting it, which works while you are in a session and disappears the moment a job runs unattended.</p></li><li><strong>One contract for output length</strong><p>The writers exist; what is missing is a single rule that says long report, short report, key highlights or slide deck, and routes each to the right template. The research plugin&#x27;s output rules and stratagem&#x27;s format-routing table are the two halves of it.</p></li></ul></div>
+    </article>
+    <article class="panel">
+      <div class="panel-header"><h3>Open findings</h3><p>Severity and state are written out, never color-only.</p></div>
+      <div class="table-wrap">
+        <table><caption>Subject findings with severity, disposition state, and durable record.</caption><thead><tr><th scope="col">Subject</th><th scope="col">Severity</th><th scope="col">Finding</th><th scope="col">State</th><th scope="col">Record</th></tr></thead><tbody><tr>
+  <th scope="row">market-intel</th>
+  <td><span class="pill pill-high">high</span></td>
+  <td>.git/refs/ missing (repo unusable); .env.local holds a live-looking OpenAI key + Supabase keys with no consumer in code. Blast radius if revoked: none in this repo. Action: confirm whether the key is still active in the OpenAI dashboard; if unused elsewhere, revoke. Provenance unknown.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:2b128569</code></td>
+</tr><tr>
+  <th scope="row">research-plugin</th>
+  <td><span class="pill pill-high">high</span></td>
+  <td>Claim checking runs model-written code without a sandbox whenever Docker is absent. It should fail closed — skip the check and mark it unverified — instead of running the code on the host.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:2434d911</code></td>
+</tr><tr>
+  <th scope="row">stratagem</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>7 failing tests are stale assertions (plugin files, tool count 12→13, NavGator counts); AGENTS.md still instructs installing the deleted plugin; Xcode intermediates committed.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:e665255a</code></td>
+</tr><tr>
+  <th scope="row">market-research-platform</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>MLX half-wired (tier selection sends Ollama tags to MLX; embedder probe raises without fallback); the graph pipeline is unreachable and the runtime Kuzu store is empty; no README.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:006f476c</code></td>
+</tr><tr>
+  <th scope="row">local-smartz</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>Plugin and tool-server support are switched off on the default pipeline, which is also the pipeline selected by default, while the readme advertises them as available.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:0a4b1914</code></td>
+</tr><tr>
+  <th scope="row">market-research</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>dead Export button, ~900 lines dead modules, .env.local on disk (inspect before sharing).</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:64525fa5</code></td>
+</tr><tr>
+  <th scope="row">Omniparse</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>CLI/router duplicate detection tables; license mismatch (README MIT vs package Apache-2.0); CI runs no tests.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:dc678965</code></td>
+</tr></tbody></table>
+      </div>
+    </article>
+  </div>
+</section></main></div><dialog class="score-popout" id="score-0" aria-labelledby="score-0-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-0-title">market-intel · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>Nothing in it fetches anything. The “add source” button waits one second and then stores the name in the page&#x27;s own memory, and the code that would call a backend points at web addresses that do not exist.</p>
+  <p class="popout-cite">Where we looked: components/rss-controls.tsx:28-46; :35-39; lib/database-api.ts:7,25,38,57,70,88; /api/rss-sources; /api/articles; /api/summaries; app/; layout.tsx; page.tsx; test/page.tsx · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-1" aria-labelledby="score-1-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-1-title">market-intel · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Categories are a hand-typed list of twelve words, used only to filter the fake articles on screen. There is no scoring, no trust rating, and no duplicate removal.</p>
+  <p class="popout-cite">Where we looked: app/page.tsx:70-74; app/page.tsx:97-101 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-2" aria-labelledby="score-2-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-2-title">market-intel · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>Nothing links, clusters or stores anything. The only trace of a database is two permission rules in a leftover SQL file, with no tables and no connection ever opened.</p>
+  <p class="popout-cite">Where we looked: supabase-fix.sql:3-12; @supabase/supabase-js; package.json:52 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-3" aria-labelledby="score-3-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-3-title">market-intel · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>The “why it matters” and “bottom line” lines are typed into the fake data by hand and printed straight back out. No comparison, trend or gap logic exists.</p>
+  <p class="popout-cite">Where we looked: app/page.tsx:18-24; components/news-grid.tsx:14-21; components/news-card.tsx:76-107 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-4" aria-labelledby="score-4-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-4-title">market-intel · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>One length only, and it is not written by a model: the panel waits two seconds and pastes the fake fields into a fixed layout. The real summariser was deleted, and only its test survives — recording exactly the model, the settings and the output shape it used to produce.</p>
+  <p class="popout-cite">Where we looked: components/summary-panel.tsx:24-41; __tests__/api/summarize.test.ts:49-55 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-5" aria-labelledby="score-5-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-5-title">market-intel · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>The OpenAI package is listed as a dependency and imported by nothing outside test doubles. Three keys sit in the environment file, and no code reads any of them.</p>
+  <p class="popout-cite">Where we looked: openai@^5.3.0; package.json:60; components/news-grid.tsx:8-9; .env.local · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-6" aria-labelledby="score-6-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-6-title">market-intel · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It carries a list of 34 shell commands Claude Code is allowed to run, and nothing else — no commands, skills, agents or tool server. An agent can only treat it as an ordinary folder of code.</p>
+  <p class="popout-cite">Where we looked: .claude/settings.local.json; plugin.json; AGENTS.md; .navgator/architecture/; metrics.json:4-7 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-7"><form method="dialog"><button class="dialog-close">Close</button></form><h2>market-intel</h2><p>It shows what a news-brief product would look like: a source list, a grid of articles, and a summary panel. None of it is real — the articles, the categories and the summaries are all fixed text in the source, and every button waits a second or two to imitate work before showing the same values back. No network request is ever made.</p><p>Nothing uses it. Its git history is broken, all 40 of its tests fail before they run, and it has not been touched since June 2025.</p><p>Its one asset is a test that fully records the contract of the summarising endpoint someone deleted.</p></dialog><dialog class="score-popout" id="score-7" aria-labelledby="score-7-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-7-title">market-research · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It reads PDF, Excel, CSV, PowerPoint (PPTX) and Word (DOCX) files and scrapes web pages, choosing a cloud parser or a local one based on how sensitive the document looks. It only runs when you ask it to — there is no schedule and no web search.</p>
+  <p class="popout-cite">Where we looked: src/lib/parsers/fileRouter.ts:104-162; src/lib/parsers/urlScraper.ts:111; @tyroneross/scraper-app; api/local/scrape.ts; src/lib/parsers/hybridParser.ts:70-116; cli/index.ts:144 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-8" aria-labelledby="score-8-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-8-title">market-research · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>Every parse gets a confidence number, documents are tagged by theme, and anything that looks confidential is kept away from cloud parsing. It does not rate how trustworthy a source is, and it only removes near-duplicates within a single run.</p>
+  <p class="popout-cite">Where we looked: src/lib/parsers/pdf.ts:104; wordParser.ts:115; hybridParser.ts:315-317; src/lib/utils/themeExtractor.ts:9; src/lib/aggregation/aggregationEngine.ts:53-72 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-9" aria-labelledby="score-9-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-9-title">market-research · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It groups chunks by theme, stores them in a local vector database, and points citations back at chunk numbers. No people, companies or relationships are extracted, and there is no timeline or map of how anything connects.</p>
+  <p class="popout-cite">Where we looked: src/lib/aggregation/hierarchicalMerge.ts:78; src/lib/services/lanceVectorStore.ts:75; src/lib/db/schema.ts · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-10" aria-labelledby="score-10-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-10-title">market-research · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Contradiction handling is one line of instruction in a prompt asking the model to point out disagreements. Nothing detects trends, compares sources or names what is missing.</p>
+  <p class="popout-cite">Where we looked: hierarchicalMerge.ts:169; hierarchicalChunkingService.ts:349; aiService.ts:983 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-11" aria-labelledby="score-11-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-11-title">market-research · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It produces exactly one shape of answer — a conclusion, three to five supporting arguments, and cited evidence — and can save it as Word (DOCX) or JSON from the command line. The browser app&#x27;s export button is permanently greyed out because it was never wired up.</p>
+  <p class="popout-cite">Where we looked: src/lib/constants.ts:184-205; hierarchicalMerge.ts:335; cli/index.ts:332-390; src/components/PyramidSummary/PyramidSummary.tsx:101; src/App.tsx; SummaryPanel.tsx:929 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-12" aria-labelledby="score-12-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-12-title">market-research · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It can run entirely on your machine through Ollama or call OpenAI or Groq, with roughly nine Groq models priced in a table, a health check before it chooses, and a local-only switch that forces everything offline. It also reranks results with a small model running in the same process.</p>
+  <p class="popout-cite">Where we looked: src/lib/constants.ts:31-180; src/lib/services/ollamaService.ts:112; qwen3:8b-q4_K_M; aggregationEngine.ts:330; Xenova/bge-reranker-base; src/lib/services/reranker.ts:76; .env.example; cli/config.ts; ~/.market-research-app/config.json · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-13" aria-labelledby="score-13-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-13-title">market-research · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>There is no plugin packaging and no tool server of any kind. An agent reaches it by running the `mra` command line or calling the local web routes.</p>
+  <p class="popout-cite">Where we looked: plugin.json; .claude-plugin/; AGENTS.md; .claude/agents/*.md; market-research-app/.claude/settings.json; @tyroneross/bookmark; cli/bin.ts; api/local/ · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-14"><form method="dialog"><button class="dialog-close">Close</button></form><h2>market-research</h2><p>You give it files or web addresses and it reads them, splits the text into chunks, and indexes them on your machine so it can find the right passages by keyword and by meaning. It then clusters the best passages by theme, merges them in two passes, and returns a conclusion with three to five supporting arguments and cited evidence. Anything that looks confidential is kept away from the cloud parser.</p><p>You open the browser interface, run the `mra` command line, or use the Mac shell. There is no plugin, so an agent calls the command line or the local web routes.</p><p>It is the only tool here that reranks its search results with a small model running in the same process.</p></dialog><dialog class="score-popout" id="score-14" aria-labelledby="score-14-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-14-title">market-research-platform · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It accepts uploads and reads PDF, Word (DOCX), Excel, PowerPoint (PPTX) and scanned images, and fetches web pages through a small Node helper. Everything runs on request: nothing is scheduled and it cannot search the web.</p>
+  <p class="popout-cite">Where we looked: backend/app/parsers/__init__.py; /scrape; backend/app/api/documents.py:248-330; services/parser-sidecar/src/index.ts · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-15" aria-labelledby="score-15-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-15-title">market-research-platform · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It rates source domains into four trust tiers using about 55 known sites, checks whether each claim in a brief is actually supported, and grades the finished brief on five dimensions. It does not remove duplicates or apply a tag taxonomy.</p>
+  <p class="popout-cite">Where we looked: backend/app/verification/source_scoring.py:15-80; backend/app/verification/brief.py:31-60; backend/app/reporting/quality.py:1-40 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-16" aria-labelledby="score-16-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-16-title">market-research-platform · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>The code for a knowledge graph exists, but nothing in the running app ever calls it, so the graph stays empty. The function that would write a relationship between two things has no callers at all.</p>
+  <p class="popout-cite">Where we looked: market-research-platform-findings.md:53-61; backend/app/storage/graph_store.py:131; backend/app/graph/ingestion.py:131-160; backend/app/graph/pipeline.py; backend/app/api/documents.py · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-17" aria-labelledby="score-17-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-17-title">market-research-platform · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It pulls themes, claims, numbers, risks and actions out of documents and feeds the surrounding text back in for context. The comparison and trend prompts sit in the dead graph code, and the live interface says so itself.</p>
+  <p class="popout-cite">Where we looked: backend/app/reporting/strategy.py:1-20; backend/app/graph/research.py:61-66; backend/app/api/research.py:29-32 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-18" aria-labelledby="score-18-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-18-title">market-research-platform · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>One brief drives five writers: PowerPoint (PPTX), Word (DOCX), an email, meeting notes and an outline. It also answers questions in a conclusion-first structure and carries a template for earnings calls.</p>
+  <p class="popout-cite">Where we looked: pptx_generator.py:117; engines/pptx-builder; docx_generator.py:260; email_generator.py:22; notes_generator.py:23; outline_generator.py:20; backend/app/graph/reporting.py:34-42; /ask; backend/app/api/documents.py:665; backend/app/reporting/prompts/earnings_call.py · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-19" aria-labelledby="score-19-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-19-title">market-research-platform · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>One shared interface covers Ollama on your machine, Apple-silicon local models (MLX) and Claude in the cloud, with cloud calls blocked unless you allow them. If the configured Ollama model is missing it picks the strongest one you have installed instead of failing every call.</p>
+  <p class="popout-cite">Where we looked: backend/app/llm/factory.py:18-67,420-469; backend/app/embeddings/__init__.py:53-232; .env; backend/app/config.py:26-62 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-20" aria-labelledby="score-20-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-20-title">market-research-platform · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Nothing registers it with Claude Code or Codex — no plugin file, no commands, no tool server. An agent talks to its web service, guided by a handoff document written in prose.</p>
+  <p class="popout-cite">Where we looked: plugin.json; .claude/skills|commands|agents|hooks; .claude/; AGENTS.md; CLAUDE.md; HANDOFF-TO-CODEX.md; engines/pptx-builder/SKILL.md; engines/docx-builder/skills/…; engines/pyramid-principle/AGENTS.md · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-21"><form method="dialog"><button class="dialog-close">Close</button></form><h2>market-research-platform</h2><p>You upload documents or paste web addresses, and it reads them — including scanned pages — chunks the text, and indexes it in one local database that supports both keyword and meaning-based search. It then builds a single structured brief from the retrieved chunks and rates the sources and claims behind it. Five separate writers turn that one brief into finished documents.</p><p>You use the React front end in a browser, or call the Python web service directly. There is no plugin, so an agent reads a handoff document and calls the web service.</p><p>It is the only tool here that reads scanned pages and the only one that writes email, meeting notes and an outline off the same brief.</p></dialog><dialog class="score-popout" id="score-21" aria-labelledby="score-21-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-21-title">Omniparse · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It reads local Excel, PowerPoint (PPTX), Python and PDF files, and whole folders at a time, with a limit on how many run at once. Web addresses are rejected outright, there is no schedule, and PDF reading is text-only with no support for scans.</p>
+  <p class="popout-cite">Where we looked: .xlsx/.xls/.csv/.tsv/.ods/.xlsb; .pptx; .py; .pdf; packages/sdk/src/router.ts:88,116,175; packages/sdk/tests/run-tests.ts:37; packages/web/app/api/parse/route.ts:44; router.ts:507-538 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-22" aria-labelledby="score-22-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-22-title">Omniparse · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It classifies files by their extension and estimates how many tokens each will cost. There is no scoring, tagging, trust rating or duplicate removal.</p>
+  <p class="popout-cite">Where we looked: router.ts:104-130; packages/web/lib/mock-data.ts:20 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-23" aria-labelledby="score-23-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-23-title">Omniparse · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Inside a single document it captures a lot of structure — merged cells, links, named ranges, charts, comments, embedded images, slide notes, and Python imports and functions. Across documents there is nothing: no entities, no links, no clustering, and storage is a two-table list of projects and documents.</p>
+  <p class="popout-cite">Where we looked: packages/sdk/src/parsers/excel-parser-rich.ts:106,887; python-parser.ts:19-137; packages/web/lib/db.ts:31-71 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-24" aria-labelledby="score-24-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-24-title">Omniparse · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>It does not analyse anything. The closest artifact is a count of what a spreadsheet contains, which describes the file rather than saying anything about it.</p>
+  <p class="popout-cite">Where we looked: packages/sdk/src/parsers/excel-parser-fast.ts:644 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-25" aria-labelledby="score-25-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-25-title">Omniparse · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Each reader can emit markdown, plain text or JSON, plus sized chunks meant for search. There is no report, summary, memo or slide template — the length of the output is decided by the size of the input.</p>
+  <p class="popout-cite">Where we looked: python-parser.ts:819,915; packages/sdk/bin/omniparse.ts:65; excel-parser-fast.ts:568 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-26" aria-labelledby="score-26-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-26-title">Omniparse · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>There is no model code at all: no providers, no embeddings, no model settings, and only two small runtime dependencies. “Ready for a language model” here just means markdown with a token count.</p>
+  <p class="popout-cite">Where we looked: packages/sdk/package.json · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-27" aria-labelledby="score-27-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-27-title">Omniparse · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It is not a plugin and has no tool server. An agent uses it by running the command line or importing the published package, which is clean but not a first-class way for an agent to reach it.</p>
+  <p class="popout-cite">Where we looked: plugin.json; .claude-plugin/; AGENTS.md; .claude/settings.json; @tyroneross/bookmark; import { parse } from &#x27;@tyroneross/omniparse&#x27; · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-28"><form method="dialog"><button class="dialog-close">Close</button></form><h2>Omniparse</h2><p>You point it at a file or a folder and it opens the file format directly and returns the text, the structure, and an estimate of how many tokens the result will cost. Inside a spreadsheet it captures merged cells, links, named ranges, charts, comments and embedded images; inside a deck it captures slide text and speaker notes. It never scores, links, or summarises anything.</p><p>You run its command line on a path or import the published package. The research plugin already bundles a copy and calls it as a subprocess.</p><p>It is the only reader here that is published, signed and tested against 39 real binary files rather than fakes.</p></dialog><dialog class="score-popout" id="score-28" aria-labelledby="score-28-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-28-title">local-smartz · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It scrapes web pages, searches the web, and reads PDF, spreadsheet and text files as tools its agents can call. Every call happens on request — there is no scheduler, watcher or database connector anywhere in it.</p>
+  <p class="popout-cite">Where we looked: tools/web.py:172; :147; :237; tools/documents.py:10; :63; :103; :186; src/ · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-29" aria-labelledby="score-29-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-29-title">local-smartz · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>What it grades is its own output, not the material it reads: a fact-checker returns a pass-or-needs-more verdict naming the facts still missing, and a reflector scores drafts on four axes. There is no source trust rating, tag taxonomy or duplicate removal.</p>
+  <p class="popout-cite">Where we looked: agents/prompts/fact_checker.md:37; agents/prompts/reflector.md:13; agent_scorecard.py:1; query_doe.py:1; serve.py:2309 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-30" aria-labelledby="score-30-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-30-title">local-smartz · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>Nothing extracts entities or relationships, and there is no graph and no vector store. Results are saved as flat JSON files, and the embedding models listed in its catalogue have no code behind them.</p>
+  <p class="popout-cite">Where we looked: src/**/*.py; artifacts.py:82; .localsmartz/artifacts/index.json; threads.py:50; models/catalog.py:204; models/registry.py:11 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-31" aria-labelledby="score-31-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-31-title">local-smartz · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>The fact-checker names the facts a draft is missing and the pipeline sends the researcher back for them, capped at two rounds. The analyser must compare sources, flag outliers and compute every number by running code rather than asserting it, but nothing tracks trends over time or compares across a whole collection.</p>
+  <p class="popout-cite">Where we looked: pipeline.py:62 MAX_FACT_CHECK_ITERATIONS = 2; agents/prompts/analyzer.md:10; tools/compute.py; patterns/critic_loop.py; patterns/reflection.py · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-32" aria-labelledby="score-32-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-32-title">local-smartz · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It writes Markdown, web page and Word (DOCX) reports plus spreadsheets, all from one template covering title, summary, findings, analysis, recommendations and sources. PowerPoint is text only — the agents are told to write a slide outline and are explicitly forbidden from producing a real deck file.</p>
+  <p class="popout-cite">Where we looked: tools/reports.py:12; _create_markdown_report:179; _create_docx_report:228; _create_html_report:300; create_spreadsheet:71; agents/prompts/writer.md:19; agent.py:141-143; .pptx · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-33" aria-labelledby="score-33-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-33-title">local-smartz · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>One interface covers Ollama on your machine plus Anthropic, OpenAI and Groq, you can pin a different model to each role, and the privacy switch refuses cloud calls when its own settings cannot be read. It also retries failed turns, estimates cost, and matches model choice to how much memory your machine has.</p>
+  <p class="popout-cite">Where we looked: runners/base.py; runners/factory.py:101-112; :179; runners/__init__.py:32-40; factory.py:103; :47-73; global.json; global_config.py:30 agent_models; profiles.py:265 global_pinned_model; models/; secrets.py; runners/_retry.py; cost.py · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-34" aria-labelledby="score-34-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-34-title">local-smartz · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It is the host rather than the plugin: it finds Claude Code plugins and skills on disk and speaks the tool-server protocol (MCP) as a client. Both are switched off on the default path, so those tools only reach the model on the older pipeline.</p>
+  <p class="popout-cite">Where we looked: .claude-plugin/; plugin.json; .claude/; AGENTS.md; plugins/discovery.py:8-61; SKILL.md; .mcp.json; plugins/mcp_client.py:29; plugins/tools_adapter.py; serve.py:1253 /api/research; pipeline.py:151-159; pipeline.py:65-78 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-35"><form method="dialog"><button class="dialog-close">Close</button></form><h2>local-smartz</h2><p>You ask it a research question and five specialist roles work the answer in turn: plan, research, analyse, fact-check, write. It searches and scrapes the web, reads PDF, spreadsheet and text files, and computes every number by running code rather than asserting it. If the fact-checker says facts are missing, the work goes back to the researcher, up to twice.</p><p>You run its command with a question, open its local web interface, or use the Mac app. Another agent can call it as a subprocess or over its web interface.</p><p>It is the only tool here that hosts other people&#x27;s plugins and speaks the tool-server protocol (MCP) as a client.</p></dialog><dialog class="score-popout" id="score-35" aria-labelledby="score-35-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-35-title">research-plugin · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It reads PDF, Excel, CSV, PowerPoint (PPTX) and Python files through a bundled copy of Omniparse, bulk-loads markdown, links whole project folders, and profiles spreadsheets and small databases. It never searches the web itself — that is left to the assistant hosting it — and the only automatic trigger re-reads a file after you save it.</p>
+  <p class="popout-cite">Where we looked: CLAUDE.md:11; AGENTS.md; tests/connector_policy_check.py:19; .pdf/.xlsx/.xls/.csv/.tsv/.ods/.xlsb/.pptx/.py; research.py:3177; research.py:3193; vendor/omniparse/dist/bin/omniparse.js; research.py:3557; research.py:1358; research.py:2501; research.py:2520; hooks/hooks.json:5; research.py:1903; research.py:1949 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-36" aria-labelledby="score-36-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-36-title">research-plugin · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It sorts source domains into four trust tiers from a 52-site seed list plus a misinformation blocklist, picks a research depth with a required mix of sources, and checks claims four ways — numbers, symbols, citations and code — rolling the result into one confidence mark on the entry. It also scores how stale an entry has become and re-clusters the topic tree.</p>
+  <p class="popout-cite">Where we looked: research.py:1818; data/domain-scores-seed.json; data/iffy-domains.csv; research.py:313; research.py:1078; research.py:1149; research.py:2006; research.py:2125; research.py:2178; research.py:3029; research.py:381; research.py:3395 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-37" aria-labelledby="score-37-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-37-title">research-plugin · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>Notes link to each other with wiki-style links, and those links become a two-way list of what points here, plus rebuilt topic, tag and project hub pages. It does not pull out people, companies or relationships in running code — those tables exist only as instructions for the assistant.</p>
+  <p class="popout-cite">Where we looked: research.py:1683; research.py:1712; research.py:82; research.py:1609; research.py:3412; skills/research/references/active-project-ingestion.md:132; :191 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-38" aria-labelledby="score-38-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-38-title">research-plugin · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>Contradiction, gap and trend detection live entirely in written instructions the assistant follows; no code looks for them. The only automatic signals are how stale an entry is and how certain its input data looked.</p>
+  <p class="popout-cite">Where we looked: research.py; skills/research/references/synthesis.md:62; :65; collection.md:212; research.py:3048; research.py:2579 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-39" aria-labelledby="score-39-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-39-title">research-plugin · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It ships five report templates, three writing modes including a conclusion-first executive form, and machine-checkable rules for what each output must contain. Nothing renders a file, though — every output is markdown the assistant writes.</p>
+  <p class="popout-cite">Where we looked: skills/research/references/templates.md:5; :175; synthesis.md:9; :132; output-contracts.md:5; :115; :171; research.py:208; research.py:3092; .pptx; research.py:3181 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-40" aria-labelledby="score-40-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-40-title">research-plugin · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">○○○</span> <strong>0</strong> absent</p>
+  <p>By design it never calls a model, and the rule is written down and enforced by a test. The assistant hosting the plugin does all the thinking, and the only dependency is a YAML reader.</p>
+  <p class="popout-cite">Where we looked: CLAUDE.md:49; requirements.txt:1 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-41" aria-labelledby="score-41-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-41-title">research-plugin · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It ships as a real plugin in both Claude Code and Codex, with 22 commands, one skill backed by 13 reference documents, and a hook that re-reads files as you save them. Every path finds the plugin&#x27;s home folder through three fallbacks, so the same code works in either host.</p>
+  <p class="popout-cite">Where we looked: .claude-plugin/plugin.json; .codex-plugin/plugin.json; commands/; skills/research/SKILL.md; hooks/hooks.json; commands/search.md:10; hooks/post-write-reingest.sh:34; python3 $ROOT/research.py &lt;subcommand&gt; · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-42"><form method="dialog"><button class="dialog-close">Close</button></form><h2>research-plugin</h2><p>It saves what you research into one library of markdown notes and indexes them so you can search them later. Before saving, it rates the sources by how trustworthy their domain is, checks the numbers and citations in the claims, and records a single confidence mark on the entry. Over time it flags notes that have gone stale and rebuilds hub pages by topic, tag, and project.</p><p>You call it from one of 22 slash commands inside Claude Code or Codex, or run its command line directly. A save hook re-reads a file whenever you write to it.</p><p>It is the only tool here installed in both Claude Code and Codex, and the only one with a live library — 187 entries, last written to the day before this audit.</p></dialog><dialog class="score-popout" id="score-42" aria-labelledby="score-42-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-42-title">stratagem · Data collection</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>It offers 13 tools to its agents: scraping pages, reading PDF, spreadsheet, PowerPoint (PPTX) and Word (DOCX) files, pulling images, and searching and downloading company filings from the SEC (Securities and Exchange Commission). Web search runs through the built-in tool and read-only results are cached, but nothing runs on a schedule.</p>
+  <p class="popout-cite">Where we looked: src/stratagem/server.py:26-40; tools/web.py:22; tools/pdf.py:18; tools/sec_edgar.py:32,83; sec_client.py; stratagem/cache/company_tickers.json; server.py:46; server.py:19-23 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-43" aria-labelledby="score-43-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-43-title">stratagem · Assessment &amp; categorization</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>It records observations with a category, a confidence between zero and one and tags, drops exact duplicates, keeps the more confident version across runs, and promotes an agent to a higher tier once it has three runs averaging 0.7 confidence. Grading whether a claim is true is done by prompt, not code, and there is no source trust rating.</p>
+  <p class="popout-cite">Where we looked: tools/memory.py:34-75; memory.py:325-348; total_runs&gt;=3 and avg_confidence&gt;=0.7; memory.py:583; subagents/prompts/source_verifier.md:25,35; report_critic.md:17-19; agent.py:156-232 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-44" aria-labelledby="score-44-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-44-title">stratagem · Graphs &amp; structures</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>There is no knowledge graph, no entity extraction and no vector store. The only graph it draws is a map of its own code plus a diagram of how its agents ran; everything it learns is stored as flat JSON.</p>
+  <p class="popout-cite">Where we looked: src/; navgator.py:1-6; .claude/architecture/graph.json; /api/graph; ui.py:1568; app/Stratagem/Views/FlowDiagramView.swift; topics.py:4; artifacts.py:7 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-45" aria-labelledby="score-45-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-45-title">stratagem · Insight extraction</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●○</span> <strong>2</strong> working but narrow</p>
+  <p>Its prompts do real work here: one agent grades each claim as verified, supported, unsourced, contradicted or stale, another looks for patterns and contradictions across sources, a third compares several periods rather than one snapshot, and a fourth watches for quality drifting down across runs. Every run ends with an after-action review, but none of it is deterministic code.</p>
+  <p class="popout-cite">Where we looked: source_verifier.md:25,38; research_synthesizer.md:9; financial_analyst.md:8,16; plan_validator.md:51; agent.py:826 _generate_after_action_review; agent.py:722 · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-46" aria-labelledby="score-46-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-46-title">stratagem · Synthesis at multiple lengths</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●●●</span> <strong>3</strong> mature or central</p>
+  <p>One set of structured sections turns into Markdown, PowerPoint (PPTX), Word (DOCX) or a web page, and the slide builder handles title, bullet and table layouts, including tables typed as plain text. Written guidance covers register, format routing and conclusion-first structure, and finished decks and documents ship in the repository.</p>
+  <p class="popout-cite">Where we looked: tools/reports.py:56-63,77,126,198,270; tools/presentation.py:103-190; tools/spreadsheet_create.py; subagents/prompts/executive_synthesizer.md:45-70; frameworks/pyramid_principle.md; frameworks/content_design.md; frameworks/output_formats.md; flowchart_architect.md; output/*.pptx; output/subagent_systems_research_report.docx · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-47" aria-labelledby="score-47-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-47-title">stratagem · Model flexibility</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>It can only talk to Anthropic, because that is baked into the software kit it is built on. The flexibility it does have is choosing a bigger or smaller Claude model per agent, changeable while a run is going.</p>
+  <p class="popout-cite">Where we looked: src/; tests/; app/; claude-agent-sdk&gt;=0.1.48; pyproject.toml:11; agent.py:1344-1356; agent.py:1056; __main__.py:44,71; POST /api/agents/&lt;name&gt;/model; ui.py:1546; .env; __main__.py:13-27; /api/config · ✅ verified</p>
+</dialog><dialog class="score-popout" id="score-48" aria-labelledby="score-48-title">
+  <form method="dialog"><button class="dialog-close" aria-label="Close score details">Close</button></form>
+  <h2 id="score-48-title">stratagem · Codex + Claude Code integration</h2>
+  <p class="popout-score"><span class="dot-run" aria-hidden="true">●○○</span> <strong>1</strong> stub / partial / prompt-only</p>
+  <p>The plugin packaging was deleted rather than disabled — the manifests, commands and skills were all removed in one commit, leaving empty folders behind. Its tool server still runs standalone if wired by hand, but today an agent reaches it through the command line or the web interface, and the documentation still tells you to install a plugin that no longer exists.</p>
+  <p class="popout-cite">Where we looked: plugin/.claude-plugin/plugin.json; .codex-plugin/plugin.json; .mcp.json; agents/research-orchestrator/AGENT.md; commands/stratagem.md; plugin/; find . -name .mcp.json -o -name plugin.json; server.py:49-77; python -m stratagem.server; AGENTS.md; /plugins install ~/dev/git-folder/stratagem/plugin · ✅ verified</p>
+</dialog><dialog class="score-popout" id="subject-49"><form method="dialog"><button class="dialog-close">Close</button></form><h2>stratagem</h2><p>You give it a research question and it plans the work, then runs twelve specialist agents that read documents, scrape web pages and download company filings from the SEC (Securities and Exchange Commission). A synthesiser and a critic turn their findings into structured sections. Those sections render straight into finished files, including real PowerPoint decks and spreadsheets.</p><p>You run its command line with a question, or open its local web interface or Mac app. Its plugin packaging was deleted, so nothing installs into Claude Code or Codex any more.</p><p>It is the only repo here that writes a real PowerPoint (PPTX) file and the only one that searches and downloads SEC filings.</p></dialog><script>let last;document.addEventListener('click',e=>{const b=e.target.closest('[data-dialog]');if(!b)return;last=b;document.getElementById(b.dataset.dialog).showModal()});document.querySelectorAll('dialog').forEach(d=>d.addEventListener('close',()=>last&&last.focus()));document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.score-trigger,.more-trigger'))e.target.click()});</script></body></html>

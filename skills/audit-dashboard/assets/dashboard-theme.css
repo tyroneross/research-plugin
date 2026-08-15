@@ -782,3 +782,21 @@ td {
 .stage-header { text-align: center; }.matrix-table .score-cell { min-width: 145px; }.matrix-table .score-label { display: block; }.optimal-row th, .optimal-row td { background: var(--card); color: var(--muted); }.optimal-row th { position: static !important; }.clamp { display: -webkit-box; overflow: hidden; margin: 7px 0 0; color: var(--muted); font-weight: 400; letter-spacing: normal; text-transform: none; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .score-popout { width: min(560px, calc(100vw - 28px)); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--text); padding: 22px; }.score-popout::backdrop { background: rgb(0 0 0 / .65); }.score-popout p { line-height: 1.6; }.dialog-close { float: right; min-height: 44px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); padding: 8px 12px; cursor: pointer; }.popout-score { font-size: 16px; }.popout-cite { color: var(--muted); font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }.no-js-fallback { margin-top: 12px; }.no-js-fallback summary { min-height: 44px; padding-top: 10px; color: var(--accent); cursor: pointer; }
 @media (max-width: 759px) { .flow-stepper, .mini-stepper { flex-direction: column; }.pipeline-row { grid-template-columns: 1fr; gap: 12px; }.matrix-table { min-width: 820px; } }
+
+/* v2 review fixes */
+.best-marker { margin-left: 6px; }
+.matrix-v2 { table-layout: fixed; width: 100%; min-width: 1240px; }
+.matrix-v2 .col-subject { width: 22%; }
+.matrix-v2 .score-cell { min-width: 0; }
+.optimal-wrap { margin-top: 14px; }
+.optimal-table th:first-child { white-space: nowrap; }
+.optimal-table td:nth-child(2) { white-space: nowrap; }
+.sub-heading { margin: 22px 0 8px; font-size: 14px; }
+.reference-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.reference-grid li { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.reference-grid h4 { margin: 0 0 6px; font-size: 14px; }
+.reference-grid p { margin: 0 0 6px; font-size: 13px; }
+.reference-grid .borrow { color: var(--text); }
+
+.flow-source { color: var(--muted); font-weight: 400; font-size: 13px; }
+.flow-source strong, .flow-stepper .muted strong { color: var(--text); font-weight: 600; }

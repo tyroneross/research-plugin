@@ -1,0 +1,1617 @@
+{
+  "schemaVersion": 2,
+  "title": "Seven-Repo Data Intelligence Audit",
+  "subtitle": "Seven repositories were graded on the same seven-part rubric — collecting data, scoring it, linking it, finding insights, writing outputs at different lengths, choosing which model runs, and working inside Claude Code and Codex — to see how they could combine into one research workflow.",
+  "generatedAt": "2026-08-15",
+  "source": {
+    "label": "Build-loop research packet",
+    "path": "~/dev/docs/audits/2026-08-15-data-intel-repo-audit/index.html"
+  },
+  "scale": {
+    "min": 0,
+    "max": 3,
+    "labels": {
+      "0": "absent",
+      "1": "stub / partial / prompt-only",
+      "2": "working but narrow",
+      "3": "mature or central"
+    }
+  },
+  "dimensions": [
+    {
+      "id": "D1",
+      "label": "Data collection",
+      "short": "Collect",
+      "question": "sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats."
+    },
+    {
+      "id": "D2",
+      "label": "Assessment & categorization",
+      "short": "Assess",
+      "question": "scoring, classification, tagging, credibility/tier grading, dedup, taxonomy."
+    },
+    {
+      "id": "D3",
+      "label": "Graphs & structures",
+      "short": "Graph",
+      "question": "knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization."
+    },
+    {
+      "id": "D4",
+      "label": "Insight extraction",
+      "short": "Insight",
+      "question": "trend detection, comparison, contradiction detection, gap analysis, “so-what” generation."
+    },
+    {
+      "id": "D5",
+      "label": "Synthesis at multiple lengths",
+      "short": "Synthesis",
+      "question": "long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers."
+    },
+    {
+      "id": "D6",
+      "label": "Model flexibility",
+      "short": "Model flex",
+      "question": "which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic."
+    },
+    {
+      "id": "D7",
+      "label": "Codex + Claude Code integration",
+      "short": "Codex/CC",
+      "question": "is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?"
+    }
+  ],
+  "stages": [
+    {
+      "id": "collect",
+      "label": "Collect data",
+      "dimensionIds": [
+        "D1"
+      ],
+      "best": "stratagem",
+      "optimal": "The collector agent should own this stage. Make Omniparse the single front door for files — the research plugin already bundles it and it reads Excel, PowerPoint (PPTX), PDF and Python files in one pass — and add stratagem's SEC (Securities and Exchange Commission) filing search plus local-smartz's page scraper and web search for the sources Omniparse cannot reach. Three repos tie at the top here, since stratagem, market-research and market-research-platform all read widely, and stratagem wins because it brings the one source nobody else has."
+    },
+    {
+      "id": "assess",
+      "label": "Assess and score",
+      "dimensionIds": [
+        "D2"
+      ],
+      "best": "research-plugin",
+      "optimal": "The assessor agent should own this stage and reuse the research plugin's scoring exactly as it stands: it sorts source domains into four trust tiers, blocks known misinformation sites, checks claims four ways, and writes one confidence mark back onto each entry. Fold the market research platform's list of roughly 55 rated domains into that seed list, and add its five-point quality rubric and stratagem's report critic so finished outputs get graded too. Nothing else here is close — the research plugin is the only repo rated mature on this."
+    },
+    {
+      "id": "structure",
+      "label": "Link and structure",
+      "dimensionIds": [
+        "D3"
+      ],
+      "best": "research-plugin",
+      "optimal": "The linker agent should own this stage, starting from the research plugin's store, which already turns wiki-style links into two-way backlinks and rebuilds topic and tag hub pages, with the market research platform's vector store bolted on so entries can be found by meaning rather than keyword alone. Then write the missing half: tables for the people, companies and products an entry mentions, and the relationships between them. This is the only stage where no repo has a working answer, so most of the work here is new."
+    },
+    {
+      "id": "insight",
+      "label": "Find insights",
+      "dimensionIds": [
+        "D4"
+      ],
+      "best": "local-smartz",
+      "optimal": "The analyst agent should own this stage. Take local-smartz's fact-check loop, which names the facts a draft is missing and sends the researcher back for them up to twice, and pair it with stratagem's claim grading and its compare-multiple-periods financial prompts. The two tie on score, and local-smartz wins because its loop runs in code rather than living only in a prompt; on top of both, add a pass that compares stored facts across entries so the prompts narrate findings instead of discovering them."
+    },
+    {
+      "id": "synthesize",
+      "label": "Write outputs (long, short, highlights, slides)",
+      "dimensionIds": [
+        "D5"
+      ],
+      "best": "stratagem",
+      "optimal": "The writer agent should own this stage, combining stratagem's four renderers — Markdown, PowerPoint (PPTX), Word (DOCX) and web page — with the market research platform's email, meeting-notes and outline writers into one package. Those two tie at the top, and stratagem leads because it is the only repo that writes a real PowerPoint file instead of a slide outline in text. The agent takes a length and picks the matching template."
+    },
+    {
+      "id": "models",
+      "label": "Run models (local or cloud)",
+      "dimensionIds": [
+        "D6"
+      ],
+      "best": "local-smartz",
+      "optimal": "The model-runner should own this stage and use local-smartz's router: one interface over Ollama on your machine plus Anthropic, OpenAI and Groq in the cloud, with a privacy switch that refuses cloud calls when its own settings cannot be read. Graft the market research platform's Apple-silicon local runner (MLX) in as a fifth option. local-smartz ties with market-research here and wins because its router is Python, fails safe, and pins a model per role."
+    },
+    {
+      "id": "agents",
+      "label": "Work inside Claude Code / Codex",
+      "dimensionIds": [
+        "D7"
+      ],
+      "best": "research-plugin",
+      "optimal": "The coordinator should own this stage and ship inside the research plugin's existing packaging — it is the only tool here installed in both Claude Code and Codex, with 22 commands, a skill, and a hook that re-reads files as you save them. Each stage agent becomes another skill beside those commands, so nothing new has to be installed. Later, a small tool server following the pattern stratagem already uses would let local-smartz reach the same tools, and its plugin support could then be switched on by default."
+    }
+  ],
+  "subjects": [
+    {
+      "id": "market-intel",
+      "name": "market-intel",
+      "kind": "prototype",
+      "kindNote": "Abandoned Next.js prototype; nothing behind the screens",
+      "oneLiner": "An abandoned web prototype for a feed-to-news-brief product. Every screen is drawn from sample data typed into the source, and the backend those screens were meant to call was deleted and never replaced.",
+      "plain": {
+        "whatItDoes": "It shows what a news-brief product would look like: a source list, a grid of articles, and a summary panel. None of it is real — the articles, the categories and the summaries are all fixed text in the source, and every button waits a second or two to imitate work before showing the same values back. No network request is ever made.",
+        "howUsed": "Nothing uses it. Its git history is broken, all 40 of its tests fail before they run, and it has not been touched since June 2025.",
+        "unique": "Its one asset is a test that fully records the contract of the summarising endpoint someone deleted."
+      },
+      "health": {
+        "state": "bad",
+        "summary": "Dead — .git/refs missing, 40/40 tests fail at import, all data mocked",
+        "lastCommit": "2025-06-15",
+        "tests": "40/40 fail at import"
+      },
+      "pipeline": {
+        "overview": "Nothing moves. The screens are drawn from fixed sample data typed into the source, and each button waits a second or two to imitate work before showing the same values back.",
+        "effectiveness": {
+          "score": 0,
+          "why": "The backend was deleted and never replaced, so no data enters or leaves the app and all 40 tests fail before they run."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "There is no fetcher, feed reader or schedule, and the addresses its data code calls do not exist."
+          },
+          {
+            "stage": "assess",
+            "how": "It filters sample articles against a hand-typed list of twelve categories.",
+            "effectiveness": 1,
+            "why": "Filtering is not scoring — nothing rates, tags or de-duplicates anything."
+          },
+          {
+            "stage": "structure",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "There is no linking, clustering or storage; the only database artifact is two permission rules with no tables."
+          },
+          {
+            "stage": "insight",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "The “why it matters” and “bottom line” lines are typed into the sample data by hand."
+          },
+          {
+            "stage": "synthesize",
+            "how": "It pastes fixed fields into one markdown layout after a two-second pause.",
+            "effectiveness": 1,
+            "why": "One length, no model, and the only real specification survives in a test."
+          },
+          {
+            "stage": "models",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "The OpenAI package is declared and imported by nothing outside test doubles."
+          },
+          {
+            "stage": "agents",
+            "how": "It carries a list of shell commands Claude Code is allowed to run, and nothing else.",
+            "effectiveness": 1,
+            "why": "An agent can only treat it as an ordinary folder of code; nothing in it is callable."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 0,
+          "evidence": "No fetcher, no RSS parser, no scheduler, no rss-parser/cheerio dep. components/rss-controls.tsx:28-46 \"Add source\" is setTimeout(1000) + local useState; feed list is mockSources at :35-39. lib/database-api.ts:7,25,38,57,70,88 fetches /api/rss-sources, /api/articles, /api/summaries — none of those routes exist (app/ contains only layout.tsx, page.tsx, test/page.tsx), and DatabaseAPI has zero importers.",
+          "cite": "components/rss-controls.tsx:28-46; :35-39; lib/database-api.ts:7,25,38,57,70,88; /api/rss-sources; /api/articles; /api/summaries; app/; layout.tsx; page.tsx; test/page.tsx",
+          "mark": "verified",
+          "plain": "Nothing in it fetches anything. The “add source” button waits one second and then stores the name in the page's own memory, and the code that would call a backend points at web addresses that do not exist."
+        },
+        "D2": {
+          "score": 1,
+          "evidence": "Category taxonomy is a 12-string literal array app/page.tsx:70-74; filtering is article.categories.some(...) app/page.tsx:97-101. No scoring, credibility tiering, dedup, or auto-tagging anywhere.",
+          "cite": "app/page.tsx:70-74; app/page.tsx:97-101",
+          "mark": "verified",
+          "plain": "Categories are a hand-typed list of twelve words, used only to filter the fake articles on screen. There is no scoring, no trust rating, and no duplicate removal."
+        },
+        "D3": {
+          "score": 0,
+          "evidence": "No graph/vector/entity code. supabase-fix.sql:3-12 is the only persistence artifact — two RLS policies on an articles table; no schema, no migrations, no Supabase client instantiated despite @supabase/supabase-js in package.json:52.",
+          "cite": "supabase-fix.sql:3-12; @supabase/supabase-js; package.json:52",
+          "mark": "verified",
+          "plain": "Nothing links, clusters or stores anything. The only trace of a database is two permission rules in a leftover SQL file, with no tables and no connection ever opened."
+        },
+        "D4": {
+          "score": 0,
+          "evidence": "whyItMatters / keyDetails / bottomLine are literal strings in the mock fixtures (app/page.tsx:18-24, components/news-grid.tsx:14-21), rendered verbatim by components/news-card.tsx:76-107. No trend, comparison, contradiction, or gap logic.",
+          "cite": "app/page.tsx:18-24; components/news-grid.tsx:14-21; components/news-card.tsx:76-107",
+          "mark": "verified",
+          "plain": "The “why it matters” and “bottom line” lines are typed into the fake data by hand and printed straight back out. No comparison, trend or gap logic exists."
+        },
+        "D5": {
+          "score": 1,
+          "evidence": "One length only, and it is string interpolation, not generation: components/summary-panel.tsx:24-41 setTimeout(2000) then template-literals the fixture fields into a \"Why it matters / Key insights / Bottom line / Sources\" markdown block. The real renderer's contract survives only as a test expectation — __tests__/api/summarize.test.ts:49-55 asserts a 3-part \"Key Takeaway / Why it matters / Bulleted highlights\" format from gpt-4o, temperature: 0, max_tokens: 500, system prompt containing \"You are an expert summary assistant\". No docx/pptx/email/exec-summary.",
+          "cite": "components/summary-panel.tsx:24-41; __tests__/api/summarize.test.ts:49-55",
+          "mark": "verified",
+          "plain": "One length only, and it is not written by a model: the panel waits two seconds and pastes the fake fields into a fixed layout. The real summariser was deleted, and only its test survives — recording exactly the model, the settings and the output shape it used to produce."
+        },
+        "D6": {
+          "score": 0,
+          "evidence": "openai@^5.3.0 is declared (package.json:60) and imported by nothing outside test mocks. Sole grep hits in shipping code are the words \"OpenAI\"/\"GPT-5\" inside mock headlines (components/news-grid.tsx:8-9). No provider abstraction, no local runtime, no embeddings, no router/fallback. Config surface = 3 keys in .env.local (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, OPENAI_API_KEY), all unread by source.",
+          "cite": "openai@^5.3.0; package.json:60; components/news-grid.tsx:8-9; .env.local",
+          "mark": "verified",
+          "plain": "The OpenAI package is listed as a dependency and imported by nothing outside test doubles. Three keys sit in the environment file, and no code reads any of them."
+        },
+        "D7": {
+          "score": 1,
+          "evidence": ".claude/settings.local.json is a 34-entry Bash permission allowlist only — no skills, commands, agents, hooks, MCP, plugin.json, or AGENTS.md. .navgator/architecture/ holds a NavGator scan (181 nodes / 361 edges, metrics.json:4-7, generated 2026-07-12). An agent can only drive it as a plain repo; nothing is callable.",
+          "cite": ".claude/settings.local.json; plugin.json; AGENTS.md; .navgator/architecture/; metrics.json:4-7",
+          "mark": "verified",
+          "plain": "It carries a list of 34 shell commands Claude Code is allowed to run, and nothing else — no commands, skills, agents or tool server. An agent can only treat it as an ordinary folder of code."
+        }
+      },
+      "strengths": [
+        "The deleted summariser's contract is fully recoverable from its test: the exact model, the settings, the opening system prompt, the output shape and every error branch.",
+        "The news card is a genuinely reusable structured-brief component — a lead that expands into why it matters, key details, bottom line and sources — and it maps cleanly onto any summary.",
+        "Its integration test only runs when an API key is present, which is the right way to gate live calls in a shared suite.",
+        "A preflight script and a written post-mortem capture a real Next.js failure — a dev server that reports ready but serves a blank page — that transfers to sibling apps."
+      ],
+      "gaps": [
+        "The backend is missing, not stubbed. Removing a folder that was shadowing the app router took the summarising endpoint with it, stranding all 40 tests and all six data methods. The interface never makes a network request.",
+        "Every so-called AI behaviour is a timer faking delay: refresh, add source, summarise and save each wait a second or two and then show fixed data.",
+        "Git is broken. The references folder is missing, so about two weeks of edits have no recoverable history and git commands are unusable until it is rebuilt from the log.",
+        "An environment file holds a live-looking OpenAI key plus Supabase credentials, protected only by the ignore rules, and no code reads any of the three."
+      ],
+      "reuse": [
+        {
+          "path": "__tests__/api/summarize.test.ts:49-79",
+          "what": "The executable specification for a summary endpoint — model, settings, system prompt, response shape and error branches. Port it as the contract test for the combined repo's summariser; it is worth more than the code it tested."
+        },
+        {
+          "path": "components/news-card.tsx",
+          "what": "A self-contained structured-brief card: a collapsed lead that expands into why it matters, key details, bottom line and source links. Drop it in for any summary with those fields."
+        },
+        {
+          "path": "components/summary-panel.tsx:24-41",
+          "what": "The markdown layout — why it matters, key insights, bottom line, sources — reusable as the specification for what a model should output, minus the fake delay."
+        },
+        {
+          "path": "components/ui/*",
+          "what": "A complete, current component set already reconciled with the latest React and Tailwind; cheaper to copy than to rebuild."
+        },
+        {
+          "path": "scripts/preflight-next.sh + scripts/super-repair.sh",
+          "what": "Preflight and repair scripts for a Next.js dev server, useful in any sibling Next.js app."
+        }
+      ],
+      "role": "Retire it. Salvage the summariser's contract test and the news card; the feed-reading job moves to the new scheduled collector."
+    },
+    {
+      "id": "market-research",
+      "name": "market-research",
+      "kind": "app",
+      "kindNote": "Web app + `mra` command line + Mac shell",
+      "oneLiner": "A local-first, privacy-tiered document research app — a browser interface, an `mra` command line and a thin Mac shell — that reads files and web pages, indexes them locally for keyword and meaning-based search, and writes a cited, conclusion-first summary using Ollama or a cloud model.",
+      "plain": {
+        "whatItDoes": "You give it files or web addresses and it reads them, splits the text into chunks, and indexes them on your machine so it can find the right passages by keyword and by meaning. It then clusters the best passages by theme, merges them in two passes, and returns a conclusion with three to five supporting arguments and cited evidence. Anything that looks confidential is kept away from the cloud parser.",
+        "howUsed": "You open the browser interface, run the `mra` command line, or use the Mac shell. There is no plugin, so an agent calls the command line or the local web routes.",
+        "unique": "It is the only tool here that reranks its search results with a small model running in the same process."
+      },
+      "health": {
+        "state": "ok",
+        "summary": "TS app + mra CLI",
+        "lastCommit": "2026-05-12",
+        "tests": "84/84 vitest pass"
+      },
+      "pipeline": {
+        "overview": "You hand it files or web addresses, it extracts the text, splits it into chunks, and indexes them locally for keyword and meaning-based search. A two-pass summariser then clusters the best chunks by theme, merges them, and returns a conclusion-first summary with citations, either in the browser or from the command line.",
+        "effectiveness": {
+          "score": 2,
+          "why": "The read, index and summarise path genuinely works offline end to end, but it produces one shape of answer and the browser interface cannot export it."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "It reads PDF, Excel, CSV, PowerPoint (PPTX) and Word (DOCX) files and scrapes pages, sending sensitive documents to a local parser instead of a cloud one.",
+            "effectiveness": 3,
+            "why": "Broad format coverage and a real privacy rule, but only when you ask — nothing is scheduled."
+          },
+          {
+            "stage": "assess",
+            "how": "It scores each parse for confidence, tags themes, and drops near-duplicates within a run.",
+            "effectiveness": 2,
+            "why": "Useful signals about the parse, but no judgement about the source."
+          },
+          {
+            "stage": "structure",
+            "how": "It groups chunks by theme and stores them in a local vector database, with citations pointing back to chunk numbers.",
+            "effectiveness": 1,
+            "why": "Grouping is not linking — nothing connects the same company or product across documents."
+          },
+          {
+            "stage": "insight",
+            "how": "It asks the model, in one line of prompt, to point out where excerpts disagree.",
+            "effectiveness": 1,
+            "why": "An instruction, not a detector."
+          },
+          {
+            "stage": "synthesize",
+            "how": "It writes a conclusion with three to five supporting arguments and cited evidence, exportable as Word (DOCX) or JSON from the command line.",
+            "effectiveness": 2,
+            "why": "Strong single shape, but no short, highlight or slide variants, and no export from the browser."
+          },
+          {
+            "stage": "models",
+            "how": "It routes between Ollama on your machine, OpenAI and Groq after a health check, and can be forced local-only.",
+            "effectiveness": 3,
+            "why": "Real choice with per-model prices and fallbacks, plus a reranker running in the same process."
+          },
+          {
+            "stage": "agents",
+            "how": "An agent runs its `mra` command line or calls the local web routes.",
+            "effectiveness": 1,
+            "why": "Clean entry points, but nothing registers with Claude Code or Codex."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 3,
+          "evidence": "src/lib/parsers/fileRouter.ts:104-162 routes PDF/XLSX/CSV/PPTX/DOCX to dedicated parsers; src/lib/parsers/urlScraper.ts:111 scrapes URLs via @tyroneross/scraper-app through api/local/scrape.ts; src/lib/parsers/hybridParser.ts:70-116 picks LlamaParse-cloud vs local per sensitivity; cli/index.ts:144 mra ingest <pathOrUrl>. On-demand only — no scheduler, no web-search, no DB/API connectors.",
+          "cite": "src/lib/parsers/fileRouter.ts:104-162; src/lib/parsers/urlScraper.ts:111; @tyroneross/scraper-app; api/local/scrape.ts; src/lib/parsers/hybridParser.ts:70-116; cli/index.ts:144",
+          "mark": "verified",
+          "plain": "It reads PDF, Excel, CSV, PowerPoint (PPTX) and Word (DOCX) files and scrapes web pages, choosing a cloud parser or a local one based on how sensitive the document looks. It only runs when you ask it to — there is no schedule and no web search."
+        },
+        "D2": {
+          "score": 2,
+          "evidence": "Per-parse confidenceScore (src/lib/parsers/pdf.ts:104, wordParser.ts:115); sensitivity classification by keyword list (hybridParser.ts:315-317 confidential|proprietary|classified) gates cloud vs local; theme tagging (src/lib/utils/themeExtractor.ts:9); naive Jaccard-ish dedup (src/lib/aggregation/aggregationEngine.ts:53-72). No source credibility tiers, no taxonomy, no cross-source dedup.",
+          "cite": "src/lib/parsers/pdf.ts:104; wordParser.ts:115; hybridParser.ts:315-317; src/lib/utils/themeExtractor.ts:9; src/lib/aggregation/aggregationEngine.ts:53-72",
+          "mark": "verified",
+          "plain": "Every parse gets a confidence number, documents are tagged by theme, and anything that looks confidential is kept away from cloud parsing. It does not rate how trustworthy a source is, and it only removes near-duplicates within a single run."
+        },
+        "D3": {
+          "score": 1,
+          "evidence": "No knowledge graph, no entity/relation extraction, no timelines. Only flat theme clustering (src/lib/aggregation/hierarchicalMerge.ts:78 clusterByTheme, with per-source fallback at :95-112) plus storage in LanceDB (src/lib/services/lanceVectorStore.ts:75) and Dexie/IndexedDB (src/lib/db/schema.ts). Citations are chunk-id links, not a graph.",
+          "cite": "src/lib/aggregation/hierarchicalMerge.ts:78; src/lib/services/lanceVectorStore.ts:75; src/lib/db/schema.ts",
+          "mark": "verified",
+          "plain": "It groups chunks by theme, stores them in a local vector database, and points citations back at chunk numbers. No people, companies or relationships are extracted, and there is no timeline or map of how anything connects."
+        },
+        "D4": {
+          "score": 1,
+          "evidence": "Contradiction handling exists only as a prompt instruction (hierarchicalMerge.ts:169 \"If the excerpts contradict each other, surface the contradiction…\"; same in hierarchicalChunkingService.ts:349). No trend detection, gap analysis, or comparison module — getCostComparison hits are about $ cost, not content (aiService.ts:983).",
+          "cite": "hierarchicalMerge.ts:169; hierarchicalChunkingService.ts:349; aiService.ts:983",
+          "mark": "verified",
+          "plain": "Contradiction handling is one line of instruction in a prompt asking the model to point out disagreements. Nothing detects trends, compares sources or names what is missing."
+        },
+        "D5": {
+          "score": 2,
+          "evidence": "One shape only: PyramidSummary = conclusion → 3-5 arguments → cited evidence (src/lib/constants.ts:184-205 prompts; hierarchicalMerge.ts:335 aggregateHierarchically two-pass cluster-then-merge with chunk re-injection and alias-mapped citations). Renderers: DOCX + JSON in cli/index.ts:332-390 (docx lib), React/markdown in src/components/PyramidSummary/PyramidSummary.tsx:101. No PPTX, no short/long variants, no email/memo. UI \"Export Summary\" button is dead — onExportSummary is never passed from src/App.tsx (SummaryPanel.tsx:929 renders it permanently disabled).",
+          "cite": "src/lib/constants.ts:184-205; hierarchicalMerge.ts:335; cli/index.ts:332-390; src/components/PyramidSummary/PyramidSummary.tsx:101; src/App.tsx; SummaryPanel.tsx:929",
+          "mark": "verified",
+          "plain": "It produces exactly one shape of answer — a conclusion, three to five supporting arguments, and cited evidence — and can save it as Word (DOCX) or JSON from the command line. The browser app's export button is permanently greyed out because it was never wired up."
+        },
+        "D6": {
+          "score": 3,
+          "evidence": "Provider registry src/lib/constants.ts:31-180 (ollama / openai / groq with ~9 Groq models, per-model pricing). Local: src/lib/services/ollamaService.ts:112 (chat + embed, env-overridable VITE_OLLAMA_CHAT_MODEL/_EMBED_MODEL, 404→qwen3:8b-q4_K_M fallback at :219). Router with health probe: aggregationEngine.ts:330 resolveProvider (ollama|openai|auto, localOnly forces local). Local embeddings + local cross-encoder rerank Xenova/bge-reranker-base (src/lib/services/reranker.ts:76). Config surface: .env.example, cli/config.ts (~/.market-research-app/config.json), Settings UI, ModelMigration for retired model IDs. No Anthropic/Gemini/LM Studio.",
+          "cite": "src/lib/constants.ts:31-180; src/lib/services/ollamaService.ts:112; qwen3:8b-q4_K_M; aggregationEngine.ts:330; Xenova/bge-reranker-base; src/lib/services/reranker.ts:76; .env.example; cli/config.ts; ~/.market-research-app/config.json",
+          "mark": "verified",
+          "plain": "It can run entirely on your machine through Ollama or call OpenAI or Groq, with roughly nine Groq models priced in a table, a health check before it chooses, and a local-only switch that forces everything offline. It also reranks results with a small model running in the same process."
+        },
+        "D7": {
+          "score": 1,
+          "evidence": "No plugin.json, no .claude-plugin/, no AGENTS.md, no MCP server (searched repo-wide). .claude/agents/*.md holds 8 generic project subagents (backend-api-engineer, system-architect, …) and market-research-app/.claude/settings.json only wires @tyroneross/bookmark snapshot hooks. Agent access is via the mra CLI (cli/bin.ts, commands scrape/parse/ingest/search/summarize/health/config) or the local HTTP routes under api/local/.",
+          "cite": "plugin.json; .claude-plugin/; AGENTS.md; .claude/agents/*.md; market-research-app/.claude/settings.json; @tyroneross/bookmark; cli/bin.ts; api/local/",
+          "mark": "verified",
+          "plain": "There is no plugin packaging and no tool server of any kind. An agent reaches it by running the `mra` command line or calling the local web routes."
+        }
+      },
+      "strengths": [
+        "The retrieval stack is genuinely mature: keyword and meaning-based search fused together, a graceful fallback when keyword search is unavailable, a reranker on by default, and an honest note that query rewriting did not help.",
+        "The merge step is defensive in ways that read as hard-won — short citation labels so small local models cite correctly, a character budget per cluster, and a per-source fallback documented against a real PowerPoint (PPTX) truncation failure.",
+        "A true local-only path runs end to end: read, embed, index, summarise and save a Word (DOCX) file with no cloud calls at all.",
+        "Privacy tiering is enforced in code rather than policy — documents that look confidential never reach the cloud parser."
+      ],
+      "gaps": [
+        "Roughly 900 lines across three modules have no callers outside themselves.",
+        "One so-called local model is really a keyword and pattern matcher with a hardcoded business-term list, now superseded by the Ollama path.",
+        "The browser app's export button does nothing, and Word (DOCX) export exists only on the command line. The two summarising paths have also drifted apart — the OpenAI branch still uses the older single-pass prompt with no context re-injection.",
+        "Repository hygiene is poor: about 25 status reports at the root, log files, 1.2 MB of committed performance output, screenshots, six ad-hoc test scripts, and a stale duplicate source folder sitting outside the repository.",
+        "An environment file sits on disk in the app root — inspect it before sharing the repository."
+      ],
+      "reuse": [
+        {
+          "path": "market-research-app/src/lib/services/lanceVectorStore.ts",
+          "what": "A local vector store with keyword and meaning-based search fused together, keyword index creation, and a fallback when keyword search is missing; you can swap in your own embedder."
+        },
+        {
+          "path": "market-research-app/src/lib/aggregation/hierarchicalMerge.ts",
+          "what": "A provider-agnostic cluster-then-merge summariser that returns a conclusion-first summary carrying its citations — the most portable piece here."
+        },
+        {
+          "path": "market-research-app/src/lib/services/ollamaService.ts + reranker.ts",
+          "what": "A local chat and embedding client with a fallback when the model is missing and a health check, plus a reranker that runs in the same process."
+        },
+        {
+          "path": "market-research-app/src/lib/parsers/ (fileRouter.ts, powerPointParser.ts, excelParser.ts, wordParser.ts, hybridParser.ts)",
+          "what": "Multi-format extraction with a confidence score per parse and routing that keeps sensitive documents off the cloud parser."
+        },
+        {
+          "path": "market-research-app/cli/index.ts",
+          "what": "The `mra` command set — scrape, parse, ingest, search, summarise, health — is the cleanest way for an agent to call it and the reference wiring for the whole pipeline."
+        }
+      ],
+      "role": "Reference only. Port its reranking and cluster-then-merge ideas into the spine, and park the app itself."
+    },
+    {
+      "id": "market-research-platform",
+      "name": "market-research-platform",
+      "kind": "platform",
+      "kindNote": "Web platform: Python API + React front end",
+      "oneLiner": "A local-first research platform with a Python web service and a React front end that reads uploaded documents and web pages, indexes them in a single local database for keyword and meaning-based search, and turns the result into a structured brief plus PowerPoint (PPTX), Word (DOCX), email, notes and outline documents.",
+      "plain": {
+        "whatItDoes": "You upload documents or paste web addresses, and it reads them — including scanned pages — chunks the text, and indexes it in one local database that supports both keyword and meaning-based search. It then builds a single structured brief from the retrieved chunks and rates the sources and claims behind it. Five separate writers turn that one brief into finished documents.",
+        "howUsed": "You use the React front end in a browser, or call the Python web service directly. There is no plugin, so an agent reads a handoff document and calls the web service.",
+        "unique": "It is the only tool here that reads scanned pages and the only one that writes email, meeting notes and an outline off the same brief."
+      },
+      "health": {
+        "state": "warn",
+        "summary": "FastAPI + React platform",
+        "lastCommit": "2026-06-11",
+        "tests": "~95 pytest (not run)"
+      },
+      "pipeline": {
+        "overview": "Documents are uploaded or scraped, read in Python, chunked, embedded, and stored in a single local database that serves both keyword and meaning-based search. A map-and-reduce pass turns the retrieved chunks into one structured brief, and five writers turn that brief into finished documents.",
+        "effectiveness": {
+          "score": 2,
+          "why": "The path from upload to finished document works and produces the widest range of outputs here, but the knowledge-graph half never runs and its test suite was not executed for this audit."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "It takes uploads and reads PDF, Word (DOCX), Excel, PowerPoint (PPTX) and scanned images, and fetches pages through a small Node helper.",
+            "effectiveness": 3,
+            "why": "The widest reading list here, scans included, but it only runs when asked."
+          },
+          {
+            "stage": "assess",
+            "how": "It rates source domains into four trust tiers, checks whether each claim is supported, and grades the finished brief on five dimensions.",
+            "effectiveness": 2,
+            "why": "Deterministic and reusable, and it needs no model to run."
+          },
+          {
+            "stage": "structure",
+            "how": "It embeds chunks into a local vector store, but the entity graph it defines never runs.",
+            "effectiveness": 0,
+            "why": "No live code path reaches the graph, so the store stays empty and no relationship is ever written."
+          },
+          {
+            "stage": "insight",
+            "how": "It pulls themes, claims, numbers, risks and actions out of the text with the surrounding context re-attached.",
+            "effectiveness": 1,
+            "why": "Extraction only — the comparison and trend prompts sit in the dead graph code."
+          },
+          {
+            "stage": "synthesize",
+            "how": "One brief feeds five writers: PowerPoint (PPTX), Word (DOCX), email, meeting notes and outline.",
+            "effectiveness": 3,
+            "why": "The broadest set of finished documents here, all driven from a single structure."
+          },
+          {
+            "stage": "models",
+            "how": "One interface covers Ollama, Apple-silicon local models (MLX) and Claude, with cloud calls blocked unless you allow them.",
+            "effectiveness": 2,
+            "why": "Solid design, but the Apple-silicon path is only half connected and can be sent the wrong model name."
+          },
+          {
+            "stage": "agents",
+            "how": "An agent calls its web service after reading a handoff document written in prose.",
+            "effectiveness": 1,
+            "why": "No plugin, no commands and no tool server."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 3,
+          "evidence": "Uploads + in-process parsers for PDF/DOCX/XLSX/PPTX/image-OCR/python (backend/app/parsers/__init__.py); URL ingest scrapes via Node sidecar /scrape (backend/app/api/documents.py:248-330, services/parser-sidecar/src/index.ts). All on-demand — no scheduler, no web-search API anywhere.",
+          "cite": "backend/app/parsers/__init__.py; /scrape; backend/app/api/documents.py:248-330; services/parser-sidecar/src/index.ts",
+          "mark": "verified",
+          "plain": "It accepts uploads and reads PDF, Word (DOCX), Excel, PowerPoint (PPTX) and scanned images, and fetches web pages through a small Node helper. Everything runs on request: nothing is scheduled and it cannot search the web."
+        },
+        "D2": {
+          "score": 2,
+          "evidence": "T1–T4 source-tier scorer with ~55 seeded domains (backend/app/verification/source_scoring.py:15-80); deterministic claim verification + confidence roll-up (backend/app/verification/brief.py:31-60); 5-dimension brief-fidelity rubric (backend/app/reporting/quality.py:1-40). No dedup, no taxonomy/tagging.",
+          "cite": "backend/app/verification/source_scoring.py:15-80; backend/app/verification/brief.py:31-60; backend/app/reporting/quality.py:1-40",
+          "mark": "verified",
+          "plain": "It rates source domains into four trust tiers using about 55 known sites, checks whether each claim in a brief is actually supported, and grades the finished brief on five dimensions. It does not remove duplicates or apply a tag taxonomy."
+        },
+        "D3": {
+          "score": 0,
+          "evidence": "Graph code exists but the runtime graph is empty. graph_store is imported only by graph/ingestion.py and graph/research.py; both are reachable only through graph/pipeline.py, whose ingestion and research entry points have no callers. The live api/documents.py path never touches graph_store, Kuzu, spaCy, or entity extraction. add_relation also has zero callers, so no relations can be written.",
+          "cite": "market-research-platform-findings.md:53-61; backend/app/storage/graph_store.py:131; backend/app/graph/ingestion.py:131-160; backend/app/graph/pipeline.py; backend/app/api/documents.py",
+          "mark": "verified",
+          "plain": "The code for a knowledge graph exists, but nothing in the running app ever calls it, so the graph stays empty. The function that would write a relationship between two things has no callers at all."
+        },
+        "D4": {
+          "score": 1,
+          "evidence": "Theme/claim/financial/risk/action extraction with context re-injection (backend/app/reporting/strategy.py:1-20); SWOT/competitive/trend prompts exist in backend/app/graph/research.py:61-66 but that graph is dead (no caller — see D8) and the API says so (backend/app/api/research.py:29-32). No contradiction or gap detection.",
+          "cite": "backend/app/reporting/strategy.py:1-20; backend/app/graph/research.py:61-66; backend/app/api/research.py:29-32",
+          "mark": "verified",
+          "plain": "It pulls themes, claims, numbers, risks and actions out of documents and feeds the surrounding text back in for context. The comparison and trend prompts sit in the dead graph code, and the live interface says so itself."
+        },
+        "D5": {
+          "score": 3,
+          "evidence": "Five renderers off one StrategyBrief: pptx_generator.py:117 (via vendored engines/pptx-builder build_deck + QA gauntlet), docx_generator.py:260, email_generator.py:22, notes_generator.py:23, outline_generator.py:20; registry at backend/app/graph/reporting.py:34-42. Plus Minto-pyramid answer synthesis in /ask (backend/app/api/documents.py:665) and an earnings_call prompt template (backend/app/reporting/prompts/earnings_call.py).",
+          "cite": "pptx_generator.py:117; engines/pptx-builder; docx_generator.py:260; email_generator.py:22; notes_generator.py:23; outline_generator.py:20; backend/app/graph/reporting.py:34-42; /ask; backend/app/api/documents.py:665; backend/app/reporting/prompts/earnings_call.py",
+          "mark": "verified",
+          "plain": "One brief drives five writers: PowerPoint (PPTX), Word (DOCX), an email, meeting notes and an outline. It also answers questions in a conclusion-first structure and carries a template for earnings calls."
+        },
+        "D6": {
+          "score": 2,
+          "evidence": "Real abstraction: LLMProvider base + OllamaProvider / MLXProvider / ClaudeProvider + LLMFactory with local-first, cloud_allowed-gated Claude fallback (backend/app/llm/factory.py:18-67,420-469). Embedder abstraction with Ollama / MLX / sentence-transformers (backend/app/embeddings/__init__.py:53-232). Config via MRP_* env / .env (backend/app/config.py:26-62). MLX is genuinely wired but half-integrated — see gaps.",
+          "cite": "backend/app/llm/factory.py:18-67,420-469; backend/app/embeddings/__init__.py:53-232; .env; backend/app/config.py:26-62",
+          "mark": "verified",
+          "plain": "One shared interface covers Ollama on your machine, Apple-silicon local models (MLX) and Claude in the cloud, with cloud calls blocked unless you allow them. If the configured Ollama model is missing it picks the strongest one you have installed instead of failing every call."
+        },
+        "D7": {
+          "score": 1,
+          "evidence": "No plugin.json, no .claude/skills|commands|agents|hooks (.claude/ holds only bookmarks + audit), no MCP server, no root AGENTS.md/CLAUDE.md. Agent entry is HANDOFF-TO-CODEX.md prose + the HTTP API. Vendored engines carry their own skill specs (engines/pptx-builder/SKILL.md, engines/docx-builder/skills/…, engines/pyramid-principle/AGENTS.md) but nothing registers them with a host.",
+          "cite": "plugin.json; .claude/skills|commands|agents|hooks; .claude/; AGENTS.md; CLAUDE.md; HANDOFF-TO-CODEX.md; engines/pptx-builder/SKILL.md; engines/docx-builder/skills/…; engines/pyramid-principle/AGENTS.md",
+          "mark": "verified",
+          "plain": "Nothing registers it with Claude Code or Codex — no plugin file, no commands, no tool server. An agent talks to its web service, guided by a handoff document written in prose."
+        }
+      },
+      "strengths": [
+        "The provider layer is real, not cosmetic: one interface, streaming you opt into, a per-call model override, and a mode switch that makes “local” actually mean local.",
+        "The vector store keeps a separate table per project and embedding model, so changing embedding model cannot corrupt earlier data and keyword search survives re-embedding.",
+        "Verification and quality run without a model at all — source tiering, claim support and a five-dimension rubric — so another repo could bolt them on unchanged.",
+        "If the configured Ollama model is not installed, it picks the strongest one you do have instead of failing on every call."
+      ],
+      "gaps": [
+        "The Apple-silicon local path stops at the factory: nothing in the health check, the model list or the front end knows about it, and tier selection still asks Ollama for model names, so with Apple-silicon selected and Ollama also running it can send the wrong model name. The tests use fakes only, so no live run has ever been made.",
+        "Choosing the Apple-silicon embedder forces a network call at selection time and raises an error if that server is down, with no fallback — unlike the Ollama path.",
+        "A whole pipeline is dead: its ingestion, research and graph-building entry points have no callers, and the live upload path re-implements reading, chunking and embedding itself.",
+        "Because the graph pipeline is unreachable the runtime graph store is empty, and the function that writes a relationship is never called. The interface still advertises a vector database it no longer uses."
+      ],
+      "reuse": [
+        {
+          "path": "backend/app/llm/factory.py",
+          "what": "A self-contained provider layer covering Ollama, Apple-silicon local models (MLX) and Claude, with the local-versus-cloud rule enforced; drop it into any repo that needs local-first generation."
+        },
+        {
+          "path": "backend/app/embeddings/__init__.py",
+          "what": "An embedder interface that probes what is available — Ollama first, then Apple-silicon, then a Python fallback — and returns normalised vectors."
+        },
+        {
+          "path": "backend/app/storage/vector_store.py",
+          "what": "Keyword and meaning-based search over one local database file, fused and ranked, with tables kept separate per embedding model and a re-embed command. Almost no dependencies."
+        },
+        {
+          "path": "backend/app/verification/ (source_scoring.py + brief.py)",
+          "what": "Deterministic four-tier domain rating and claim-support checking, taking plain dictionaries and one typed brief as input."
+        },
+        {
+          "path": "backend/app/reporting/ renderers (pptx_generator.py, docx_generator.py, email_generator.py, notes_generator.py, outline_generator.py)",
+          "what": "Five writers that all take the same brief and a destination and produce PowerPoint (PPTX), Word (DOCX), an email, meeting notes or an outline. Pure Python, no model needed."
+        }
+      ],
+      "role": "A donor for the vector store, the embedders, the Apple-silicon runner, the email, notes and outline writers, and scanned-page reading. Its React front end is the natural face for a platform later; the agent workflow does not need it."
+    },
+    {
+      "id": "omniparse",
+      "name": "Omniparse",
+      "kind": "library",
+      "kindNote": "Published TypeScript SDK and command-line tool",
+      "oneLiner": "A published TypeScript library and command-line tool, plus an optional local web app, that converts Excel, PowerPoint (PPTX), Python and PDF files and whole folders into markdown, plain text and JSON that a language model can read. It extracts and nothing more — there is no intelligence layer.",
+      "plain": {
+        "whatItDoes": "You point it at a file or a folder and it opens the file format directly and returns the text, the structure, and an estimate of how many tokens the result will cost. Inside a spreadsheet it captures merged cells, links, named ranges, charts, comments and embedded images; inside a deck it captures slide text and speaker notes. It never scores, links, or summarises anything.",
+        "howUsed": "You run its command line on a path or import the published package. The research plugin already bundles a copy and calls it as a subprocess.",
+        "unique": "It is the only reader here that is published, signed and tested against 39 real binary files rather than fakes."
+      },
+      "health": {
+        "state": "ok",
+        "summary": "Published TS SDK + CLI",
+        "lastCommit": "2026-06-08",
+        "tests": "51/51 pass"
+      },
+      "pipeline": {
+        "overview": "You give it a file or a folder, it opens the file format directly, and it returns the same result shape every time: markdown, plain text, structure and a token estimate. Nothing is stored, scored or summarised — it hands the text to whatever called it.",
+        "effectiveness": {
+          "score": 2,
+          "why": "It does one job reliably and is already bundled inside the research plugin, but it stops at extraction, so on its own it answers no research question."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "It reads local Excel, PowerPoint (PPTX), Python and PDF files, and whole folders, several at a time.",
+            "effectiveness": 2,
+            "why": "Fast and dependable for those formats, but it rejects web addresses and cannot read scans."
+          },
+          {
+            "stage": "assess",
+            "how": "It labels a file by its extension and estimates its token cost.",
+            "effectiveness": 1,
+            "why": "That is classification, not judgement — nothing is scored, tagged or de-duplicated."
+          },
+          {
+            "stage": "structure",
+            "how": "It captures deep structure inside one document, down to merged cells, charts, comments and slide notes.",
+            "effectiveness": 1,
+            "why": "Nothing connects one document to another."
+          },
+          {
+            "stage": "insight",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "The nearest thing is a count of what a spreadsheet contains, which describes the file rather than saying anything about it."
+          },
+          {
+            "stage": "synthesize",
+            "how": "Each reader can emit markdown, plain text or JSON, plus sized chunks meant for search.",
+            "effectiveness": 1,
+            "why": "Format conversion, not writing — no template decides how long the output should be."
+          },
+          {
+            "stage": "models",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "There is no model, embedding or provider code anywhere in it."
+          },
+          {
+            "stage": "agents",
+            "how": "An agent runs the command line or imports the published package.",
+            "effectiveness": 1,
+            "why": "Easy to call, but it registers with neither Claude Code nor Codex."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 2,
+          "evidence": "Local files only: .xlsx/.xls/.csv/.tsv/.ods/.xlsb, .pptx, .py, .pdf, and recursive directories — packages/sdk/src/router.ts:88,116,175; concurrency-limited batch via p-limit. On-demand only; no scheduler, no web search, no scraping, no API/DB ingest — URLs are explicitly rejected (packages/sdk/tests/run-tests.ts:37). Second ingest path = HTTP upload packages/web/app/api/parse/route.ts:44. PDF extraction is hand-rolled BT/ET + FlateDecode regex, text-PDF only, no OCR (router.ts:507-538).",
+          "cite": ".xlsx/.xls/.csv/.tsv/.ods/.xlsb; .pptx; .py; .pdf; packages/sdk/src/router.ts:88,116,175; packages/sdk/tests/run-tests.ts:37; packages/web/app/api/parse/route.ts:44; router.ts:507-538",
+          "mark": "verified",
+          "plain": "It reads local Excel, PowerPoint (PPTX), Python and PDF files, and whole folders at a time, with a limit on how many run at once. Web addresses are rejected outright, there is no schedule, and PDF reading is text-only with no support for scans."
+        },
+        "D2": {
+          "score": 1,
+          "evidence": "Only extension-based type classification (router.ts:104-130) and heuristic token estimation. No scoring, credibility tiers, tagging, dedup, or taxonomy — grep for those terms returns nothing outside CSS class names. Web UI \"types\" are display color maps (packages/web/lib/mock-data.ts:20).",
+          "cite": "router.ts:104-130; packages/web/lib/mock-data.ts:20",
+          "mark": "verified",
+          "plain": "It classifies files by their extension and estimates how many tokens each will cost. There is no scoring, tagging, trust rating or duplicate removal."
+        },
+        "D3": {
+          "score": 1,
+          "evidence": "Rich intra-document structure: merged cells, hyperlinks, named ranges, charts+series, comments, embedded images (packages/sdk/src/parsers/excel-parser-rich.ts:106,887); Python imports/functions/classes/variables (python-parser.ts:19-137); PPTX slides + speaker notes. Storage is a 2-table SQLite schema, Project→Document only (packages/web/lib/db.ts:31-71). No entity/relation extraction, no cross-document linking, no clustering, no timeline, no graph store, no visualization.",
+          "cite": "packages/sdk/src/parsers/excel-parser-rich.ts:106,887; python-parser.ts:19-137; packages/web/lib/db.ts:31-71",
+          "mark": "verified",
+          "plain": "Inside a single document it captures a lot of structure — merged cells, links, named ranges, charts, comments, embedded images, slide notes, and Python imports and functions. Across documents there is nothing: no entities, no links, no clustering, and storage is a two-table list of projects and documents."
+        },
+        "D4": {
+          "score": 0,
+          "evidence": "Absent. Closest artifact is buildStructureSummary() (packages/sdk/src/parsers/excel-parser-fast.ts:644) — descriptive counts (hasRichContent, image/chart counts), not analysis. No trend, comparison, contradiction, or gap logic anywhere.",
+          "cite": "packages/sdk/src/parsers/excel-parser-fast.ts:644",
+          "mark": "verified",
+          "plain": "It does not analyse anything. The closest artifact is a count of what a spreadsheet contains, which describes the file rather than saying anything about it."
+        },
+        "D5": {
+          "score": 1,
+          "evidence": "Three renderers per parser: generateMarkdown() / generatePlainText() / JSON (python-parser.ts:819,915; CLI -f markdown|text|json at packages/sdk/bin/omniparse.ts:65). RAG-oriented buildChunks() emits typed content chunks (excel-parser-fast.ts:568). No report, exec-summary, memo, email, or PPTX-outline template exists — output length is a function of input size, not an author-chosen register.",
+          "cite": "python-parser.ts:819,915; packages/sdk/bin/omniparse.ts:65; excel-parser-fast.ts:568",
+          "mark": "verified",
+          "plain": "Each reader can emit markdown, plain text or JSON, plus sized chunks meant for search. There is no report, summary, memo or slide template — the length of the output is decided by the size of the input."
+        },
+        "D6": {
+          "score": 0,
+          "evidence": "Zero LLM code. Full-repo grep for ollama|mlx|llama|openai|anthropic|claude|gemini|groq|bedrock|litellm hits only prose comments and one bookmark snapshot. No embeddings, no vector store, no provider abstraction, no model env vars. SDK runtime deps are p-limit + sax only (packages/sdk/package.json). \"LLM-ready\" means token-counted Markdown, nothing more.",
+          "cite": "packages/sdk/package.json",
+          "mark": "verified",
+          "plain": "There is no model code at all: no providers, no embeddings, no model settings, and only two small runtime dependencies. “Ready for a language model” here just means markdown with a token count."
+        },
+        "D7": {
+          "score": 1,
+          "evidence": "Not a plugin: no plugin.json, .claude-plugin/, AGENTS.md, MCP server, skills, commands, or agents (find returns empty). .claude/settings.json holds only @tyroneross/bookmark context-snapshot hooks — unrelated to parsing. An agent invokes it as a subprocess or import: npx omniparse <path> -f json, or import { parse } from '@tyroneross/omniparse'. Clean, but no first-class agent surface.",
+          "cite": "plugin.json; .claude-plugin/; AGENTS.md; .claude/settings.json; @tyroneross/bookmark; import { parse } from '@tyroneross/omniparse'",
+          "mark": "verified",
+          "plain": "It is not a plugin and has no tool server. An agent uses it by running the command line or importing the published package, which is clean but not a first-class way for an agent to reach it."
+        }
+      },
+      "strengths": [
+        "Real, tested, single-pass reading of Office file formats with no Python or native dependencies — the rich Excel support is reverse-engineered straight from the file's internal structure and is genuinely hard-won.",
+        "Every reader returns the same result shape with markdown, text, structure, a token estimate and a parse time, which makes it trivial to slot in as someone else's reading step.",
+        "All 51 tests run against 39 real binary files, not fakes.",
+        "It is published with signed provenance and releases to two registries automatically."
+      ],
+      "gaps": [
+        "The command line is a second implementation of the router: it re-declares the list of supported file types and loads readers directly, so two detection tables must be kept in step and the command line silently misses any router improvement.",
+        "Word (DOCX) test files exist with no Word reader to open them, implying a capability that never shipped.",
+        "Search in the optional app scans whole columns with no index, no ranking and no real snippets.",
+        "16 MB of build output is committed alongside two leftover cleanup folders, and the readme says MIT while the package says Apache-2.0."
+      ],
+      "reuse": [
+        {
+          "path": "packages/sdk/src/router.ts",
+          "what": "The whole reading front door — parse one file, parse many, detect what a file is — with a limit on concurrency and one uniform result shape."
+        },
+        {
+          "path": "packages/sdk/src/parsers/excel-parser-rich.ts:887 extractRichContent(buffer)",
+          "what": "Takes a spreadsheet held in memory and returns its images, charts, comments, merged cells, links and named ranges. No filesystem needed; the most valuable standalone piece here."
+        },
+        {
+          "path": "packages/sdk/src/parsers/python-parser.ts:197 parsePythonSource()",
+          "what": "Static analysis of Python source returning its imports, functions, classes and variables without running it — usable as a code-entity extractor feeding someone else's graph builder."
+        },
+        {
+          "path": "packages/sdk/src/parsers/excel-parser-fast.ts:568 buildChunks()",
+          "what": "Emits typed, size-limited chunks built for embedding and search — the natural place to attach the embedder this repo lacks."
+        },
+        {
+          "path": "packages/sdk/src/parsers/pptx-parser-fast.ts:323 parsePptxFile()",
+          "what": "Reads a PowerPoint (PPTX) file in one pass and returns slide text and speaker notes together, with no Python dependency."
+        }
+      ],
+      "role": "Keep it as it is and call it as a subprocess. Fix the duplicate file-type table, and add Word (DOCX) reading."
+    },
+    {
+      "id": "local-smartz",
+      "name": "local-smartz",
+      "kind": "app",
+      "kindNote": "Python app with command line, local server, and Mac app",
+      "oneLiner": "A local-first research app that routes a question through a planner, a researcher, an analyser, a fact-checker and a writer, each running on a model you choose, and saves the result as a Markdown, web page or Word (DOCX) report. It ships as a command line, a local server and a Mac app.",
+      "plain": {
+        "whatItDoes": "You ask it a research question and five specialist roles work the answer in turn: plan, research, analyse, fact-check, write. It searches and scrapes the web, reads PDF, spreadsheet and text files, and computes every number by running code rather than asserting it. If the fact-checker says facts are missing, the work goes back to the researcher, up to twice.",
+        "howUsed": "You run its command with a question, open its local web interface, or use the Mac app. Another agent can call it as a subprocess or over its web interface.",
+        "unique": "It is the only tool here that hosts other people's plugins and speaks the tool-server protocol (MCP) as a client."
+      },
+      "health": {
+        "state": "ok",
+        "summary": "Python app + macOS shell",
+        "lastCommit": "2026-07-16",
+        "tests": "1003 passed / 4 skipped"
+      },
+      "pipeline": {
+        "overview": "A question goes to a planner, which hands it to a researcher, an analyser, a fact-checker and a writer in turn, each on a model you pin per role. The researcher searches and scrapes, the analyser computes every number by running code, the fact-checker sends the draft back if facts are missing, and the writer saves a Markdown, web page or Word (DOCX) report.",
+        "effectiveness": {
+          "score": 2,
+          "why": "The agent loop and the model router are both mature and heavily tested, but nothing is remembered between runs in a searchable form, so every question starts from zero."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "Its agents scrape pages, search the web, and read PDF, spreadsheet and text files on request.",
+            "effectiveness": 2,
+            "why": "Good coverage for a live question, but there is no schedule, watcher or database connector."
+          },
+          {
+            "stage": "assess",
+            "how": "It grades its own drafts with a pass-or-needs-more verdict and a four-axis rubric.",
+            "effectiveness": 1,
+            "why": "It judges output quality and never the trustworthiness of what it read."
+          },
+          {
+            "stage": "structure",
+            "how": "It does not do this.",
+            "effectiveness": 0,
+            "why": "Results are flat JSON files, and the embedding models in its catalogue are never used."
+          },
+          {
+            "stage": "insight",
+            "how": "The fact-checker names missing facts and the pipeline re-runs the researcher up to twice, while the analyser compares sources and flags outliers.",
+            "effectiveness": 2,
+            "why": "The loop is wired into the code, not just requested in a prompt."
+          },
+          {
+            "stage": "synthesize",
+            "how": "It writes Markdown, web page and Word (DOCX) reports and spreadsheets from one template.",
+            "effectiveness": 2,
+            "why": "Real files, but PowerPoint is a text outline only and there is no email or memo form."
+          },
+          {
+            "stage": "models",
+            "how": "One interface covers Ollama on your machine plus Anthropic, OpenAI and Groq, with a model pinned per role and a privacy switch that fails closed.",
+            "effectiveness": 3,
+            "why": "The most complete model layer here, with retries, cost estimates and picks that match your machine's memory."
+          },
+          {
+            "stage": "agents",
+            "how": "It hosts Claude Code plugins and speaks the tool-server protocol (MCP) as a client, and is itself called as a command or over its web interface.",
+            "effectiveness": 2,
+            "why": "Both of those are switched off on the default path, so most runs never see them."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 2,
+          "evidence": "tools/web.py:172 scrape_url (httpx+bs4, HTML tables→markdown at :147), :237 web_search (ddgs); tools/documents.py:10 parse_pdf (pypdf→pdfplumber fallback :63), :103 read_spreadsheet (openpyxl), :186 read_text_file. All on-demand tool calls only — no scheduler/cron/watcher anywhere in src/, no DB or API connectors.",
+          "cite": "tools/web.py:172; :147; :237; tools/documents.py:10; :63; :103; :186; src/",
+          "mark": "verified",
+          "plain": "It scrapes web pages, searches the web, and reads PDF, spreadsheet and text files as tools its agents can call. Every call happens on request — there is no scheduler, watcher or database connector anywhere in it."
+        },
+        "D2": {
+          "score": 1,
+          "evidence": "No source scoring, credibility tiering, taxonomy, or content dedup. What exists grades agent output, not data: agents/prompts/fact_checker.md:37 verdict contract {\"verdict\":\"ok\"|\"needs_more\",\"missing_facts\":[]}, agents/prompts/reflector.md:13 4-axis rubric. agent_scorecard.py:1 and query_doe.py:1 score the harness/router, not ingested material. Only dedup is per-turn tool-call suppression (serve.py:2309).",
+          "cite": "agents/prompts/fact_checker.md:37; agents/prompts/reflector.md:13; agent_scorecard.py:1; query_doe.py:1; serve.py:2309",
+          "mark": "verified",
+          "plain": "What it grades is its own output, not the material it reads: a fact-checker returns a pass-or-needs-more verdict naming the facts still missing, and a reflector scores drafts on four axes. There is no source trust rating, tag taxonomy or duplicate removal."
+        },
+        "D3": {
+          "score": 0,
+          "evidence": "No networkx/neo4j/entity/relation/cluster/ontology code — grep over src/**/*.py returns nothing. Structure is flat JSON: artifacts.py:82 .localsmartz/artifacts/index.json, threads.py:50 per-thread JSON + langgraph-checkpoint-sqlite for conversation state. Embedding models are cataloged but dead — models/catalog.py:204 qwen3-embedding entries and models/registry.py:11 \"embed\" Role literal have no consumer; no vector store, no retrieval.",
+          "cite": "src/**/*.py; artifacts.py:82; .localsmartz/artifacts/index.json; threads.py:50; models/catalog.py:204; models/registry.py:11",
+          "mark": "verified",
+          "plain": "Nothing extracts entities or relationships, and there is no graph and no vector store. Results are saved as flat JSON files, and the embedding models listed in its catalogue have no code behind them."
+        },
+        "D4": {
+          "score": 2,
+          "evidence": "Gap analysis is real and enforced: fact-checker names missing facts and the graph re-runs the researcher up to pipeline.py:62 MAX_FACT_CHECK_ITERATIONS = 2. agents/prompts/analyzer.md:10 mandates cross-source comparison and outlier/inconsistency flagging with every number computed via python_exec (tools/compute.py). Critique loops in patterns/critic_loop.py, patterns/reflection.py. No trend detection over time, no corpus-level contradiction detection.",
+          "cite": "pipeline.py:62 MAX_FACT_CHECK_ITERATIONS = 2; agents/prompts/analyzer.md:10; tools/compute.py; patterns/critic_loop.py; patterns/reflection.py",
+          "mark": "verified",
+          "plain": "The fact-checker names the facts a draft is missing and the pipeline sends the researcher back for them, capped at two rounds. The analyser must compare sources, flag outliers and compute every number by running code rather than asserting it, but nothing tracks trends over time or compares across a whole collection."
+        },
+        "D5": {
+          "score": 2,
+          "evidence": "tools/reports.py:12 create_report with three real renderers — _create_markdown_report:179, _create_docx_report:228 (python-docx), _create_html_report:300 — plus create_spreadsheet:71. Template is agents/prompts/writer.md:19 (Title / Exec Summary / Key Findings / Detailed Analysis / Recommendations / Sources). PowerPoint is prompt-only: agent.py:141-143 instructs a # Slide N: <title> markdown outline and explicitly forbids .pptx binary output — no python-pptx dependency. No email/memo template.",
+          "cite": "tools/reports.py:12; _create_markdown_report:179; _create_docx_report:228; _create_html_report:300; create_spreadsheet:71; agents/prompts/writer.md:19; agent.py:141-143; .pptx",
+          "mark": "verified",
+          "plain": "It writes Markdown, web page and Word (DOCX) reports plus spreadsheets, all from one template covering title, summary, findings, analysis, recommendations and sources. PowerPoint is text only — the agents are told to write a slide outline and are explicitly forbidden from producing a real deck file."
+        },
+        "D6": {
+          "score": 3,
+          "evidence": "Central abstraction: runners/base.py AgentRunner Protocol + ModelRef, runners/factory.py:101-112 dispatches ollama / anthropic / openai / groq (groq = openai-compat base_url, :179); cloud SDKs lazy-imported with ImportError guards (runners/__init__.py:32-40). Privacy gate fails closed: factory.py:103 + :47-73 deny cloud when global.json is unreadable. Per-role model pinning (global_config.py:30 agent_models, profiles.py:265 global_pinned_model), model catalog/registry/resolver (models/), keyring secrets (secrets.py), retry at the runner turn (runners/_retry.py), cost estimation (cost.py), plus benchmarking/model_eval/DOE harnesses.",
+          "cite": "runners/base.py; runners/factory.py:101-112; :179; runners/__init__.py:32-40; factory.py:103; :47-73; global.json; global_config.py:30 agent_models; profiles.py:265 global_pinned_model; models/; secrets.py; runners/_retry.py; cost.py",
+          "mark": "verified",
+          "plain": "One interface covers Ollama on your machine plus Anthropic, OpenAI and Groq, you can pin a different model to each role, and the privacy switch refuses cloud calls when its own settings cannot be read. It also retries failed turns, estimates cost, and matches model choice to how much memory your machine has."
+        },
+        "D7": {
+          "score": 2,
+          "evidence": "Inverted — it is a host, not a plugin. No .claude-plugin/ or plugin.json of its own; .claude/ holds only settings + bookmark snapshots, and AGENTS.md is @tyroneross/bookmark boilerplate, not Codex instructions. It consumes Claude-Code-shaped extensions: plugins/discovery.py:8-61 finds plugin.json/SKILL.md/commands/hooks/agents/.mcp.json, plugins/mcp_client.py:29 is a full stdio MCP client (initialize/list_tools/call_tool), plugins/tools_adapter.py binds them as agent tools. An agent invokes local-smartz as a subprocess (localsmartz \"<query>\") or over HTTP (serve.py:1253 /api/research, SSE). ⚠️ Caveat: the default graph path disables both — pipeline.py:151-159 passes include_plugin_tools=False, include_mcp=False, and pipeline.py:65-78 makes the graph the default, so MCP/plugin tools only reach the model on the legacy DeepAgents path (LOCALSMARTZ_PIPELINE=orchestrator).",
+          "cite": ".claude-plugin/; plugin.json; .claude/; AGENTS.md; plugins/discovery.py:8-61; SKILL.md; .mcp.json; plugins/mcp_client.py:29; plugins/tools_adapter.py; serve.py:1253 /api/research; pipeline.py:151-159; pipeline.py:65-78",
+          "mark": "verified",
+          "plain": "It is the host rather than the plugin: it finds Claude Code plugins and skills on disk and speaks the tool-server protocol (MCP) as a client. Both are switched off on the default path, so those tools only reach the model on the older pipeline."
+        }
+      },
+      "strengths": [
+        "The model layer is mature and safety-conscious: one interface, four providers, and a local-only rule that refuses cloud calls when its own settings cannot be read.",
+        "Numbers are trustworthy by construction — the analyser has to compute every statistic by running code rather than stating it.",
+        "Fact-check-and-redo is built into the pipeline rather than requested in a prompt: a needs-more verdict sends the work back to the researcher, capped at two rounds.",
+        "1003 tests pass in about 100 seconds, covering routing, fallback, cost, local-only enforcement and plugin handling."
+      ],
+      "gaps": [
+        "Embeddings and retrieval are catalogue entries with no code behind them, so any search-by-meaning work starts from nothing.",
+        "Plugin and tool-server support are switched off on the default path, while the readme says they are being wired up.",
+        "The pluggable-domain idea is a scaffold: the one pack that exists re-exports the same eight tools.",
+        "Two complete execution backends, about 2,500 lines, are maintained side by side, and the code documents a deliberate duplicate that must not be merged."
+      ],
+      "reuse": [
+        {
+          "path": "src/localsmartz/runners/ (base.py, factory.py, cloud_anthropic.py, cloud_openai_compat.py, local_ollama.py, _retry.py)",
+          "what": "A drop-in model router: ask for a provider, get a model, with local-only enforcement that fails closed and a retry at the turn level. The single highest-value export here."
+        },
+        {
+          "path": "src/localsmartz/tools/reports.py",
+          "what": "Self-contained Markdown, web page, Word (DOCX) and spreadsheet writers that register what they produce; they need only two small libraries."
+        },
+        {
+          "path": "src/localsmartz/plugins/mcp_client.py",
+          "what": "A dependency-free client for the tool-server protocol (MCP) over standard input and output, usable by any Python program."
+        },
+        {
+          "path": "src/localsmartz/agents/prompts/*.md",
+          "what": "Nine role prompts with explicit rules about the shape of their answers, portable to any agent setup."
+        },
+        {
+          "path": "src/localsmartz/models/ (catalog.py, registry.py, resolve.py, preflight.py)",
+          "what": "A catalogue of local models tagged by role, with picks that match the memory your machine actually has."
+        }
+      ],
+      "role": "A donor for the model router and the tool-server client. It stays the local-first runner and interface that calls the spine."
+    },
+    {
+      "id": "research-plugin",
+      "name": "research-plugin",
+      "kind": "plugin",
+      "kindNote": "Claude Code + Codex plugin, installed in both",
+      "oneLiner": "A research plugin that runs inside both Claude Code and Codex and keeps every finding in one searchable library of markdown notes backed by a small local database. It rates how trustworthy each source is, checks claims, links notes to each other, and tracks when a note has gone stale. It never calls a model itself — the assistant you are already talking to does that work.",
+      "plain": {
+        "whatItDoes": "It saves what you research into one library of markdown notes and indexes them so you can search them later. Before saving, it rates the sources by how trustworthy their domain is, checks the numbers and citations in the claims, and records a single confidence mark on the entry. Over time it flags notes that have gone stale and rebuilds hub pages by topic, tag, and project.",
+        "howUsed": "You call it from one of 22 slash commands inside Claude Code or Codex, or run its command line directly. A save hook re-reads a file whenever you write to it.",
+        "unique": "It is the only tool here installed in both Claude Code and Codex, and the only one with a live library — 187 entries, last written to the day before this audit."
+      },
+      "health": {
+        "state": "ok",
+        "summary": "Live KB 187 entries · dual-host plugin",
+        "lastCommit": "2026-07-14",
+        "tests": "3/3 checks pass"
+      },
+      "pipeline": {
+        "overview": "The assistant does the reading and the writing; the plugin does everything deterministic around it. Findings become three-layer markdown notes, indexed in a small local database, scored for source trust and claim support, linked to related notes, and re-checked for staleness as they age.",
+        "effectiveness": {
+          "score": 3,
+          "why": "It is the only tool here in daily use with a live library, and every step it owns runs without a model, so it works the same in either host."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "It reads PDF, Excel, PowerPoint (PPTX), CSV and Python files through a bundled copy of Omniparse, and links whole project folders.",
+            "effectiveness": 2,
+            "why": "Solid local intake, but it never searches the web itself and the only automatic trigger re-reads a file after you save it."
+          },
+          {
+            "stage": "assess",
+            "how": "It tiers source domains, blocks known misinformation sites, picks a research depth with a required mix of sources, and verifies claims four ways.",
+            "effectiveness": 3,
+            "why": "The most complete scoring here, and it writes the verdict back onto the entry as one confidence mark."
+          },
+          {
+            "stage": "structure",
+            "how": "It turns wiki-style links into a two-way backlink list and rebuilds topic, tag and project hub pages.",
+            "effectiveness": 2,
+            "why": "Real linking between notes, but it never names the people or companies inside them and cannot search by meaning."
+          },
+          {
+            "stage": "insight",
+            "how": "Contradiction, gap and trend hunting are written instructions the assistant is told to follow.",
+            "effectiveness": 1,
+            "why": "The only automatic signals are how stale an entry is and how certain its input data looked."
+          },
+          {
+            "stage": "synthesize",
+            "how": "It supplies five report templates, three writing modes, and checkable rules for what each output must contain.",
+            "effectiveness": 2,
+            "why": "Strong guidance, but nothing renders a slide deck or a document file — every output is markdown the assistant writes."
+          },
+          {
+            "stage": "models",
+            "how": "It does not do this, and that is deliberate.",
+            "effectiveness": 0,
+            "why": "The written rule is that the assistant hosting the plugin does all model work, which keeps the plugin dependency-free."
+          },
+          {
+            "stage": "agents",
+            "how": "It installs as a plugin in both Claude Code and Codex with 22 commands, a skill, and a save hook.",
+            "effectiveness": 3,
+            "why": "The only tool here that is first-class in both hosts, with one code path serving each."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 2,
+          "evidence": "No web search/scrape in code — delegated to host tools by policy (CLAUDE.md:11, AGENTS.md connector policy enforced by tests/connector_policy_check.py:19). Real local intake: vendored Omniparse for .pdf/.xlsx/.xls/.csv/.tsv/.ods/.xlsb/.pptx/.py (research.py:3177, research.py:3193, binary present at vendor/omniparse/dist/bin/omniparse.js, 5.3 MB), markdown bulk ingest (research.py:3557), recursive project-dir linking (research.py:1358), CSV/JSON/SQLite profiling (research.py:2501, research.py:2520). On-demand only; the sole \"scheduler\" is a PostToolUse Write/Edit re-ingest hook (hooks/hooks.json:5). Only outbound HTTP is OpenAlex + arXiv (research.py:1903, research.py:1949).",
+          "cite": "CLAUDE.md:11; AGENTS.md; tests/connector_policy_check.py:19; .pdf/.xlsx/.xls/.csv/.tsv/.ods/.xlsb/.pptx/.py; research.py:3177; research.py:3193; vendor/omniparse/dist/bin/omniparse.js; research.py:3557; research.py:1358; research.py:2501; research.py:2520; hooks/hooks.json:5; research.py:1903; research.py:1949",
+          "mark": "verified",
+          "plain": "It reads PDF, Excel, CSV, PowerPoint (PPTX) and Python files through a bundled copy of Omniparse, bulk-loads markdown, links whole project folders, and profiles spreadsheets and small databases. It never searches the web itself — that is left to the assistant hosting it — and the only automatic trigger re-reads a file after you save it."
+        },
+        "D2": {
+          "score": 3,
+          "evidence": "Central and mature. Deterministic domain-tier rules T1–T4 (research.py:1818) over a 52-domain seed + misinformation blocklist (data/domain-scores-seed.json, data/iffy-domains.csv, loaded at research.py:313); depth classifier light/standard/deep with per-depth source-mix quotas (research.py:1078, research.py:1149); 4-verifier claim check — numeric/symbolic/citation/code (research.py:2006–research.py:2125) rolling up to a verified|partial|inferred confidence in frontmatter (research.py:2178); staleness score = f(months, topic velocity, orphan) (research.py:3029); slug-collision dedup (research.py:381); taxonomy re-clustering (research.py:3395).",
+          "cite": "research.py:1818; data/domain-scores-seed.json; data/iffy-domains.csv; research.py:313; research.py:1078; research.py:1149; research.py:2006; research.py:2125; research.py:2178; research.py:3029; research.py:381; research.py:3395",
+          "mark": "verified",
+          "plain": "It sorts source domains into four trust tiers from a 52-site seed list plus a misinformation blocklist, picks a research depth with a required mix of sources, and checks claims four ways — numbers, symbols, citations and code — rolling the result into one confidence mark on the entry. It also scores how stale an entry has become and re-clusters the topic tree."
+        },
+        "D3": {
+          "score": 2,
+          "evidence": "Real but shallow: [[slug]] wikilinks are parsed and materialized into a bidirectional inbound[] backlink graph in both DB and frontmatter (research.py:1683–research.py:1712, schema research.py:82); topic/tag/project MOC hierarchies rebuilt to markdown (research.py:1609); sub-prefix clustering proposals (research.py:3412). No entity/relationship extraction in executing code — the entity + relationship tables and concept maps exist only as LLM prompt scaffolding (skills/research/references/active-project-ingestion.md:132, :191). No graph DB, no visualization, no embeddings or vector store anywhere.",
+          "cite": "research.py:1683; research.py:1712; research.py:82; research.py:1609; research.py:3412; skills/research/references/active-project-ingestion.md:132; :191",
+          "mark": "verified",
+          "plain": "Notes link to each other with wiki-style links, and those links become a two-way list of what points here, plus rebuilt topic, tag and project hub pages. It does not pull out people, companies or relationships in running code — those tables exist only as instructions for the assistant."
+        },
+        "D4": {
+          "score": 1,
+          "evidence": "Prompt-only. Zero matches for contradict in research.py; contradiction/gap/conflict/trend logic lives entirely in skill references the LLM is told to follow (skills/research/references/synthesis.md:62, :65; collection.md:212). Deterministic insight surfaces are limited to temporal staleness (research.py:3048) and input-certainty grading (research.py:2579).",
+          "cite": "research.py; skills/research/references/synthesis.md:62; :65; collection.md:212; research.py:3048; research.py:2579",
+          "mark": "verified",
+          "plain": "Contradiction, gap and trend detection live entirely in written instructions the assistant follows; no code looks for them. The only automatic signals are how stale an entry is and how certain its input data looked."
+        },
+        "D5": {
+          "score": 2,
+          "evidence": "Strong templates, no renderers. 5 named report templates — Current State, Comparison, Evaluation, Deep Dive, Survey (skills/research/references/templates.md:5–:175); three synthesis modes Authorial / Executive / Temporal-Arc with a Pyramid-Principle exec structure (synthesis.md:9–:132); machine-checkable output contracts for Evidence Package, Authorial, and Executive outputs (output-contracts.md:5, :115, :171); 3-layer TL;DR/Notes/Raw entry format enforced in code (research.py:208) with a reversible Raw-compression path (research.py:3092). No PPTX/DOCX/email/memo renderer exists — .pptx appears only as an Omniparse input type (research.py:3181). All output is markdown written by the LLM.",
+          "cite": "skills/research/references/templates.md:5; :175; synthesis.md:9; :132; output-contracts.md:5; :115; :171; research.py:208; research.py:3092; .pptx; research.py:3181",
+          "mark": "verified",
+          "plain": "It ships five report templates, three writing modes including a conclusion-first executive form, and machine-checkable rules for what each output must contain. Nothing renders a file, though — every output is markdown the assistant writes."
+        },
+        "D6": {
+          "score": 0,
+          "evidence": "Deliberately zero. Explicit policy \"Don't call external LLM APIs from scripts. Claude (this runtime) does any LLM work\" (CLAUDE.md:49). No provider SDK, router, factory, or fallback logic; no embedding model config; sole dependency is PyYAML (requirements.txt:1). Model choice is whatever host agent invokes the plugin.",
+          "cite": "CLAUDE.md:49; requirements.txt:1",
+          "mark": "verified",
+          "plain": "By design it never calls a model, and the rule is written down and enforced by a test. The assistant hosting the plugin does all the thinking, and the only dependency is a YAML reader."
+        },
+        "D7": {
+          "score": 3,
+          "evidence": "Both hosts, first-class. .claude-plugin/plugin.json and .codex-plugin/plugin.json (both v0.5.2, the Codex one carrying the full interface/capabilities block); 22 slash commands in commands/; one skill with 13 reference files (skills/research/SKILL.md); a PostToolUse hook (hooks/hooks.json). Every invocation path resolves a triple-fallback root RESEARCH_PLUGIN_ROOT → CLAUDE_PLUGIN_ROOT → CODEX_PLUGIN_ROOT (commands/search.md:10, hooks/post-write-reingest.sh:34). Agent invokes it as python3 $ROOT/research.py <subcommand>. No MCP server.",
+          "cite": ".claude-plugin/plugin.json; .codex-plugin/plugin.json; commands/; skills/research/SKILL.md; hooks/hooks.json; commands/search.md:10; hooks/post-write-reingest.sh:34; python3 $ROOT/research.py <subcommand>",
+          "mark": "verified",
+          "plain": "It ships as a real plugin in both Claude Code and Codex, with 22 commands, one skill backed by 13 reference documents, and a hook that re-reads files as you save them. Every path finds the plugin's home folder through three fallbacks, so the same code works in either host."
+        }
+      },
+      "strengths": [
+        "Its credibility machinery is the standout: fixed rules sort domains into four trust tiers, a seeded site list and a misinformation blocklist back them up, and a claim-checking loop writes its findings back as a confidence mark on the entry.",
+        "It is genuinely in use, not a demo — the library held 187 entries and 35 linked project files, last written to the day before this audit.",
+        "The same code serves Claude Code and Codex with no extra dependencies, and a test enforces the rule that the plugin never calls a model itself.",
+        "Its 13 reference documents are 2,635 lines of research method that stand on their own, independent of this plugin's code."
+      ],
+      "gaps": [
+        "It cannot search by meaning. Retrieval is keyword-only, which is the single biggest hole for a combined research workflow.",
+        "A topic-velocity settings file ships and is documented but is never read; the numbers come from each entry's own header instead.",
+        "Claim checking runs model-written code with no sandbox when Docker is missing. It should skip the check and mark it unverified rather than run the code on your machine.",
+        "Two of the four staleness signals are hardcoded to zero, because measuring them would need checks the plugin cannot make.",
+        "The working copy is dirty: five files are still tracked that the ignore rules now exclude."
+      ],
+      "reuse": [
+        {
+          "path": "research.py:1818 _score_domain_by_rule + research.py:313 seed_domain_scores + data/domain-scores-seed.json + data/iffy-domains.csv",
+          "what": "Ready-made four-tier source scoring with 52 rated domains and a misinformation blocklist."
+        },
+        {
+          "path": "research.py:1899–research.py:1974 _arxiv_check / _openalex_check / _title_similarity",
+          "what": "Checks, using nothing but the standard library, that a cited paper really exists and that its title matches."
+        },
+        {
+          "path": "research.py:2375–research.py:2620 the profiling block (_profile_table_file, _profile_sqlite_db, _certainty_from_profile)",
+          "what": "Profiles a spreadsheet or small database — columns, empty values, level of detail — and grades how certain the data looks, with reasons."
+        },
+        {
+          "path": "research.py:3193–research.py:3384 the Omniparse bridge (_find_omniparse, _run_omniparse, _extract_and_cache) plus vendor/omniparse/",
+          "what": "Turns PDF, Excel, PowerPoint (PPTX) and CSV files into markdown, caches the result by content, and still works when Node is missing."
+        },
+        {
+          "path": "skills/research/references/{templates,synthesis,output-contracts}.md",
+          "what": "Five report templates, three writing modes, and structured output rules any other repo can adopt word for word."
+        }
+      ],
+      "role": "The spine. Grow a new engine package beside it for search by meaning, entity linking, insight detection, document writers and model routing, and keep it dependency-free on the path where the assistant does the model work."
+    },
+    {
+      "id": "stratagem",
+      "name": "stratagem",
+      "kind": "app",
+      "kindNote": "Python app; its Claude Code plugin packaging was removed",
+      "oneLiner": "A multi-agent research app that breaks a question into parts, hands them to twelve specialists that read documents, scrape pages and pull company filings, then renders the result as Markdown, PowerPoint (PPTX), Word (DOCX) or a web page. It ships as a command line, a local web interface and a Mac app, and no longer as a plugin.",
+      "plain": {
+        "whatItDoes": "You give it a research question and it plans the work, then runs twelve specialist agents that read documents, scrape web pages and download company filings from the SEC (Securities and Exchange Commission). A synthesiser and a critic turn their findings into structured sections. Those sections render straight into finished files, including real PowerPoint decks and spreadsheets.",
+        "howUsed": "You run its command line with a question, or open its local web interface or Mac app. Its plugin packaging was deleted, so nothing installs into Claude Code or Codex any more.",
+        "unique": "It is the only repo here that writes a real PowerPoint (PPTX) file and the only one that searches and downloads SEC filings."
+      },
+      "health": {
+        "state": "warn",
+        "summary": "Plugin packaging deleted",
+        "lastCommit": "2026-06-04",
+        "tests": "89 pass / 7 stale-fail"
+      },
+      "pipeline": {
+        "overview": "A question is broken into parts and handed to twelve specialist agents that read documents, scrape pages and pull company filings, each writing findings to files the next agent picks up. A synthesiser and a critic turn those findings into structured sections, which one writer set renders as Markdown, PowerPoint (PPTX), Word (DOCX) or a web page. What it learns is saved as observations and fed back into later runs.",
+        "effectiveness": {
+          "score": 2,
+          "why": "The research method and the document writers are the strongest here, but it only talks to one model provider and its plugin packaging was deleted, so nothing installs into a host."
+        },
+        "flow": [
+          {
+            "stage": "collect",
+            "how": "Thirteen tools scrape pages, read documents, and search and download SEC (Securities and Exchange Commission) filings, with read-only results cached.",
+            "effectiveness": 3,
+            "why": "The only repo that reaches company filings, though nothing runs on a schedule."
+          },
+          {
+            "stage": "assess",
+            "how": "It records observations with a category, a confidence and tags, drops exact duplicates, and promotes agents that stay confident across runs.",
+            "effectiveness": 2,
+            "why": "It grades its own work well; the trustworthiness of a source is graded by prompt, not by code."
+          },
+          {
+            "stage": "structure",
+            "how": "It keeps flat topic indexes, a file manifest and a log of observations.",
+            "effectiveness": 1,
+            "why": "The only graph it draws is a map of its own code, not of what it read."
+          },
+          {
+            "stage": "insight",
+            "how": "Prompts grade each claim as verified, supported, unsourced, contradicted or stale, compare sources, track multiple periods, and watch for quality drifting down.",
+            "effectiveness": 2,
+            "why": "Genuine capability, but all of it depends on the model following instructions."
+          },
+          {
+            "stage": "synthesize",
+            "how": "One set of structured sections renders to Markdown, PowerPoint (PPTX), Word (DOCX) or a web page, with a slide builder that handles titles, bullets and tables.",
+            "effectiveness": 3,
+            "why": "The only repo that writes a real deck file rather than a text outline."
+          },
+          {
+            "stage": "models",
+            "how": "You can pick a larger or smaller Claude model per agent, and change it while a run is going.",
+            "effectiveness": 1,
+            "why": "Provider choice is fixed to Anthropic by the software kit it is built on."
+          },
+          {
+            "stage": "agents",
+            "how": "An agent runs its command line or its web interface; the tool server still works if you wire it by hand.",
+            "effectiveness": 1,
+            "why": "The plugin manifests, commands and skills were deleted, and the documentation still points at them."
+          }
+        ]
+      },
+      "scores": {
+        "D1": {
+          "score": 3,
+          "evidence": "13 MCP tools registered src/stratagem/server.py:26-40: scrape_url (httpx+bs4, table→markdown) tools/web.py:22, parse_pdf tools/pdf.py:18, read_spreadsheet/read_pptx/read_docx/extract_images, search_sec_filings+download_sec_filing tools/sec_edgar.py:32,83 (+sec_client.py, ticker cache stratagem/cache/company_tickers.json). Builtin WebSearch/WebFetch allowlisted server.py:46. Read-only tools response-cached server.py:19-23. On-demand only — no scheduler anywhere.",
+          "cite": "src/stratagem/server.py:26-40; tools/web.py:22; tools/pdf.py:18; tools/sec_edgar.py:32,83; sec_client.py; stratagem/cache/company_tickers.json; server.py:46; server.py:19-23",
+          "mark": "verified",
+          "plain": "It offers 13 tools to its agents: scraping pages, reading PDF, spreadsheet, PowerPoint (PPTX) and Word (DOCX) files, pulling images, and searching and downloading company filings from the SEC (Securities and Exchange Commission). Web search runs through the built-in tool and read-only results are cached, but nothing runs on a schedule."
+        },
+        "D2": {
+          "score": 2,
+          "evidence": "record_observation writes category (source/finding/process/agent) + confidence clamped 0–1 + tags + scope, with exact-content dedup index tools/memory.py:34-75; cross-run merge keeps higher confidence memory.py:325-348; tier-1→tier-2 agent promotion gated on total_runs>=3 and avg_confidence>=0.7 memory.py:583. Claim grading is prompt-level (VERIFIED/SUPPORTED/UNSOURCED/CONTRADICTED/STALE) subagents/prompts/source_verifier.md:25,35; 5-axis report rubric report_critic.md:17-19. Query classification is keyword regex, not a model agent.py:156-232. No source-credibility tier engine.",
+          "cite": "tools/memory.py:34-75; memory.py:325-348; total_runs>=3 and avg_confidence>=0.7; memory.py:583; subagents/prompts/source_verifier.md:25,35; report_critic.md:17-19; agent.py:156-232",
+          "mark": "verified",
+          "plain": "It records observations with a category, a confidence between zero and one and tags, drops exact duplicates, keeps the more confident version across runs, and promotes an agent to a higher tier once it has three runs averaging 0.7 confidence. Grading whether a claim is true is done by prompt, not code, and there is no source trust rating."
+        },
+        "D3": {
+          "score": 1,
+          "evidence": "No knowledge graph, no entity/relation extraction, no vector/graph DB — grep for networkx|neo4j|ontology|entity|relation|cluster|embed|faiss|chroma|qdrant over src/ returns zero substantive hits. The only graph is a code-architecture export (navgator.py:1-6, .claude/architecture/graph.json, served at /api/graph ui.py:1568) plus an agent-execution flow diagram app/Stratagem/Views/FlowDiagramView.swift. Structures are flat JSON: topics index + tags topics.py:4, artifact manifest artifacts.py:7, observations JSONL.",
+          "cite": "src/; navgator.py:1-6; .claude/architecture/graph.json; /api/graph; ui.py:1568; app/Stratagem/Views/FlowDiagramView.swift; topics.py:4; artifacts.py:7",
+          "mark": "verified",
+          "plain": "There is no knowledge graph, no entity extraction and no vector store. The only graph it draws is a map of its own code plus a diagram of how its agents ran; everything it learns is stored as flat JSON."
+        },
+        "D4": {
+          "score": 2,
+          "evidence": "Real capabilities, all prompt-encoded: contradiction detection source_verifier.md:25,38; cross-source pattern/contradiction synthesis research_synthesizer.md:9; multi-period trend-over-snapshot financial_analyst.md:8,16; quality-drift detection (\"2+ metrics trending downward across 3+ outputs\") plan_validator.md:51; after-action review generated per run agent.py:826 _generate_after_action_review with deterministic fallback agent.py:722. No deterministic comparison/gap engine.",
+          "cite": "source_verifier.md:25,38; research_synthesizer.md:9; financial_analyst.md:8,16; plan_validator.md:51; agent.py:826 _generate_after_action_review; agent.py:722",
+          "mark": "verified",
+          "plain": "Its prompts do real work here: one agent grades each claim as verified, supported, unsourced, contradicted or stale, another looks for patterns and contradictions across sources, a third compares several periods rather than one snapshot, and a fourth watches for quality drifting down across runs. Every run ends with an after-action review, but none of it is deterministic code."
+        },
+        "D5": {
+          "score": 3,
+          "evidence": "create_report renders 4 formats from structured sections — _create_markdown_report/_create_pptx_report/_create_docx_report/_create_html_report tools/reports.py:56-63,77,126,198,270; create_pptx with title/bullets/table/blank layouts + pipe-CSV table parsing tools/presentation.py:103-190; create_spreadsheet tools/spreadsheet_create.py. Length/register templates: subagents/prompts/executive_synthesizer.md:45-70, frameworks/pyramid_principle.md, frameworks/content_design.md, frameworks/output_formats.md (format-routing table), flowchart_architect.md. Shipped examples in output/*.pptx, output/subagent_systems_research_report.docx.",
+          "cite": "tools/reports.py:56-63,77,126,198,270; tools/presentation.py:103-190; tools/spreadsheet_create.py; subagents/prompts/executive_synthesizer.md:45-70; frameworks/pyramid_principle.md; frameworks/content_design.md; frameworks/output_formats.md; flowchart_architect.md; output/*.pptx; output/subagent_systems_research_report.docx",
+          "mark": "verified",
+          "plain": "One set of structured sections turns into Markdown, PowerPoint (PPTX), Word (DOCX) or a web page, and the slide builder handles title, bullet and table layouts, including tables typed as plain text. Written guidance covers register, format routing and conclusion-first structure, and finished decks and documents ship in the repository."
+        },
+        "D6": {
+          "score": 1,
+          "evidence": "Anthropic-only. Grep for ollama|mlx|llama_cpp|vllm|litellm|openai|gemini|groq|bedrock across src/, tests/, app/ hits only a test fixture string. Single dep claude-agent-sdk>=0.1.48 pyproject.toml:11. Flexibility is tier selection, not provider: per-agent map agent.py:1344-1356 (opus/sonnet), orchestrator model or \"opus\" agent.py:1056, CLI --model {opus,sonnet,haiku} / --fast __main__.py:44,71, runtime per-agent override POST /api/agents/<name>/model ui.py:1546. No provider abstraction/factory/fallback, no embeddings model. Config surface: .env (LangSmith keys only) __main__.py:13-27 + /api/config.",
+          "cite": "src/; tests/; app/; claude-agent-sdk>=0.1.48; pyproject.toml:11; agent.py:1344-1356; agent.py:1056; __main__.py:44,71; POST /api/agents/<name>/model; ui.py:1546; .env; __main__.py:13-27; /api/config",
+          "mark": "verified",
+          "plain": "It can only talk to Anthropic, because that is baked into the software kit it is built on. The flexibility it does have is choosing a bigger or smaller Claude model per agent, changeable while a run is going."
+        },
+        "D7": {
+          "score": 1,
+          "evidence": "Plugin packaging is deleted, not dormant: b7538d9 removed plugin/.claude-plugin/plugin.json, .codex-plugin/plugin.json, .mcp.json, agents/research-orchestrator/AGENT.md, commands/stratagem.md, and all 4 SKILL.md (399 deletions). plugin/ is now empty directories only — git ls-files plugin returns nothing; find . -name .mcp.json -o -name plugin.json returns nothing. The MCP server still works standalone: create_sdk_mcp_server + stdio main server.py:49-77, so python -m stratagem.server is wireable by hand. AGENTS.md still documents /plugins install ~/dev/git-folder/stratagem/plugin — stale. Today an agent invokes it via CLI (stratagem \"question\") or the HTTP/SSE UI.",
+          "cite": "plugin/.claude-plugin/plugin.json; .codex-plugin/plugin.json; .mcp.json; agents/research-orchestrator/AGENT.md; commands/stratagem.md; plugin/; find . -name .mcp.json -o -name plugin.json; server.py:49-77; python -m stratagem.server; AGENTS.md; /plugins install ~/dev/git-folder/stratagem/plugin",
+          "mark": "verified",
+          "plain": "The plugin packaging was deleted rather than disabled — the manifests, commands and skills were all removed in one commit, leaving empty folders behind. Its tool server still runs standalone if wired by hand, but today an agent reaches it through the command line or the web interface, and the documentation still tells you to install a plugin that no longer exists."
+        }
+      },
+      "strengths": [
+        "The deepest set of document writers here: four report formats plus real PowerPoint (PPTX) and spreadsheet builders that write actual files and register them in a manifest.",
+        "Twelve role prompts encode a complete research method — plan, extract, verify, synthesise, critique, review — and any host can reuse them as they are.",
+        "It learns across runs: observations roll up into topic memory, get compressed to fit a token budget, and are fed into later runs, with agents promoted once they prove reliable.",
+        "SEC (Securities and Exchange Commission) filing search and download is first-class and caches the ticker list — a source no other repo here has."
+      ],
+      "gaps": [
+        "The plugin folder is eight empty directories, the documentation still tells you to install it, and three tests still check for its files.",
+        "Four more test failures are stale counts rather than breakage: a tool count that moved from 12 to 13, and two architecture counts.",
+        "There is no retrieval layer at all — no embeddings, no vector store, no graph. Documents only meet each other inside a single model context window.",
+        "It is locked to Anthropic at the kit level, so changing provider means changing the kit itself.",
+        "Xcode build leftovers are committed, and eight Swift view files have sat uncommitted since around May."
+      ],
+      "reuse": [
+        {
+          "path": "src/stratagem/tools/reports.py",
+          "what": "One call takes structured sections and renders Markdown, PowerPoint (PPTX), a web page or Word (DOCX). The single highest-value import here."
+        },
+        {
+          "path": "src/stratagem/tools/presentation.py",
+          "what": "Builds a real PowerPoint (PPTX) deck with title, bullet and table layouts, and reads decks back in — the working slide capability."
+        },
+        {
+          "path": "src/stratagem/tools/sec_edgar.py + tools/sec_client.py",
+          "what": "Searches and downloads company filings from the SEC (Securities and Exchange Commission) with the ticker list cached; self-contained and light on dependencies."
+        },
+        {
+          "path": "src/stratagem/memory.py + src/stratagem/tools/memory.py",
+          "what": "Captures observations with category, confidence, tags and scope, removes duplicates, rolls them up and fits them into a token budget — cross-run memory with no database."
+        },
+        {
+          "path": "src/stratagem/subagents/prompts/*.md + src/stratagem/frameworks/*.md",
+          "what": "Twelve role prompts and four method references, including contradiction grading and a report critic's rubric; plain text, works with any host."
+        }
+      ],
+      "role": "A donor for the document writers, SEC (Securities and Exchange Commission) filings, cross-run memory and prompts. After that, either point its agents at the spine or freeze it as the reference build for the Anthropic kit."
+    }
+  ],
+  "overlaps": [
+    {
+      "capability": "Reading documents (PDF, Excel, PowerPoint, Word)",
+      "implementations": [
+        {
+          "subject": "omniparse",
+          "where": "TypeScript, tested and published"
+        },
+        {
+          "subject": "market-research",
+          "where": "TypeScript readers with sensitivity routing"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "Python readers, including scanned pages"
+        },
+        {
+          "subject": "stratagem",
+          "where": "Python tools, one per format"
+        },
+        {
+          "subject": "local-smartz",
+          "where": "Python tools for PDF, spreadsheets and text"
+        }
+      ],
+      "keep": "Make Omniparse the front door — the research plugin already bundles it. Borrow the market research platform's scanned-page reading, which is the one thing Omniparse cannot do."
+    },
+    {
+      "capability": "Choosing which model to run",
+      "implementations": [
+        {
+          "subject": "local-smartz",
+          "where": "Ollama, Anthropic, OpenAI and Groq, refusing cloud calls when settings are unreadable"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "Ollama, Apple-silicon local models (MLX) and Claude"
+        },
+        {
+          "subject": "market-research",
+          "where": "Ollama, OpenAI and Groq, with a health check before choosing"
+        }
+      ],
+      "keep": "Keep local-smartz's router and graft the market research platform's Apple-silicon runner in as a fifth option."
+    },
+    {
+      "capability": "Writing finished documents",
+      "implementations": [
+        {
+          "subject": "stratagem",
+          "where": "Markdown, PowerPoint (PPTX), Word (DOCX) and web page, plus a real slide builder"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "five writers: PowerPoint (PPTX), Word (DOCX), email, notes, outline"
+        },
+        {
+          "subject": "local-smartz",
+          "where": "Markdown, web page and Word (DOCX)"
+        },
+        {
+          "subject": "market-research",
+          "where": "Word (DOCX) and JSON from the command line"
+        }
+      ],
+      "keep": "Merge stratagem's four writers with the market research platform's email, notes and outline writers into one package."
+    },
+    {
+      "capability": "Rating how trustworthy a source is",
+      "implementations": [
+        {
+          "subject": "research-plugin",
+          "where": "rule-based four tiers, 52 seeded domains and a misinformation blocklist"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "about 55 rated domains"
+        }
+      ],
+      "keep": "Keep the research plugin's version — it has the blocklist and writes the verdict back onto the entry — and fold the market research platform's domain list into its seed list."
+    },
+    {
+      "capability": "Searching by meaning as well as keyword",
+      "implementations": [
+        {
+          "subject": "market-research",
+          "where": "a local vector database in TypeScript, with a reranker"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "one local database file holding both vectors and the keyword index"
+        }
+      ],
+      "keep": "Take the market research platform's version, because its store matches the research plugin's own. Port the reranking idea later."
+    },
+    {
+      "capability": "Scraping web pages",
+      "implementations": [
+        {
+          "subject": "stratagem",
+          "where": "Python scraper that turns tables into markdown"
+        },
+        {
+          "subject": "local-smartz",
+          "where": "near-identical Python scraper"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "a small Node helper service"
+        },
+        {
+          "subject": "market-research",
+          "where": "a separate published scraper package"
+        }
+      ],
+      "keep": "local-smartz's and stratagem's scrapers are near-identical; pick one and delete the other."
+    },
+    {
+      "capability": "Conclusion-first writing prompts",
+      "implementations": [
+        {
+          "subject": "stratagem",
+          "where": "method references plus an executive synthesiser prompt"
+        },
+        {
+          "subject": "research-plugin",
+          "where": "three writing modes and five report templates"
+        },
+        {
+          "subject": "market-research",
+          "where": "prompts held in one constants file"
+        },
+        {
+          "subject": "market-research-platform",
+          "where": "the question-answering endpoint"
+        },
+        {
+          "subject": "local-smartz",
+          "where": "the writer role prompt"
+        }
+      ],
+      "keep": "Use the research plugin's templates with stratagem's role prompts. Both are plain text and work with any host."
+    },
+    {
+      "capability": "Remembering across runs",
+      "implementations": [
+        {
+          "subject": "stratagem",
+          "where": "observations rolled up into topic memory and injected into later runs"
+        },
+        {
+          "subject": "local-smartz",
+          "where": "conversation threads and a checkpoint store, ported from stratagem"
+        }
+      ],
+      "keep": "Keep stratagem's model: record observations, then feed a budgeted summary of them into the next run."
+    }
+  ],
+  "gaps": [
+    {
+      "title": "Linking people, companies and products across documents",
+      "detail": "The best score anywhere is 2 out of 3. The research plugin links notes to each other and rebuilds topic pages, but it never names the things inside them. The market research platform defines entity extraction and a graph store, but no live code path reaches them, so the graph stays empty and no relationship is ever written. Nobody connects the same company across two documents, and nobody draws the result."
+    },
+    {
+      "title": "Insight detection that does not depend on a prompt",
+      "detail": "Contradiction, trend, comparison and gap detection exist only as written instructions the model is asked to follow. The closest things to code are local-smartz's bounded fact-check-and-redo loop and the research plugin's claim verifier. Nothing compares stored claims across entries."
+    },
+    {
+      "title": "Collection that runs on a schedule",
+      "detail": "Every repo waits to be asked. market-intel was meant to be the feed reader and is dead. There is no watcher, timer or feed reader anywhere, and your existing background-job setup is the obvious place to put one."
+    },
+    {
+      "title": "Web search when no person is watching",
+      "detail": "Only local-smartz and stratagem can search the web from code. The research plugin deliberately leaves search to the assistant hosting it, which works while you are in a session and disappears the moment a job runs unattended."
+    },
+    {
+      "title": "One contract for output length",
+      "detail": "The writers exist; what is missing is a single rule that says long report, short report, key highlights or slide deck, and routes each to the right template. The research plugin's output rules and stratagem's format-routing table are the two halves of it."
+    }
+  ],
+  "findings": [
+    {
+      "subject": "market-intel",
+      "severity": "high",
+      "text": ".git/refs/ missing (repo unusable); .env.local holds a live-looking OpenAI key + Supabase keys with no consumer in code. Blast radius if revoked: none in this repo. Action: confirm whether the key is still active in the OpenAI dashboard; if unused elsewhere, revoke. Provenance unknown.",
+      "state": "escalated",
+      "record": "oc:2b128569"
+    },
+    {
+      "subject": "research-plugin",
+      "severity": "high",
+      "text": "Claim checking runs model-written code without a sandbox whenever Docker is absent. It should fail closed — skip the check and mark it unverified — instead of running the code on the host.",
+      "state": "escalated",
+      "record": "oc:2434d911"
+    },
+    {
+      "subject": "stratagem",
+      "severity": "normal",
+      "text": "7 failing tests are stale assertions (plugin files, tool count 12→13, NavGator counts); AGENTS.md still instructs installing the deleted plugin; Xcode intermediates committed.",
+      "state": "escalated",
+      "record": "oc:e665255a"
+    },
+    {
+      "subject": "market-research-platform",
+      "severity": "normal",
+      "text": "MLX half-wired (tier selection sends Ollama tags to MLX; embedder probe raises without fallback); the graph pipeline is unreachable and the runtime Kuzu store is empty; no README.",
+      "state": "escalated",
+      "record": "oc:006f476c"
+    },
+    {
+      "subject": "local-smartz",
+      "severity": "normal",
+      "text": "Plugin and tool-server support are switched off on the default pipeline, which is also the pipeline selected by default, while the readme advertises them as available.",
+      "state": "escalated",
+      "record": "oc:0a4b1914"
+    },
+    {
+      "subject": "market-research",
+      "severity": "normal",
+      "text": "dead Export button, ~900 lines dead modules, .env.local on disk (inspect before sharing).",
+      "state": "escalated",
+      "record": "oc:64525fa5"
+    },
+    {
+      "subject": "omniparse",
+      "severity": "normal",
+      "text": "CLI/router duplicate detection tables; license mismatch (README MIT vs package Apache-2.0); CI runs no tests.",
+      "state": "escalated",
+      "record": "oc:dc678965"
+    }
+  ],
+  "recommendation": {
+    "bottomLine": "The research plugin already answers basic questions well and should keep doing exactly that. What you do not have is a data-analysis pipeline for the complex, multi-stage jobs — tracking a company's quarterly earnings, sizing a new market or business opportunity, reading the financial disclosures behind a merger, or working through a personal decision like which town to move to or which school to pick. You already own a module for nearly every stage of that pipeline, built two to five times over in two languages; the one thing nobody has is a way to link people, companies and products across documents, where the best score anywhere is 2 out of 3.",
+    "spine": "A thin coordinator runs focused stage agents; each stage reuses the strongest existing module and the research plugin remains the store for facts and sources.",
+    "flow": [
+      {
+        "stage": "collect",
+        "title": "Collect data",
+        "approach": "hybrid",
+        "source": "The collector agent reuses stratagem's SEC (Securities and Exchange Commission) and web collectors plus Omniparse file parsing, and borrows stratagem's extractor-specialist shape; the scheduled feed reader is new.",
+        "what": "A collector agent gathers the filings, pages and files a question needs and writes what it finds into the research plugin's store. A background job runs saved searches and feeds on a schedule, so long-running topics keep updating themselves.",
+        "why": "Every reader already exists and is tested, and stratagem is the only repo that reaches company filings. Only the schedule is missing — nothing here runs unattended today."
+      },
+      {
+        "stage": "assess",
+        "title": "Assess and score",
+        "approach": "existing",
+        "source": "The assessor agent reuses the research plugin's scoring and claim verification unchanged, plus the market research platform's five-point quality rubric, and borrows stratagem's source-verifier specialist shape.",
+        "what": "An assessor agent rates how trustworthy each source is, checks the claims behind it, and marks the entry with one confidence level. It grades finished outputs against the same rubric before they leave the pipeline.",
+        "why": "The research plugin is the only mature scorer here, it runs without a model, and it already writes its verdict back onto the entry."
+      },
+      {
+        "stage": "structure",
+        "title": "Link and structure",
+        "approach": "new",
+        "source": "The linker agent is new: entity and relationship tables on top of the research plugin's existing store, with the market research platform's vector store bolted on for search by meaning.",
+        "what": "A linker agent records the people, companies and products each entry mentions and how they relate, matches the same thing across entries, and exports the result as data plus a simple web view.",
+        "why": "Nothing existing does this. The market research platform defines a graph but never runs it, and the research plugin links notes to each other rather than the things inside them."
+      },
+      {
+        "stage": "insight",
+        "title": "Find insights",
+        "approach": "hybrid",
+        "source": "The analyst agent reuses local-smartz's fact-check-and-redo loop and stratagem's contradiction and trend prompts, and borrows local-smartz's analyser-then-fact-checker shape; the deterministic comparison over verified facts is new.",
+        "what": "An analyst agent compares stored facts across entries: the same measure with different values becomes a contradiction to check, a thing with sources but no claims becomes a gap, and a measure with dates becomes a trend. Anything unsupported goes back for another research pass.",
+        "why": "Both donors work, but they only narrate. A deterministic pass finds the candidates first, so the model explains rather than discovers."
+      },
+      {
+        "stage": "synthesize",
+        "title": "Write outputs (long, short, highlights, slides)",
+        "approach": "existing",
+        "source": "The writer agent reuses stratagem's Markdown, PowerPoint (PPTX), Word (DOCX) and web-page renderers plus the market research platform's email, notes and outline writers, and borrows stratagem's synthesiser-then-critic shape.",
+        "what": "A writer agent takes the length you asked for — long report, short report, highlights, or a deck as an outline with slide text — picks the matching template and renders the file. A critic pass grades the draft before it comes back to you.",
+        "why": "Between them, stratagem and the market research platform already cover every format anyone here produces, including the only real PowerPoint (PPTX) file."
+      },
+      {
+        "stage": "models",
+        "title": "Run models (local or cloud)",
+        "approach": "existing",
+        "source": "The model-runner reuses local-smartz's provider router with the market research platform's Apple-silicon runner (MLX) added, and keeps local-smartz's per-role model pinning.",
+        "what": "Unattended runs pin a model to each stage agent, prefer your own machine, and refuse cloud calls when the settings say local only. Inside Claude Code or Codex there is no runner at all — the assistant makes the calls.",
+        "why": "local-smartz's router is the most complete here and fails safe, and Apple-silicon support costs one more runner rather than a rewrite."
+      },
+      {
+        "stage": "agents",
+        "title": "Work inside Claude Code / Codex",
+        "approach": "existing",
+        "source": "The coordinator ships inside the research plugin's existing Claude Code and Codex packaging — its commands, one skill per stage agent, and the save hook.",
+        "what": "A thin coordinator decides which stage agents a question needs and runs them in order, each with its own skill and specialty. Simple questions skip the pipeline and stay with the research plugin's existing commands.",
+        "why": "The packaging already works in both hosts, so the stage agents ship as skills beside commands people already use, with nothing new to install."
+      }
+    ],
+    "layers": [
+      {
+        "name": "1 · Collect",
+        "donors": [
+          "Omniparse (files)",
+          "stratagem sec_edgar.py + sec_client.py",
+          "local-smartz tools/web.py (scrape + ddgs search)",
+          "MRP OCR path for image PDFs"
+        ],
+        "new": "a scheduled feed/watch collector (RSS + saved queries) as a LaunchAgent, writing straight into the research-plugin KB. Host mode keeps delegating search to WebSearch/WebFetch."
+      },
+      {
+        "name": "2 · Assess",
+        "donors": [
+          "research-plugin's tiering + verifier + depth classifier + staleness, unchanged"
+        ],
+        "new": "Merge MRP's domain list into domain-scores-seed.json. Add MRP's 5-dim brief-quality rubric and stratagem's report_critic rubric as the assessment of outputs."
+      },
+      {
+        "name": "3 · Structure",
+        "donors": [
+          "research-plugin's SQLite (backlinks, MOCs)",
+          "MRP vector_store.py (sqlite-vec + FTS5, RRF)",
+          "MRP embeddings/ (Ollama/MLX/ST)"
+        ],
+        "new": "entity + relation tables in the same SQLite; extraction prompt with a JSON contract (run by host or by the runner layer); cross-entry entity resolution; graph export → JSON + a static HTML view. Kuzu stays optional. This is the only layer with no working donor."
+      },
+      {
+        "name": "4 · Insight",
+        "donors": [
+          "stratagem source_verifier.md (VERIFIED/SUPPORTED/UNSOURCED/CONTRADICTED/STALE)",
+          "financial_analyst.md trend-over-snapshot",
+          "local-smartz analyzer.md + bounded fact-check loop",
+          "research-plugin atoms"
+        ],
+        "new": "a deterministic pass over verified atoms — same metric, different values across entries → contradiction candidate; entity with sources but no claims → gap; atom series by date → trend table. Prompts then narrate, not discover."
+      },
+      {
+        "name": "5 · Synthesize",
+        "donors": [
+          "stratagem tools/reports.py + presentation.py (md/pptx/docx/html) + MRP email_/notes_/outline_generator.py → one renderers package",
+          "Registers from research-plugin's 5 templates + output-contracts.md and stratagem's executive_synthesizer.md + output_formats.md"
+        ],
+        "new": "one synthesize --register {long,short,highlights,deck} entry that picks template + renderer; deck = outline + slide text (markdown) and optional .pptx via stratagem's builder."
+      },
+      {
+        "name": "6 · Models",
+        "donors": [
+          "local-smartz runners/ (Ollama/Anthropic/OpenAI/Groq, fail-closed local-only, per-role pins, retry, cost)",
+          "MRP MLXProvider grafted in as a fifth runner"
+        ],
+        "new": "Host mode = no runner, host does the calls (research-plugin policy preserved)."
+      },
+      {
+        "name": "7 · Agent surface",
+        "donors": [
+          "research-plugin's dual-host packaging (commands, skill, hook, both plugin.jsons)"
+        ],
+        "new": "Add an MCP server (stratagem's server.py pattern) so Codex, Claude Code, and local-smartz's MCP client all reach the same tools. Turn local-smartz's MCP/plugin tools on by default once this exists."
+      }
+    ],
+    "nextActions": [
+      "Confirm the shape: a thin coordinator that runs one focused agent per stage, with the research plugin kept for basic questions and as the store for facts and sources.",
+      "Build the one missing stage first — the linker that records people, companies and products and how they connect — because no existing pipeline does it and every complex job (earnings, market entry, mergers) needs it.",
+      "Stand up the collector, assessor, writer and model-runner agents from the named existing modules, each as a skill beside the research plugin's commands, and add the scheduled feed reader so long-running topics update themselves.",
+      "Borrow from the reference pipelines: refine the plan as you learn (Perplexity), let the user approve the plan before searching (Gemini), cite the exact snippet not just the page (AlphaSense), and keep citations machine-checkable (OpenAI).",
+      "Retire market-intel after saving its two useful pieces, and work the open findings already filed in Operations Center."
+    ],
+    "references": [
+      {
+        "name": "Perplexity Deep Research",
+        "flow": "It runs a loop: search, read the documents it found, reason about what is still missing, refine the plan, and repeat across dozens of searches and hundreds of sources before writing a cited report. Most runs finish in two to four minutes.",
+        "borrow": "Refine the plan as you learn instead of executing a fixed list of sub-questions.",
+        "url": "https://www.perplexity.ai/hub/blog/introducing-perplexity-deep-research",
+        "sourceTier": "T1"
+      },
+      {
+        "name": "AlphaSense Deep Research and Smart Summaries",
+        "flow": "It searches a licensed financial corpus (filings, earnings-call transcripts, broker research, expert-call transcripts, and your uploaded documents), reasons over thousands of hits, and writes a report where every line links to the exact snippet in the source document.",
+        "borrow": "Snippet-level citations that jump to the exact sentence in the source, and a source-priority order that puts filings and transcripts first.",
+        "url": "https://help.alpha-sense.com/hc/en-us/articles/41669307479443-Get-Instant-Insights-and-Save-Time-with-Smart-Summaries",
+        "sourceTier": "T1"
+      },
+      {
+        "name": "OpenAI Deep Research",
+        "flow": "It clarifies the ask, then plans and issues its own web searches, reads pages and PDFs, shows its reasoning as it decides which claims to verify next, can run code for data work, and returns a structured report with machine-readable citation spans.",
+        "borrow": "Citations as structured objects (character span, title, URL) so downstream renderers and verifiers can check them, plus a code step for any calculation.",
+        "url": "https://openai.com/index/deep-research-system-card/",
+        "sourceTier": "T1"
+      },
+      {
+        "name": "Google Gemini Deep Research",
+        "flow": "It drafts a multi-point research plan the user can edit and approve, then browses the web (and optionally the user's mail and drive), shows its reasoning as it iterates, and delivers a multi-page report that exports to Docs.",
+        "borrow": "A user-editable plan checkpoint before any search budget is spent.",
+        "url": "https://gemini.google/overview/deep-research/",
+        "sourceTier": "T1"
+      }
+    ]
+  },
+  "confidence": {
+    "context": "high — every repo read at code level with citations; local-smartz (24K LOC) and stratagem (14K) sampled by targeted greps rather than exhaustively.",
+    "verification": "medium-high — assessors ran tests where feasible (5 of 7; MRP not executed, market-intel cannot run); cross-repo claims were re-verified by hand, and the later MRP graph follow-up corrected D3 to runtime-empty.",
+    "evidence": "high — all claims are first-party repo reads (T1 for this purpose); no external claims made.",
+    "overall": "medium-high. Ratings are judgment calls on a 0–3 scale; a ±1 disagreement could alter some tied column-best picks, but the evidence still supports the spine recommendation.",
+    "note": "Related work: a separate session today is auditing research-plugin usage and friction across Codex/Claude Code (build-loop-memory decision records dated 2026-08-15). This report covers capability; the two are complementary."
+  }
+}

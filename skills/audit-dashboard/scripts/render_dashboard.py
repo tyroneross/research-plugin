@@ -336,7 +336,13 @@ def validate_audit(payload: Any) -> dict[str, Any]:
         expect_string(finding["record"], f"{path}.record")
 
     recommendation = expect_object(root["recommendation"], "$.recommendation")
-    require_fields(recommendation, "$.recommendation", ("bottomLine", "spine", "layers", "nextActions"), ("flow",))
+    require_fields(recommendation, "$.recommendation", ("bottomLine", "spine", "layers", "nextActions"), ("flow", "references"))
+    for index, value in enumerate(recommendation.get("references", []) or []):
+        path = f"$.recommendation.references[{index}]"
+        ref = expect_object(value, path)
+        require_fields(ref, path, ("name", "flow", "borrow"), ("url", "sourceTier"))
+        for key in ("name", "flow", "borrow"):
+            expect_string(ref[key], f"{path}.{key}")
     expect_string(recommendation["bottomLine"], "$.recommendation.bottomLine")
     expect_string(recommendation["spine"], "$.recommendation.spine")
     layers = expect_array(recommendation["layers"], "$.recommendation.layers", minimum=1)
@@ -628,30 +634,32 @@ def render_findings(audit: dict[str, Any]) -> str:
 </tr>"""
         for finding in audit["findings"]
     )
-    return f"""
-<section class="area" id="findings" aria-labelledby="findings-heading">
-  <div class="section-heading">
-    <p class="eyebrow">Disposition and composition</p>
-    <h2 id="findings-heading">Findings</h2>
-    <p>Overlaps identify what to consolidate; gaps show what no subject supplies; findings retain severity, state, and record.</p>
-  </div>
-  <div class="findings-stack">
-    <article class="panel">
-      <div class="panel-header"><h3>Overlaps</h3><p>The same capability implemented more than once.</p></div>
+    overlaps_panel = f"""<article class="panel">
+      <div class="panel-header"><h3>Built more than once</h3><p>The same capability implemented in several places, and which one to keep.</p></div>
       <div class="table-wrap">
         <table><caption>Capability overlap, current implementations, and the implementation to keep.</caption><thead><tr><th scope="col">Capability</th><th scope="col">Implementations</th><th scope="col">Keep</th></tr></thead><tbody>{overlap_rows}</tbody></table>
       </div>
-    </article>
-    <article class="panel">
-      <div class="panel-header"><h3>Cross-subject gaps</h3><p>Capabilities absent or incomplete across the audited set.</p></div>
+    </article>""" if audit.get("overlaps") else ""
+    gaps_panel = f"""<article class="panel">
+      <div class="panel-header"><h3>Nobody has this yet</h3><p>Capabilities absent or incomplete across every subject.</p></div>
       <div class="panel-body"><ul class="gap-list">{gap_items}</ul></div>
-    </article>
-    <article class="panel">
-      <div class="panel-header"><h3>Findings needing disposition</h3><p>Severity and state are always written, never color-only.</p></div>
+    </article>""" if audit.get("gaps") else ""
+    findings_panel = f"""<article class="panel">
+      <div class="panel-header"><h3>Open findings</h3><p>Severity and state are written out, never color-only.</p></div>
       <div class="table-wrap">
         <table><caption>Subject findings with severity, disposition state, and durable record.</caption><thead><tr><th scope="col">Subject</th><th scope="col">Severity</th><th scope="col">Finding</th><th scope="col">State</th><th scope="col">Record</th></tr></thead><tbody>{finding_rows}</tbody></table>
       </div>
-    </article>
+    </article>""" if audit.get("findings") else ""
+    return f"""
+<section class="area" id="findings" aria-labelledby="findings-heading">
+  <div class="section-heading">
+    <h2 id="findings-heading">Notes</h2>
+    <p>What is built more than once, what nobody has yet, and open findings with their record.</p>
+  </div>
+  <div class="findings-stack">
+    {overlaps_panel}
+    {gaps_panel}
+    {findings_panel}
   </div>
 </section>"""
 
@@ -685,15 +693,19 @@ def render_score_cell(subject: dict[str, Any], dimension: dict[str, Any], scale:
     is_best = subject in best[dimension["id"]]
     dialog_id = f"score-{index}"
     cell = f'''<td class="score-cell{' is-best' if is_best else ''}"><button class="score-trigger" type="button" data-dialog="{dialog_id}" aria-haspopup="dialog" aria-label="{esc(subject['name'])}, {esc(dimension['label'])}: {score} of {scale['max']}, {esc(label)}">
-{dots(score, scale["max"])} <span class="score-number">{score}</span>{'<span class="best-marker">Best</span>' if is_best else ''}<span class="score-label">{esc(label)}</span>
+{dots(score, scale["max"])} <span class="score-number">{score}</span>{' <span class="best-marker">Best</span>' if is_best else ''}<span class="score-label">{esc(label)}</span>
 </button></td>'''
     return cell, popout(dialog_id, subject, dimension, entry, scale)
 
 
 def render_recommended_flow(audit: dict[str, Any]) -> str:
     recommendation = audit["recommendation"]
-    steps = "".join(f'''<li><h3>{esc(step["title"])}</h3><span class="approach approach-{esc(step["approach"])}">{esc(step["approach"].title())}</span><p class="flow-source">{esc(step["source"])}</p><p>{esc(step["what"])}</p><p class="muted">{esc(step["why"])}</p></li>''' for step in recommendation.get("flow", []))
-    return f'''<section class="area" id="overview" aria-labelledby="overview-heading"><header class="page-header"><p class="eyebrow">{esc(audit["source"]["label"])} · {esc(audit["generatedAt"])} </p><h1>{esc(audit["title"])}</h1><p class="subtitle">{esc(audit["subtitle"])}</p></header><div class="section-heading"><h2 id="overview-heading">Recommended flow</h2><p>{esc(recommendation["bottomLine"])}</p><p class="spine"><strong>Spine:</strong> {esc(recommendation["spine"])}</p></div><ol class="flow-stepper">{steps}</ol><ol class="next-actions">{''.join(f'<li>{esc(item)}</li>' for item in recommendation["nextActions"])}</ol></section>'''
+    steps = "".join(f'''<li><h3>{esc(step["title"])}</h3><span class="approach approach-{esc(step["approach"])}">{esc(step["approach"].title())}</span><p>{esc(step["what"])}</p><p class="flow-source"><strong>From:</strong> {esc(step["source"])}</p><p class="muted"><strong>Why:</strong> {esc(step["why"])}</p></li>''' for step in recommendation.get("flow", []))
+    references = ""
+    if recommendation.get("references"):
+        cards = "".join(f'<li><h4>{esc(ref["name"])}</h4><p>{esc(ref["flow"])}</p><p class="borrow"><strong>Borrow:</strong> {esc(ref["borrow"])}</p>{f'<p class="muted"><a href="{esc(ref["url"])}" rel="noopener">Source</a></p>' if ref.get("url") else ""}</li>' for ref in recommendation["references"])
+        references = f'<h3 class="sub-heading">Reference pipelines to borrow from</h3><ul class="reference-grid">{cards}</ul>'
+    return f'''<section class="area" id="overview" aria-labelledby="overview-heading"><header class="page-header"><p class="eyebrow">{esc(audit["source"]["label"])} · {esc(audit["generatedAt"])} </p><h1>{esc(audit["title"])}</h1><p class="subtitle">{esc(audit["subtitle"])}</p></header><div class="section-heading"><h2 id="overview-heading">Recommended flow</h2><p>{esc(recommendation["bottomLine"])}</p><p class="spine"><strong>Spine:</strong> {esc(recommendation["spine"])}</p></div><ol class="flow-stepper">{steps}</ol>{references}<h3 class="sub-heading">Next actions</h3><ol class="next-actions">{''.join(f'<li>{esc(item)}</li>' for item in recommendation["nextActions"])}</ol></section>'''
 
 
 def render_pipelines(audit: dict[str, Any]) -> str:
@@ -723,9 +735,13 @@ def render_v2_matrix(audit: dict[str, Any], best: dict[str, list[dict[str, Any]]
         plain = subject["plain"]
         rows.append(f'<tr><th scope="row"><strong>{esc(subject["name"])}</strong> <span class="kind">{esc(kind_label(subject["kind"]))}</span><p class="clamp">{esc(plain["whatItDoes"])}</p><button class="more-trigger" data-dialog="subject-{index}">More</button></th>{"".join(cells)}</tr>')
         dialogs.append(f'<dialog class="score-popout" id="subject-{index}"><form method="dialog"><button class="dialog-close">Close</button></form><h2>{esc(subject["name"])}</h2><p>{esc(plain["whatItDoes"])}</p><p>{esc(plain["howUsed"])}</p><p>{esc(plain["unique"])}</p></dialog>')
-    optimal = "".join(f'<tr class="optimal-row"><th scope="row">Optimal · {esc(stage["best"])}</th><td colspan="{len(stage["dimensionIds"])}">{esc(stage["optimal"])}</td></tr>' for stage in stages)
+    names = {subject["id"]: subject["name"] for subject in audit["subjects"]}
+    optimal_rows = "".join(f'<tr><th scope="row">{esc(stage["label"])}</th><td>{esc(names.get(stage["best"], stage["best"]))}</td><td>{esc(stage["optimal"])}</td></tr>' for stage in stages)
+    optimal = f'<div class="table-wrap optimal-wrap"><table class="optimal-table"><caption>Best subject today and the optimal choice for each stage.</caption><thead><tr><th scope="col">Stage</th><th scope="col">Best today</th><th scope="col">Optimal choice and why</th></tr></thead><tbody>{optimal_rows}</tbody></table></div>'
+    ncols = sum(len(stage["dimensionIds"]) for stage in stages)
+    colgroup = '<colgroup><col class="col-subject">' + '<col class="col-score">' * ncols + '</colgroup>'
     fallback = ''.join(f'<li>{esc(subject["name"])} · {esc(dimension["label"])}: {esc(subject["scores"][dimension["id"]].get("plain", subject["scores"][dimension["id"]]["evidence"]))}</li>' for subject in audit["subjects"] for dimension in audit["dimensions"])
-    section = f'''<section class="area" id="matrix" aria-labelledby="matrix-heading"><div class="section-heading"><h2 id="matrix-heading">Comparison</h2><p>Select a score to read its plain-language reason and evidence location.</p></div><div class="table-wrap"><table class="matrix-table"><caption>Capability comparison grouped by pipeline stage.</caption><thead><tr><th rowspan="2" scope="col">Subject</th>{headers}</tr><tr>{subheaders}</tr></thead><tbody>{"".join(rows)}{optimal}</tbody></table></div><details class="no-js-fallback"><summary>All score details</summary><ul>{fallback}</ul></details></section>'''
+    section = f'''<section class="area" id="matrix" aria-labelledby="matrix-heading"><div class="section-heading"><h2 id="matrix-heading">Comparison</h2><p>Select a score to read its plain-language reason and evidence location.</p></div><div class="table-wrap"><table class="matrix-table matrix-v2">{colgroup}<caption>Capability comparison grouped by pipeline stage.</caption><thead><tr><th rowspan="2" scope="col">Subject</th>{headers}</tr><tr>{subheaders}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>{optimal}<details class="no-js-fallback"><summary>All score details</summary><ul>{fallback}</ul></details></section>'''
     return section, "".join(dialogs)
 
 
