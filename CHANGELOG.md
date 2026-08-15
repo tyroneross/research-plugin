@@ -22,7 +22,7 @@ Ports three capabilities from the work-machine fork (shared release 0.5.3, canon
 - Workflow Detection routes query optimization, financial research, and deep orchestration.
 - Depth vocabulary: this repo's `light` / `standard` / `deep` stays canonical; the fork's `quick` / `balanced` / `deep` are documented aliases (quick = light, balanced = standard).
 - `CLAUDE.md`, `AGENTS.md`, `README.md` entry-point lists include `/research:optimize` and the `financial-research` skill.
-- Version 0.5.2 → 0.6.0 in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `package.json`, `package-lock.json`.
+- Version 0.5.2 → 0.6.0 in `package.json` / `package-lock.json` and git tag `v0.6.0`. Plugin manifests intentionally omit `version` (upstream `e970918`: auto-SHA updates; version is tracked via package.json + tag).
 
 ### Notes
 

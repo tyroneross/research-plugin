@@ -57,7 +57,7 @@ Claude Code's 12 skill/slash activations break down as 5 × `Skill(research:rese
 
 **Codex — WIRED and dominant.** `~/.codex/config.toml:41` registers `[plugins."research@ross-labs-local"] enabled = true`; line 613 enables the `post_tool_use` hook with a pinned trust hash. The cached install at `~/.codex/plugins/cache/ross-labs-local/research/local/research.py` is byte-identical to the repo file (`diff -q` exit 0). 325 invocations across 33 of 2,207 sessions (1.5%), monthly Apr 45 · May 66 · Jun 51 · Jul 163 · **Aug 0**. Top workdirs: ObsidianVault (71), build-loop (55), research-plugin (46, dev work), research (31), rosslabs-agent-harness (22), personal-llm-wiki (14), a private work-notes vault (12). ✅
 
-**Claude Code — installed, enabled, effectively unrouted.** Symlinked at `~/.claude/plugins/research → /Users/tyroneross/dev/git-folder/research-plugin` and enabled via `settings.json:531`. 17 non-audit CLI calls plus 12 skill/slash activations, against 881 WebSearch and 729 WebFetch calls in the same corpus (✅). Of 320 total Skill-tool calls, `build-loop:build-loop` took 138 and `research:research` took 5.
+**Claude Code — installed, enabled, effectively unrouted.** Symlinked at `~/.claude/plugins/research → <this repo checkout>` and enabled via `settings.json:531`. 17 non-audit CLI calls plus 12 skill/slash activations, against 881 WebSearch and 729 WebFetch calls in the same corpus (✅). Of 320 total Skill-tool calls, `build-loop:build-loop` took 138 and `research:research` took 5.
 
 **Other agents — zero.** `~/.gemini`, `~/.cursor`, and `~/.opencode` all exist on disk; none references `research.py`, `research-plugin`, or `~/dev/research` (⚠️ existence and grep verified by subagent, not re-executed by the author).
 
