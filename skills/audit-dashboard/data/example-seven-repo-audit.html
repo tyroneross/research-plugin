@@ -1,0 +1,2046 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seven-Repo Data Intelligence Audit</title>
+  <style>
+:root {
+  color-scheme: dark;
+  --page: #0b0e13;
+  --surface: #12161d;
+  --card: #1a1f28;
+  --surface-hover: #202733;
+  --border: #262c37;
+  --text: #e8edf3;
+  --muted: #9aa7b5;
+  --accent: #4da3ff;
+  --confirmed: #43c987;
+  --review: #e3b341;
+  --blocker: #f06a6a;
+  --radius: 10px;
+  --sidebar: 250px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--page);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  background: var(--page);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+code,
+.mono {
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 30;
+  top: -80px;
+  left: 12px;
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--page);
+  font-weight: 750;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.product-mark,
+.sidebar-boundary {
+  display: none;
+}
+
+.nav-list {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.nav-link {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 108px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-bottom: 3px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link:focus-visible {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.nav-link:active {
+  opacity: 0.82;
+}
+
+.workspace {
+  min-width: 0;
+  padding: 22px 14px 48px;
+}
+
+.area {
+  max-width: 1500px;
+  margin-inline: auto;
+  padding-block: 6px 42px;
+  scroll-margin-top: 78px;
+}
+
+.area + .area {
+  border-top: 1px solid var(--border);
+  padding-top: 38px;
+}
+
+.page-header {
+  max-width: 980px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  overflow-wrap: anywhere;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(29px, 7vw, 42px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+h4 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.authority {
+  max-width: 820px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.section-heading {
+  max-width: 860px;
+  margin-bottom: 18px;
+}
+
+.section-heading p:last-child {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 24px 0 18px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.metric-value {
+  display: block;
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 760;
+  line-height: 1.1;
+}
+
+.metric-label {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric-detail {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.panel-header {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.panel-body {
+  padding: 16px 18px;
+}
+
+.panel-body > :first-child {
+  margin-top: 0;
+}
+
+.panel-body > :last-child {
+  margin-bottom: 0;
+}
+
+.answer-panel {
+  border-left: 3px solid var(--accent);
+}
+
+.bottom-line {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.spine {
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.composition-panel {
+  margin-top: 16px;
+}
+
+.layer-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.layer-list li + li {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.layer-list p {
+  margin: 4px 0 0;
+}
+
+.layer-list p:last-child {
+  color: var(--muted);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.confidence-list {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) 1fr;
+  gap: 8px 14px;
+  margin: 0;
+}
+
+.confidence-list dt {
+  color: var(--muted);
+}
+
+.confidence-list dd {
+  margin: 0;
+}
+
+.next-actions {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.next-actions li + li {
+  margin-top: 8px;
+}
+
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+caption {
+  padding: 14px 16px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dimension-id,
+.dimension-label,
+.dimension-short {
+  display: block;
+}
+
+.dimension-label {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.dimension-short {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+td {
+  overflow-wrap: anywhere;
+}
+
+.matrix-table {
+  min-width: 1240px;
+}
+
+.matrix-table th:first-child,
+.matrix-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 165px;
+  background: var(--surface);
+}
+
+.score-cell {
+  min-width: 166px;
+  padding: 0;
+}
+
+.score-cell.is-best {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.score-disclosure {
+  margin: 0;
+}
+
+.score-disclosure summary {
+  min-height: 62px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.score-summary-content {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 3px 8px;
+  align-items: center;
+  min-height: 42px;
+}
+
+.score-disclosure summary:hover {
+  background: var(--surface-hover);
+}
+
+.score-disclosure summary::marker {
+  color: var(--accent);
+}
+
+.score-dots {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.score-number {
+  font-weight: 750;
+}
+
+.score-label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.best-marker {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.score-evidence {
+  padding: 0 12px 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.score-evidence p {
+  margin: 8px 0 0;
+}
+
+.evidence-mark {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pill-ok,
+.pill-fixed {
+  color: var(--confirmed);
+}
+
+.pill-warn,
+.pill-normal,
+.pill-escalated,
+.pill-open {
+  color: var(--review);
+}
+
+.pill-bad,
+.pill-high {
+  color: var(--blocker);
+}
+
+.pill-low,
+.pill-waived {
+  color: var(--muted);
+}
+
+.health-summary {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.subject-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: 16px;
+}
+
+.subject-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.subject-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kind {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.one-liner {
+  margin: 7px 0 0;
+  color: var(--muted);
+}
+
+.subject-health {
+  margin-top: 12px;
+}
+
+.mini-scores {
+  margin: 16px 0 0;
+  border-block: 1px solid var(--border);
+}
+
+.mini-score {
+  display: grid;
+  grid-template-columns: minmax(84px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.mini-score + .mini-score {
+  border-top: 1px solid var(--border);
+}
+
+.mini-label,
+.mini-scale-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mini-label strong {
+  color: var(--text);
+}
+
+.subject-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.clean-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.clean-list li + li {
+  margin-top: 6px;
+}
+
+.reuse-list code {
+  color: var(--accent);
+}
+
+.role-callout {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.role-callout strong {
+  color: var(--accent);
+}
+
+.findings-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.gap-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gap-list li {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gap-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.gap-list p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.record {
+  color: var(--muted);
+}
+
+.footer {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (min-width: 520px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (min-width: 760px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: min(var(--sidebar), 30vw) minmax(0, 1fr);
+  }
+
+  .sidebar {
+    height: 100vh;
+    padding: 22px 16px;
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
+  }
+
+  .product-mark {
+    display: block;
+    margin: 0 8px 24px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-boundary {
+    position: absolute;
+    right: 24px;
+    bottom: 22px;
+    left: 24px;
+    display: block;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .nav-list {
+    display: grid;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .nav-link {
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    border-left-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .workspace {
+    padding: 30px clamp(24px, 4vw, 58px) 64px;
+  }
+
+  .area {
+    scroll-margin-top: 24px;
+  }
+
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1060px) {
+  .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <nav class="sidebar" aria-label="Audit sections">
+      <p class="product-mark">Capability audit</p>
+      <ul class="nav-list">
+        <li><a class="nav-link" href="#overview">Overview</a></li>
+        <li><a class="nav-link" href="#matrix">Matrix</a></li>
+        <li><a class="nav-link" href="#subjects">Subjects</a></li>
+        <li><a class="nav-link" href="#findings">Findings</a></li>
+      </ul>
+      <p class="sidebar-boundary">Static projection · source-led evidence</p>
+    </nav>
+    <main class="workspace" id="main-content">
+<section class="area" id="overview" aria-labelledby="overview-heading">
+  <header class="page-header">
+    <p class="eyebrow">Build-loop research packet · 2026-08-15</p>
+    <h1 id="overview-heading">Seven-Repo Data Intelligence Audit</h1>
+    <p class="subtitle">Seven repos under ~/dev/git-folder were graded on the same rubric — collect, assess, structure, extract insight, synthesize at multiple lengths, model flexibility, and Codex / Claude Code integration — to see how they could compose into one data-intelligence workflow.</p>
+    <p class="authority">Projection of Build-loop research packet; scores are the auditors&#x27; judgment.</p>
+  </header>
+  <div class="metric-grid" aria-label="Audit summary metrics">
+    <div class="metric"><span class="metric-value">7</span><span class="metric-label">Subjects compared</span></div>
+    <div class="metric"><span class="metric-value">7</span><span class="metric-label">Dimensions scored</span></div>
+    <div class="metric"><span class="metric-value">7</span><span class="metric-label">Findings by state</span><span class="metric-detail">0 fixed · 0 waived · 7 escalated · 0 open</span></div>
+    <div class="metric"><span class="metric-value">7</span><span class="metric-label">Column-best dimensions</span><span class="metric-detail">D1: market-research, market-research-platform, stratagem · D2: research-plugin · D3: research-plugin · D4: local-smartz, stratagem · D5: market-research-platform, stratagem · D6: market-research, local-smartz · D7: research-plugin</span></div>
+  </div>
+  <article class="panel answer-panel">
+    <div class="panel-header"><h2>Bottom line</h2></div>
+    <div class="panel-body">
+      <p class="bottom-line">You already own every layer of the workflow except one — but each layer is implemented two to five times, in two languages, and no repo is mature or central in more than two of the seven dimensions. The universal hole is graph / relationship structure (best score anywhere: 2/3, research-plugin&#x27;s wikilink backlinks; MRP&#x27;s Kuzu graph pipeline never reaches the live app). Insight extraction is prompt-encoded everywhere with no deterministic engine.</p>
+      <p class="spine"><strong>Recommended spine:</strong> research-plugin (the only live, dual-host Codex + Claude Code plugin, 187 entries, written to yesterday) as the knowledge substrate and agent surface, fed by Omniparse (already vendored there) and stratagem&#x27;s SEC/scrape tools, with three donor modules bolted on: local-smartz/runners/ for a headless local/cloud provider router, market-research-platform/backend/app/storage/vector_store.py for sqlite-vec embeddings, and stratagem/tools/reports.py + presentation.py (plus MRP&#x27;s email/notes/outline generators) as the one renderer set. Build the graph layer once, on top of research-plugin&#x27;s SQLite. Retire market-intel; park market-research&#x27;s web UI.</p>
+    </div>
+  </article>
+  <article class="panel composition-panel">
+    <div class="panel-header"><h3>Composition layers</h3><p>Donor modules and the net-new work recommended for each workflow layer.</p></div>
+    <div class="panel-body"><ol class="layer-list"><li>
+  <h4>1 · Collect</h4>
+  <p><strong>Donors:</strong> Omniparse (files) · stratagem sec_edgar.py + sec_client.py · local-smartz tools/web.py (scrape + ddgs search) · MRP OCR path for image PDFs</p>
+  <p><strong>New:</strong> a scheduled feed/watch collector (RSS + saved queries) as a LaunchAgent, writing straight into the research-plugin KB. Host mode keeps delegating search to WebSearch/WebFetch.</p>
+</li><li>
+  <h4>2 · Assess</h4>
+  <p><strong>Donors:</strong> research-plugin&#x27;s tiering + verifier + depth classifier + staleness, unchanged</p>
+  <p><strong>New:</strong> Merge MRP&#x27;s domain list into domain-scores-seed.json. Add MRP&#x27;s 5-dim brief-quality rubric and stratagem&#x27;s report_critic rubric as the assessment of outputs.</p>
+</li><li>
+  <h4>3 · Structure</h4>
+  <p><strong>Donors:</strong> research-plugin&#x27;s SQLite (backlinks, MOCs) · MRP vector_store.py (sqlite-vec + FTS5, RRF) · MRP embeddings/ (Ollama/MLX/ST)</p>
+  <p><strong>New:</strong> entity + relation tables in the same SQLite; extraction prompt with a JSON contract (run by host or by the runner layer); cross-entry entity resolution; graph export → JSON + a static HTML view. Kuzu stays optional. This is the only layer with no working donor.</p>
+</li><li>
+  <h4>4 · Insight</h4>
+  <p><strong>Donors:</strong> stratagem source_verifier.md (VERIFIED/SUPPORTED/UNSOURCED/CONTRADICTED/STALE) · financial_analyst.md trend-over-snapshot · local-smartz analyzer.md + bounded fact-check loop · research-plugin atoms</p>
+  <p><strong>New:</strong> a deterministic pass over verified atoms — same metric, different values across entries → contradiction candidate; entity with sources but no claims → gap; atom series by date → trend table. Prompts then narrate, not discover.</p>
+</li><li>
+  <h4>5 · Synthesize</h4>
+  <p><strong>Donors:</strong> stratagem tools/reports.py + presentation.py (md/pptx/docx/html) + MRP email_/notes_/outline_generator.py → one renderers package · Registers from research-plugin&#x27;s 5 templates + output-contracts.md and stratagem&#x27;s executive_synthesizer.md + output_formats.md</p>
+  <p><strong>New:</strong> one synthesize --register {long,short,highlights,deck} entry that picks template + renderer; deck = outline + slide text (markdown) and optional .pptx via stratagem&#x27;s builder.</p>
+</li><li>
+  <h4>6 · Models</h4>
+  <p><strong>Donors:</strong> local-smartz runners/ (Ollama/Anthropic/OpenAI/Groq, fail-closed local-only, per-role pins, retry, cost) · MRP MLXProvider grafted in as a fifth runner</p>
+  <p><strong>New:</strong> Host mode = no runner, host does the calls (research-plugin policy preserved).</p>
+</li><li>
+  <h4>7 · Agent surface</h4>
+  <p><strong>Donors:</strong> research-plugin&#x27;s dual-host packaging (commands, skill, hook, both plugin.jsons)</p>
+  <p><strong>New:</strong> Add an MCP server (stratagem&#x27;s server.py pattern) so Codex, Claude Code, and local-smartz&#x27;s MCP client all reach the same tools. Turn local-smartz&#x27;s MCP/plugin tools on by default once this exists.</p>
+</li></ol></div>
+  </article>
+  <div class="overview-grid">
+    <article class="panel">
+      <div class="panel-header"><h3>Confidence</h3><p>Coverage and evidence limits from the source audit.</p></div>
+      <div class="panel-body"><dl class="confidence-list"><dt>Context coverage</dt><dd>high — every repo read at code level with citations; local-smartz (24K LOC) and stratagem (14K) sampled by targeted greps rather than exhaustively.</dd><dt>Verification coverage</dt><dd>medium-high — assessors ran tests where feasible (5 of 7; MRP not executed, market-intel cannot run); cross-repo claims were re-verified by hand, and the later MRP graph follow-up corrected D3 to runtime-empty.</dd><dt>Evidence quality</dt><dd>high — all claims are first-party repo reads (T1 for this purpose); no external claims made.</dd><dt>Overall</dt><dd>medium-high. Ratings are judgment calls on a 0–3 scale; a ±1 disagreement could alter some tied column-best picks, but the evidence still supports the spine recommendation.</dd></dl><p class="health-summary">Related work: a separate session today is auditing research-plugin usage and friction across Codex/Claude Code (build-loop-memory decision records dated 2026-08-15). This report covers capability; the two are complementary.</p></div>
+    </article>
+    <article class="panel">
+      <div class="panel-header"><h3>Next actions</h3><p>Ordered recommendations from the source audit.</p></div>
+      <div class="panel-body"><ol class="next-actions"><li>Decide the spine (recommendation: research-plugin). This is the one choice that changes everything downstream.</li><li>/build-loop:run in research-plugin: “add engine/ with embeddings + sqlite-vec store ported from MRP, and an entity/relation schema + extraction contract” — the graph layer is the largest net-new build and the largest gap.</li><li>Extract renderers (stratagem + MRP generators) into the spine behind a synthesize --register CLI; wire deck = outline + slide text + optional .pptx.</li><li>Graft local-smartz runners/ + MRP MLXProvider as the headless model layer; keep host mode stdlib-only.</li><li>File the seven findings above as Operations Center tasks (done alongside this report) and retire market-intel after salvaging its two assets.</li></ol></div>
+    </article>
+  </div>
+</section>
+
+<section class="area" id="matrix" aria-labelledby="matrix-heading">
+  <div class="section-heading">
+    <p class="eyebrow">Comparison</p>
+    <h2 id="matrix-heading">Capability matrix</h2>
+    <p>Open a score to read its evidence, citation, and verification mark. Outlined cells are column bests.</p>
+  </div>
+  <div class="table-wrap">
+    <table class="matrix-table">
+      <caption>Subjects by capability dimension on a 0–3 scale; every score includes a numeric value and text label.</caption>
+      <thead><tr><th scope="col">Subject</th><th scope="col" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="dimension-id">D1</span>
+  <span class="dimension-label">Data collection</span>
+  <span class="dimension-short">Collect</span>
+</th><th scope="col" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="dimension-id">D2</span>
+  <span class="dimension-label">Assessment &amp; categorization</span>
+  <span class="dimension-short">Assess</span>
+</th><th scope="col" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="dimension-id">D3</span>
+  <span class="dimension-label">Graphs &amp; structures</span>
+  <span class="dimension-short">Graph</span>
+</th><th scope="col" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="dimension-id">D4</span>
+  <span class="dimension-label">Insight extraction</span>
+  <span class="dimension-short">Insight</span>
+</th><th scope="col" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="dimension-id">D5</span>
+  <span class="dimension-label">Synthesis at multiple lengths</span>
+  <span class="dimension-short">Synthesis</span>
+</th><th scope="col" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="dimension-id">D6</span>
+  <span class="dimension-label">Model flexibility</span>
+  <span class="dimension-short">Model flex</span>
+</th><th scope="col" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="dimension-id">D7</span>
+  <span class="dimension-label">Codex + Claude Code integration</span>
+  <span class="dimension-short">Codex/CC</span>
+</th><th scope="col">Health</th></tr></thead>
+      <tbody><tr>
+  <th scope="row">market-intel</th>
+  <td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Data collection: 0 of 3, absent. Evidence details." title="market-intel · Data collection · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No fetcher, no RSS parser, no scheduler, no rss-parser/cheerio dep. components/rss-controls.tsx:28-46 &quot;Add source&quot; is setTimeout(1000) + local useState; feed list is mockSources at :35-39. lib/database-api.ts:7,25,38,57,70,88 fetches /api/rss-sources, /api/articles, /api/summaries — none of those routes exist (app/ contains only layout.tsx, page.tsx, test/page.tsx), and DatabaseAPI has zero importers.</p>
+      <p><strong>Cite:</strong> <code>components/rss-controls.tsx:28-46; :35-39; lib/database-api.ts:7,25,38,57,70,88; /api/rss-sources; /api/articles; /api/summaries; app/; layout.tsx; page.tsx; test/page.tsx</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-intel · Assessment &amp; categorization · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Category taxonomy is a 12-string literal array app/page.tsx:70-74; filtering is article.categories.some(...) app/page.tsx:97-101. No scoring, credibility tiering, dedup, or auto-tagging anywhere.</p>
+      <p><strong>Cite:</strong> <code>app/page.tsx:70-74; app/page.tsx:97-101</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Graphs &amp; structures: 0 of 3, absent. Evidence details." title="market-intel · Graphs &amp; structures · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No graph/vector/entity code. supabase-fix.sql:3-12 is the only persistence artifact — two RLS policies on an articles table; no schema, no migrations, no Supabase client instantiated despite @supabase/supabase-js in package.json:52.</p>
+      <p><strong>Cite:</strong> <code>supabase-fix.sql:3-12; @supabase/supabase-js; package.json:52</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Insight extraction: 0 of 3, absent. Evidence details." title="market-intel · Insight extraction · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>whyItMatters / keyDetails / bottomLine are literal strings in the mock fixtures (app/page.tsx:18-24, components/news-grid.tsx:14-21), rendered verbatim by components/news-card.tsx:76-107. No trend, comparison, contradiction, or gap logic.</p>
+      <p><strong>Cite:</strong> <code>app/page.tsx:18-24; components/news-grid.tsx:14-21; components/news-card.tsx:76-107</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Synthesis at multiple lengths: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-intel · Synthesis at multiple lengths · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>One length only, and it is string interpolation, not generation: components/summary-panel.tsx:24-41 setTimeout(2000) then template-literals the fixture fields into a &quot;Why it matters / Key insights / Bottom line / Sources&quot; markdown block. The real renderer&#x27;s contract survives only as a test expectation — __tests__/api/summarize.test.ts:49-55 asserts a 3-part &quot;Key Takeaway / Why it matters / Bulleted highlights&quot; format from gpt-4o, temperature: 0, max_tokens: 500, system prompt containing &quot;You are an expert summary assistant&quot;. No docx/pptx/email/exec-summary.</p>
+      <p><strong>Cite:</strong> <code>components/summary-panel.tsx:24-41; __tests__/api/summarize.test.ts:49-55</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Model flexibility: 0 of 3, absent. Evidence details." title="market-intel · Model flexibility · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>openai@^5.3.0 is declared (package.json:60) and imported by nothing outside test mocks. Sole grep hits in shipping code are the words &quot;OpenAI&quot;/&quot;GPT-5&quot; inside mock headlines (components/news-grid.tsx:8-9). No provider abstraction, no local runtime, no embeddings, no router/fallback. Config surface = 3 keys in .env.local (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, OPENAI_API_KEY), all unread by source.</p>
+      <p><strong>Cite:</strong> <code>openai@^5.3.0; package.json:60; components/news-grid.tsx:8-9; .env.local</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-intel, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-intel · Codex + Claude Code integration · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>.claude/settings.local.json is a 34-entry Bash permission allowlist only — no skills, commands, agents, hooks, MCP, plugin.json, or AGENTS.md. .navgator/architecture/ holds a NavGator scan (181 nodes / 361 edges, metrics.json:4-7, generated 2026-07-12). An agent can only drive it as a plain repo; nothing is callable.</p>
+      <p><strong>Cite:</strong> <code>.claude/settings.local.json; plugin.json; AGENTS.md; .navgator/architecture/; metrics.json:4-7</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-bad">At risk</span><span class="health-summary">Dead — .git/refs missing, 40/40 tests fail at import, all data mocked</span></td>
+</tr><tr>
+  <th scope="row">market-research</th>
+  <td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Data collection: 3 of 3, mature or central, column best. Evidence details." title="market-research · Data collection · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>src/lib/parsers/fileRouter.ts:104-162 routes PDF/XLSX/CSV/PPTX/DOCX to dedicated parsers; src/lib/parsers/urlScraper.ts:111 scrapes URLs via @tyroneross/scraper-app through api/local/scrape.ts; src/lib/parsers/hybridParser.ts:70-116 picks LlamaParse-cloud vs local per sensitivity; cli/index.ts:144 mra ingest &lt;pathOrUrl&gt;. On-demand only — no scheduler, no web-search, no DB/API connectors.</p>
+      <p><strong>Cite:</strong> <code>src/lib/parsers/fileRouter.ts:104-162; src/lib/parsers/urlScraper.ts:111; @tyroneross/scraper-app; api/local/scrape.ts; src/lib/parsers/hybridParser.ts:70-116; cli/index.ts:144</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Assessment &amp; categorization: 2 of 3, working but narrow. Evidence details." title="market-research · Assessment &amp; categorization · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Per-parse confidenceScore (src/lib/parsers/pdf.ts:104, wordParser.ts:115); sensitivity classification by keyword list (hybridParser.ts:315-317 confidential|proprietary|classified) gates cloud vs local; theme tagging (src/lib/utils/themeExtractor.ts:9); naive Jaccard-ish dedup (src/lib/aggregation/aggregationEngine.ts:53-72). No source credibility tiers, no taxonomy, no cross-source dedup.</p>
+      <p><strong>Cite:</strong> <code>src/lib/parsers/pdf.ts:104; wordParser.ts:115; hybridParser.ts:315-317; src/lib/utils/themeExtractor.ts:9; src/lib/aggregation/aggregationEngine.ts:53-72</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research · Graphs &amp; structures · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No knowledge graph, no entity/relation extraction, no timelines. Only flat theme clustering (src/lib/aggregation/hierarchicalMerge.ts:78 clusterByTheme, with per-source fallback at :95-112) plus storage in LanceDB (src/lib/services/lanceVectorStore.ts:75) and Dexie/IndexedDB (src/lib/db/schema.ts). Citations are chunk-id links, not a graph.</p>
+      <p><strong>Cite:</strong> <code>src/lib/aggregation/hierarchicalMerge.ts:78; src/lib/services/lanceVectorStore.ts:75; src/lib/db/schema.ts</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Insight extraction: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research · Insight extraction · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Contradiction handling exists only as a prompt instruction (hierarchicalMerge.ts:169 &quot;If the excerpts contradict each other, surface the contradiction…&quot;; same in hierarchicalChunkingService.ts:349). No trend detection, gap analysis, or comparison module — getCostComparison hits are about $ cost, not content (aiService.ts:983).</p>
+      <p><strong>Cite:</strong> <code>hierarchicalMerge.ts:169; hierarchicalChunkingService.ts:349; aiService.ts:983</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Synthesis at multiple lengths: 2 of 3, working but narrow. Evidence details." title="market-research · Synthesis at multiple lengths · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>One shape only: PyramidSummary = conclusion → 3-5 arguments → cited evidence (src/lib/constants.ts:184-205 prompts; hierarchicalMerge.ts:335 aggregateHierarchically two-pass cluster-then-merge with chunk re-injection and alias-mapped citations). Renderers: DOCX + JSON in cli/index.ts:332-390 (docx lib), React/markdown in src/components/PyramidSummary/PyramidSummary.tsx:101. No PPTX, no short/long variants, no email/memo. UI &quot;Export Summary&quot; button is dead — onExportSummary is never passed from src/App.tsx (SummaryPanel.tsx:929 renders it permanently disabled).</p>
+      <p><strong>Cite:</strong> <code>src/lib/constants.ts:184-205; hierarchicalMerge.ts:335; cli/index.ts:332-390; src/components/PyramidSummary/PyramidSummary.tsx:101; src/App.tsx; SummaryPanel.tsx:929</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Model flexibility: 3 of 3, mature or central, column best. Evidence details." title="market-research · Model flexibility · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Provider registry src/lib/constants.ts:31-180 (ollama / openai / groq with ~9 Groq models, per-model pricing). Local: src/lib/services/ollamaService.ts:112 (chat + embed, env-overridable VITE_OLLAMA_CHAT_MODEL/_EMBED_MODEL, 404→qwen3:8b-q4_K_M fallback at :219). Router with health probe: aggregationEngine.ts:330 resolveProvider (ollama|openai|auto, localOnly forces local). Local embeddings + local cross-encoder rerank Xenova/bge-reranker-base (src/lib/services/reranker.ts:76). Config surface: .env.example, cli/config.ts (~/.market-research-app/config.json), Settings UI, ModelMigration for retired model IDs. No Anthropic/Gemini/LM Studio.</p>
+      <p><strong>Cite:</strong> <code>src/lib/constants.ts:31-180; src/lib/services/ollamaService.ts:112; qwen3:8b-q4_K_M; aggregationEngine.ts:330; Xenova/bge-reranker-base; src/lib/services/reranker.ts:76; .env.example; cli/config.ts; ~/.market-research-app/config.json</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-research, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research · Codex + Claude Code integration · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No plugin.json, no .claude-plugin/, no AGENTS.md, no MCP server (searched repo-wide). .claude/agents/*.md holds 8 generic project subagents (backend-api-engineer, system-architect, …) and market-research-app/.claude/settings.json only wires @tyroneross/bookmark snapshot hooks. Agent access is via the mra CLI (cli/bin.ts, commands scrape/parse/ingest/search/summarize/health/config) or the local HTTP routes under api/local/.</p>
+      <p><strong>Cite:</strong> <code>plugin.json; .claude-plugin/; AGENTS.md; .claude/agents/*.md; market-research-app/.claude/settings.json; @tyroneross/bookmark; cli/bin.ts; api/local/</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-ok">Healthy</span><span class="health-summary">TS app + mra CLI</span></td>
+</tr><tr>
+  <th scope="row">market-research-platform</th>
+  <td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Data collection: 3 of 3, mature or central, column best. Evidence details." title="market-research-platform · Data collection · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Uploads + in-process parsers for PDF/DOCX/XLSX/PPTX/image-OCR/python (backend/app/parsers/__init__.py); URL ingest scrapes via Node sidecar /scrape (backend/app/api/documents.py:248-330, services/parser-sidecar/src/index.ts). All on-demand — no scheduler, no web-search API anywhere.</p>
+      <p><strong>Cite:</strong> <code>backend/app/parsers/__init__.py; /scrape; backend/app/api/documents.py:248-330; services/parser-sidecar/src/index.ts</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Assessment &amp; categorization: 2 of 3, working but narrow. Evidence details." title="market-research-platform · Assessment &amp; categorization · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>T1–T4 source-tier scorer with ~55 seeded domains (backend/app/verification/source_scoring.py:15-80); deterministic claim verification + confidence roll-up (backend/app/verification/brief.py:31-60); 5-dimension brief-fidelity rubric (backend/app/reporting/quality.py:1-40). No dedup, no taxonomy/tagging.</p>
+      <p><strong>Cite:</strong> <code>backend/app/verification/source_scoring.py:15-80; backend/app/verification/brief.py:31-60; backend/app/reporting/quality.py:1-40</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Graphs &amp; structures: 0 of 3, absent. Evidence details." title="market-research-platform · Graphs &amp; structures · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Graph code exists but the runtime graph is empty. graph_store is imported only by graph/ingestion.py and graph/research.py; both are reachable only through graph/pipeline.py, whose ingestion and research entry points have no callers. The live api/documents.py path never touches graph_store, Kuzu, spaCy, or entity extraction. add_relation also has zero callers, so no relations can be written.</p>
+      <p><strong>Cite:</strong> <code>market-research-platform-findings.md:53-61; backend/app/storage/graph_store.py:131; backend/app/graph/ingestion.py:131-160; backend/app/graph/pipeline.py; backend/app/api/documents.py</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Insight extraction: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research-platform · Insight extraction · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Theme/claim/financial/risk/action extraction with context re-injection (backend/app/reporting/strategy.py:1-20); SWOT/competitive/trend prompts exist in backend/app/graph/research.py:61-66 but that graph is dead (no caller — see D8) and the API says so (backend/app/api/research.py:29-32). No contradiction or gap detection.</p>
+      <p><strong>Cite:</strong> <code>backend/app/reporting/strategy.py:1-20; backend/app/graph/research.py:61-66; backend/app/api/research.py:29-32</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Synthesis at multiple lengths: 3 of 3, mature or central, column best. Evidence details." title="market-research-platform · Synthesis at multiple lengths · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Five renderers off one StrategyBrief: pptx_generator.py:117 (via vendored engines/pptx-builder build_deck + QA gauntlet), docx_generator.py:260, email_generator.py:22, notes_generator.py:23, outline_generator.py:20; registry at backend/app/graph/reporting.py:34-42. Plus Minto-pyramid answer synthesis in /ask (backend/app/api/documents.py:665) and an earnings_call prompt template (backend/app/reporting/prompts/earnings_call.py).</p>
+      <p><strong>Cite:</strong> <code>pptx_generator.py:117; engines/pptx-builder; docx_generator.py:260; email_generator.py:22; notes_generator.py:23; outline_generator.py:20; backend/app/graph/reporting.py:34-42; /ask; backend/app/api/documents.py:665; backend/app/reporting/prompts/earnings_call.py</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Model flexibility: 2 of 3, working but narrow. Evidence details." title="market-research-platform · Model flexibility · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Real abstraction: LLMProvider base + OllamaProvider / MLXProvider / ClaudeProvider + LLMFactory with local-first, cloud_allowed-gated Claude fallback (backend/app/llm/factory.py:18-67,420-469). Embedder abstraction with Ollama / MLX / sentence-transformers (backend/app/embeddings/__init__.py:53-232). Config via MRP_* env / .env (backend/app/config.py:26-62). MLX is genuinely wired but half-integrated — see gaps.</p>
+      <p><strong>Cite:</strong> <code>backend/app/llm/factory.py:18-67,420-469; backend/app/embeddings/__init__.py:53-232; .env; backend/app/config.py:26-62</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="market-research-platform, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only. Evidence details." title="market-research-platform · Codex + Claude Code integration · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No plugin.json, no .claude/skills|commands|agents|hooks (.claude/ holds only bookmarks + audit), no MCP server, no root AGENTS.md/CLAUDE.md. Agent entry is HANDOFF-TO-CODEX.md prose + the HTTP API. Vendored engines carry their own skill specs (engines/pptx-builder/SKILL.md, engines/docx-builder/skills/…, engines/pyramid-principle/AGENTS.md) but nothing registers them with a host.</p>
+      <p><strong>Cite:</strong> <code>plugin.json; .claude/skills|commands|agents|hooks; .claude/; AGENTS.md; CLAUDE.md; HANDOFF-TO-CODEX.md; engines/pptx-builder/SKILL.md; engines/docx-builder/skills/…; engines/pyramid-principle/AGENTS.md</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-warn">Needs review</span><span class="health-summary">FastAPI + React platform</span></td>
+</tr><tr>
+  <th scope="row">Omniparse</th>
+  <td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Data collection: 2 of 3, working but narrow. Evidence details." title="Omniparse · Data collection · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Local files only: .xlsx/.xls/.csv/.tsv/.ods/.xlsb, .pptx, .py, .pdf, and recursive directories — packages/sdk/src/router.ts:88,116,175; concurrency-limited batch via p-limit. On-demand only; no scheduler, no web search, no scraping, no API/DB ingest — URLs are explicitly rejected (packages/sdk/tests/run-tests.ts:37). Second ingest path = HTTP upload packages/web/app/api/parse/route.ts:44. PDF extraction is hand-rolled BT/ET + FlateDecode regex, text-PDF only, no OCR (router.ts:507-538).</p>
+      <p><strong>Cite:</strong> <code>.xlsx/.xls/.csv/.tsv/.ods/.xlsb; .pptx; .py; .pdf; packages/sdk/src/router.ts:88,116,175; packages/sdk/tests/run-tests.ts:37; packages/web/app/api/parse/route.ts:44; router.ts:507-538</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only. Evidence details." title="Omniparse · Assessment &amp; categorization · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Only extension-based type classification (router.ts:104-130) and heuristic token estimation. No scoring, credibility tiers, tagging, dedup, or taxonomy — grep for those terms returns nothing outside CSS class names. Web UI &quot;types&quot; are display color maps (packages/web/lib/mock-data.ts:20).</p>
+      <p><strong>Cite:</strong> <code>router.ts:104-130; packages/web/lib/mock-data.ts:20</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only. Evidence details." title="Omniparse · Graphs &amp; structures · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Rich intra-document structure: merged cells, hyperlinks, named ranges, charts+series, comments, embedded images (packages/sdk/src/parsers/excel-parser-rich.ts:106,887); Python imports/functions/classes/variables (python-parser.ts:19-137); PPTX slides + speaker notes. Storage is a 2-table SQLite schema, Project→Document only (packages/web/lib/db.ts:31-71). No entity/relation extraction, no cross-document linking, no clustering, no timeline, no graph store, no visualization.</p>
+      <p><strong>Cite:</strong> <code>packages/sdk/src/parsers/excel-parser-rich.ts:106,887; python-parser.ts:19-137; packages/web/lib/db.ts:31-71</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Insight extraction: 0 of 3, absent. Evidence details." title="Omniparse · Insight extraction · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Absent. Closest artifact is buildStructureSummary() (packages/sdk/src/parsers/excel-parser-fast.ts:644) — descriptive counts (hasRichContent, image/chart counts), not analysis. No trend, comparison, contradiction, or gap logic anywhere.</p>
+      <p><strong>Cite:</strong> <code>packages/sdk/src/parsers/excel-parser-fast.ts:644</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Synthesis at multiple lengths: 1 of 3, stub / partial / prompt-only. Evidence details." title="Omniparse · Synthesis at multiple lengths · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Three renderers per parser: generateMarkdown() / generatePlainText() / JSON (python-parser.ts:819,915; CLI -f markdown|text|json at packages/sdk/bin/omniparse.ts:65). RAG-oriented buildChunks() emits typed content chunks (excel-parser-fast.ts:568). No report, exec-summary, memo, email, or PPTX-outline template exists — output length is a function of input size, not an author-chosen register.</p>
+      <p><strong>Cite:</strong> <code>python-parser.ts:819,915; packages/sdk/bin/omniparse.ts:65; excel-parser-fast.ts:568</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Model flexibility: 0 of 3, absent. Evidence details." title="Omniparse · Model flexibility · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Zero LLM code. Full-repo grep for ollama|mlx|llama|openai|anthropic|claude|gemini|groq|bedrock|litellm hits only prose comments and one bookmark snapshot. No embeddings, no vector store, no provider abstraction, no model env vars. SDK runtime deps are p-limit + sax only (packages/sdk/package.json). &quot;LLM-ready&quot; means token-counted Markdown, nothing more.</p>
+      <p><strong>Cite:</strong> <code>packages/sdk/package.json</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="Omniparse, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only. Evidence details." title="Omniparse · Codex + Claude Code integration · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Not a plugin: no plugin.json, .claude-plugin/, AGENTS.md, MCP server, skills, commands, or agents (find returns empty). .claude/settings.json holds only @tyroneross/bookmark context-snapshot hooks — unrelated to parsing. An agent invokes it as a subprocess or import: npx omniparse &lt;path&gt; -f json, or import { parse } from &#x27;@tyroneross/omniparse&#x27;. Clean, but no first-class agent surface.</p>
+      <p><strong>Cite:</strong> <code>plugin.json; .claude-plugin/; AGENTS.md; .claude/settings.json; @tyroneross/bookmark; import { parse } from &#x27;@tyroneross/omniparse&#x27;</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-ok">Healthy</span><span class="health-summary">Published TS SDK + CLI</span></td>
+</tr><tr>
+  <th scope="row">local-smartz</th>
+  <td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Data collection: 2 of 3, working but narrow. Evidence details." title="local-smartz · Data collection · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>tools/web.py:172 scrape_url (httpx+bs4, HTML tables→markdown at :147), :237 web_search (ddgs); tools/documents.py:10 parse_pdf (pypdf→pdfplumber fallback :63), :103 read_spreadsheet (openpyxl), :186 read_text_file. All on-demand tool calls only — no scheduler/cron/watcher anywhere in src/, no DB or API connectors.</p>
+      <p><strong>Cite:</strong> <code>tools/web.py:172; :147; :237; tools/documents.py:10; :63; :103; :186; src/</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Assessment &amp; categorization: 1 of 3, stub / partial / prompt-only. Evidence details." title="local-smartz · Assessment &amp; categorization · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No source scoring, credibility tiering, taxonomy, or content dedup. What exists grades agent output, not data: agents/prompts/fact_checker.md:37 verdict contract {&quot;verdict&quot;:&quot;ok&quot;|&quot;needs_more&quot;,&quot;missing_facts&quot;:[]}, agents/prompts/reflector.md:13 4-axis rubric. agent_scorecard.py:1 and query_doe.py:1 score the harness/router, not ingested material. Only dedup is per-turn tool-call suppression (serve.py:2309).</p>
+      <p><strong>Cite:</strong> <code>agents/prompts/fact_checker.md:37; agents/prompts/reflector.md:13; agent_scorecard.py:1; query_doe.py:1; serve.py:2309</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Graphs &amp; structures: 0 of 3, absent. Evidence details." title="local-smartz · Graphs &amp; structures · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No networkx/neo4j/entity/relation/cluster/ontology code — grep over src/**/*.py returns nothing. Structure is flat JSON: artifacts.py:82 .localsmartz/artifacts/index.json, threads.py:50 per-thread JSON + langgraph-checkpoint-sqlite for conversation state. Embedding models are cataloged but dead — models/catalog.py:204 qwen3-embedding entries and models/registry.py:11 &quot;embed&quot; Role literal have no consumer; no vector store, no retrieval.</p>
+      <p><strong>Cite:</strong> <code>src/**/*.py; artifacts.py:82; .localsmartz/artifacts/index.json; threads.py:50; models/catalog.py:204; models/registry.py:11</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Insight extraction: 2 of 3, working but narrow, column best. Evidence details." title="local-smartz · Insight extraction · 2 of 3: working but narrow, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span><span class="best-marker">best</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Gap analysis is real and enforced: fact-checker names missing facts and the graph re-runs the researcher up to pipeline.py:62 MAX_FACT_CHECK_ITERATIONS = 2. agents/prompts/analyzer.md:10 mandates cross-source comparison and outlier/inconsistency flagging with every number computed via python_exec (tools/compute.py). Critique loops in patterns/critic_loop.py, patterns/reflection.py. No trend detection over time, no corpus-level contradiction detection.</p>
+      <p><strong>Cite:</strong> <code>pipeline.py:62 MAX_FACT_CHECK_ITERATIONS = 2; agents/prompts/analyzer.md:10; tools/compute.py; patterns/critic_loop.py; patterns/reflection.py</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Synthesis at multiple lengths: 2 of 3, working but narrow. Evidence details." title="local-smartz · Synthesis at multiple lengths · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>tools/reports.py:12 create_report with three real renderers — _create_markdown_report:179, _create_docx_report:228 (python-docx), _create_html_report:300 — plus create_spreadsheet:71. Template is agents/prompts/writer.md:19 (Title / Exec Summary / Key Findings / Detailed Analysis / Recommendations / Sources). PowerPoint is prompt-only: agent.py:141-143 instructs a # Slide N: &lt;title&gt; markdown outline and explicitly forbids .pptx binary output — no python-pptx dependency. No email/memo template.</p>
+      <p><strong>Cite:</strong> <code>tools/reports.py:12; _create_markdown_report:179; _create_docx_report:228; _create_html_report:300; create_spreadsheet:71; agents/prompts/writer.md:19; agent.py:141-143; .pptx</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Model flexibility: 3 of 3, mature or central, column best. Evidence details." title="local-smartz · Model flexibility · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Central abstraction: runners/base.py AgentRunner Protocol + ModelRef, runners/factory.py:101-112 dispatches ollama / anthropic / openai / groq (groq = openai-compat base_url, :179); cloud SDKs lazy-imported with ImportError guards (runners/__init__.py:32-40). Privacy gate fails closed: factory.py:103 + :47-73 deny cloud when global.json is unreadable. Per-role model pinning (global_config.py:30 agent_models, profiles.py:265 global_pinned_model), model catalog/registry/resolver (models/), keyring secrets (secrets.py), retry at the runner turn (runners/_retry.py), cost estimation (cost.py), plus benchmarking/model_eval/DOE harnesses.</p>
+      <p><strong>Cite:</strong> <code>runners/base.py; runners/factory.py:101-112; :179; runners/__init__.py:32-40; factory.py:103; :47-73; global.json; global_config.py:30 agent_models; profiles.py:265 global_pinned_model; models/; secrets.py; runners/_retry.py; cost.py</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="local-smartz, Codex + Claude Code integration: 2 of 3, working but narrow. Evidence details." title="local-smartz · Codex + Claude Code integration · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Inverted — it is a host, not a plugin. No .claude-plugin/ or plugin.json of its own; .claude/ holds only settings + bookmark snapshots, and AGENTS.md is @tyroneross/bookmark boilerplate, not Codex instructions. It consumes Claude-Code-shaped extensions: plugins/discovery.py:8-61 finds plugin.json/SKILL.md/commands/hooks/agents/.mcp.json, plugins/mcp_client.py:29 is a full stdio MCP client (initialize/list_tools/call_tool), plugins/tools_adapter.py binds them as agent tools. An agent invokes local-smartz as a subprocess (localsmartz &quot;&lt;query&gt;&quot;) or over HTTP (serve.py:1253 /api/research, SSE). ⚠️ Caveat: the default graph path disables both — pipeline.py:151-159 passes include_plugin_tools=False, include_mcp=False, and pipeline.py:65-78 makes the graph the default, so MCP/plugin tools only reach the model on the legacy DeepAgents path (LOCALSMARTZ_PIPELINE=orchestrator).</p>
+      <p><strong>Cite:</strong> <code>.claude-plugin/; plugin.json; .claude/; AGENTS.md; plugins/discovery.py:8-61; SKILL.md; .mcp.json; plugins/mcp_client.py:29; plugins/tools_adapter.py; serve.py:1253 /api/research; pipeline.py:151-159; pipeline.py:65-78</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-ok">Healthy</span><span class="health-summary">Python app + macOS shell</span></td>
+</tr><tr>
+  <th scope="row">research-plugin</th>
+  <td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Data collection: 2 of 3, working but narrow. Evidence details." title="research-plugin · Data collection · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No web search/scrape in code — delegated to host tools by policy (CLAUDE.md:11, AGENTS.md connector policy enforced by tests/connector_policy_check.py:19). Real local intake: vendored Omniparse for .pdf/.xlsx/.xls/.csv/.tsv/.ods/.xlsb/.pptx/.py (research.py:3177, research.py:3193, binary present at vendor/omniparse/dist/bin/omniparse.js, 5.3 MB), markdown bulk ingest (research.py:3557), recursive project-dir linking (research.py:1358), CSV/JSON/SQLite profiling (research.py:2501, research.py:2520). On-demand only; the sole &quot;scheduler&quot; is a PostToolUse Write/Edit re-ingest hook (hooks/hooks.json:5). Only outbound HTTP is OpenAlex + arXiv (research.py:1903, research.py:1949).</p>
+      <p><strong>Cite:</strong> <code>CLAUDE.md:11; AGENTS.md; tests/connector_policy_check.py:19; .pdf/.xlsx/.xls/.csv/.tsv/.ods/.xlsb/.pptx/.py; research.py:3177; research.py:3193; vendor/omniparse/dist/bin/omniparse.js; research.py:3557; research.py:1358; research.py:2501; research.py:2520; hooks/hooks.json:5; research.py:1903; research.py:1949</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Assessment &amp; categorization: 3 of 3, mature or central, column best. Evidence details." title="research-plugin · Assessment &amp; categorization · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Central and mature. Deterministic domain-tier rules T1–T4 (research.py:1818) over a 52-domain seed + misinformation blocklist (data/domain-scores-seed.json, data/iffy-domains.csv, loaded at research.py:313); depth classifier light/standard/deep with per-depth source-mix quotas (research.py:1078, research.py:1149); 4-verifier claim check — numeric/symbolic/citation/code (research.py:2006–research.py:2125) rolling up to a verified|partial|inferred confidence in frontmatter (research.py:2178); staleness score = f(months, topic velocity, orphan) (research.py:3029); slug-collision dedup (research.py:381); taxonomy re-clustering (research.py:3395).</p>
+      <p><strong>Cite:</strong> <code>research.py:1818; data/domain-scores-seed.json; data/iffy-domains.csv; research.py:313; research.py:1078; research.py:1149; research.py:2006; research.py:2125; research.py:2178; research.py:3029; research.py:381; research.py:3395</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Graphs &amp; structures: 2 of 3, working but narrow, column best. Evidence details." title="research-plugin · Graphs &amp; structures · 2 of 3: working but narrow, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span><span class="best-marker">best</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Real but shallow: [[slug]] wikilinks are parsed and materialized into a bidirectional inbound[] backlink graph in both DB and frontmatter (research.py:1683–research.py:1712, schema research.py:82); topic/tag/project MOC hierarchies rebuilt to markdown (research.py:1609); sub-prefix clustering proposals (research.py:3412). No entity/relationship extraction in executing code — the entity + relationship tables and concept maps exist only as LLM prompt scaffolding (skills/research/references/active-project-ingestion.md:132, :191). No graph DB, no visualization, no embeddings or vector store anywhere.</p>
+      <p><strong>Cite:</strong> <code>research.py:1683; research.py:1712; research.py:82; research.py:1609; research.py:3412; skills/research/references/active-project-ingestion.md:132; :191</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Insight extraction: 1 of 3, stub / partial / prompt-only. Evidence details." title="research-plugin · Insight extraction · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Prompt-only. Zero matches for contradict in research.py; contradiction/gap/conflict/trend logic lives entirely in skill references the LLM is told to follow (skills/research/references/synthesis.md:62, :65; collection.md:212). Deterministic insight surfaces are limited to temporal staleness (research.py:3048) and input-certainty grading (research.py:2579).</p>
+      <p><strong>Cite:</strong> <code>research.py; skills/research/references/synthesis.md:62; :65; collection.md:212; research.py:3048; research.py:2579</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Synthesis at multiple lengths: 2 of 3, working but narrow. Evidence details." title="research-plugin · Synthesis at multiple lengths · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Strong templates, no renderers. 5 named report templates — Current State, Comparison, Evaluation, Deep Dive, Survey (skills/research/references/templates.md:5–:175); three synthesis modes Authorial / Executive / Temporal-Arc with a Pyramid-Principle exec structure (synthesis.md:9–:132); machine-checkable output contracts for Evidence Package, Authorial, and Executive outputs (output-contracts.md:5, :115, :171); 3-layer TL;DR/Notes/Raw entry format enforced in code (research.py:208) with a reversible Raw-compression path (research.py:3092). No PPTX/DOCX/email/memo renderer exists — .pptx appears only as an Omniparse input type (research.py:3181). All output is markdown written by the LLM.</p>
+      <p><strong>Cite:</strong> <code>skills/research/references/templates.md:5; :175; synthesis.md:9; :132; output-contracts.md:5; :115; :171; research.py:208; research.py:3092; .pptx; research.py:3181</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="0" data-scale-label="absent">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Model flexibility: 0 of 3, absent. Evidence details." title="research-plugin · Model flexibility · 0 of 3: absent">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">○○○</span>
+        <span class="score-number">0</span>
+        <span class="score-label">absent</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Deliberately zero. Explicit policy &quot;Don&#x27;t call external LLM APIs from scripts. Claude (this runtime) does any LLM work&quot; (CLAUDE.md:49). No provider SDK, router, factory, or fallback logic; no embedding model config; sole dependency is PyYAML (requirements.txt:1). Model choice is whatever host agent invokes the plugin.</p>
+      <p><strong>Cite:</strong> <code>CLAUDE.md:49; requirements.txt:1</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="research-plugin, Codex + Claude Code integration: 3 of 3, mature or central, column best. Evidence details." title="research-plugin · Codex + Claude Code integration · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Both hosts, first-class. .claude-plugin/plugin.json and .codex-plugin/plugin.json (both v0.5.2, the Codex one carrying the full interface/capabilities block); 22 slash commands in commands/; one skill with 13 reference files (skills/research/SKILL.md); a PostToolUse hook (hooks/hooks.json). Every invocation path resolves a triple-fallback root RESEARCH_PLUGIN_ROOT → CLAUDE_PLUGIN_ROOT → CODEX_PLUGIN_ROOT (commands/search.md:10, hooks/post-write-reingest.sh:34). Agent invokes it as python3 $ROOT/research.py &lt;subcommand&gt;. No MCP server.</p>
+      <p><strong>Cite:</strong> <code>.claude-plugin/plugin.json; .codex-plugin/plugin.json; commands/; skills/research/SKILL.md; hooks/hooks.json; commands/search.md:10; hooks/post-write-reingest.sh:34; python3 $ROOT/research.py &lt;subcommand&gt;</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-ok">Healthy</span><span class="health-summary">Live KB 187 entries · dual-host plugin</span></td>
+</tr><tr>
+  <th scope="row">stratagem</th>
+  <td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Data collection: 3 of 3, mature or central, column best. Evidence details." title="stratagem · Data collection · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>13 MCP tools registered src/stratagem/server.py:26-40: scrape_url (httpx+bs4, table→markdown) tools/web.py:22, parse_pdf tools/pdf.py:18, read_spreadsheet/read_pptx/read_docx/extract_images, search_sec_filings+download_sec_filing tools/sec_edgar.py:32,83 (+sec_client.py, ticker cache stratagem/cache/company_tickers.json). Builtin WebSearch/WebFetch allowlisted server.py:46. Read-only tools response-cached server.py:19-23. On-demand only — no scheduler anywhere.</p>
+      <p><strong>Cite:</strong> <code>src/stratagem/server.py:26-40; tools/web.py:22; tools/pdf.py:18; tools/sec_edgar.py:32,83; sec_client.py; stratagem/cache/company_tickers.json; server.py:46; server.py:19-23</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Assessment &amp; categorization: 2 of 3, working but narrow. Evidence details." title="stratagem · Assessment &amp; categorization · 2 of 3: working but narrow">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>record_observation writes category (source/finding/process/agent) + confidence clamped 0–1 + tags + scope, with exact-content dedup index tools/memory.py:34-75; cross-run merge keeps higher confidence memory.py:325-348; tier-1→tier-2 agent promotion gated on total_runs&gt;=3 and avg_confidence&gt;=0.7 memory.py:583. Claim grading is prompt-level (VERIFIED/SUPPORTED/UNSOURCED/CONTRADICTED/STALE) subagents/prompts/source_verifier.md:25,35; 5-axis report rubric report_critic.md:17-19. Query classification is keyword regex, not a model agent.py:156-232. No source-credibility tier engine.</p>
+      <p><strong>Cite:</strong> <code>tools/memory.py:34-75; memory.py:325-348; total_runs&gt;=3 and avg_confidence&gt;=0.7; memory.py:583; subagents/prompts/source_verifier.md:25,35; report_critic.md:17-19; agent.py:156-232</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Graphs &amp; structures: 1 of 3, stub / partial / prompt-only. Evidence details." title="stratagem · Graphs &amp; structures · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>No knowledge graph, no entity/relation extraction, no vector/graph DB — grep for networkx|neo4j|ontology|entity|relation|cluster|embed|faiss|chroma|qdrant over src/ returns zero substantive hits. The only graph is a code-architecture export (navgator.py:1-6, .claude/architecture/graph.json, served at /api/graph ui.py:1568) plus an agent-execution flow diagram app/Stratagem/Views/FlowDiagramView.swift. Structures are flat JSON: topics index + tags topics.py:4, artifact manifest artifacts.py:7, observations JSONL.</p>
+      <p><strong>Cite:</strong> <code>src/; navgator.py:1-6; .claude/architecture/graph.json; /api/graph; ui.py:1568; app/Stratagem/Views/FlowDiagramView.swift; topics.py:4; artifacts.py:7</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="2" data-scale-label="working but narrow">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Insight extraction: 2 of 3, working but narrow, column best. Evidence details." title="stratagem · Insight extraction · 2 of 3: working but narrow, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●○</span>
+        <span class="score-number">2</span><span class="best-marker">best</span>
+        <span class="score-label">working but narrow</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Real capabilities, all prompt-encoded: contradiction detection source_verifier.md:25,38; cross-source pattern/contradiction synthesis research_synthesizer.md:9; multi-period trend-over-snapshot financial_analyst.md:8,16; quality-drift detection (&quot;2+ metrics trending downward across 3+ outputs&quot;) plan_validator.md:51; after-action review generated per run agent.py:826 _generate_after_action_review with deterministic fallback agent.py:722. No deterministic comparison/gap engine.</p>
+      <p><strong>Cite:</strong> <code>source_verifier.md:25,38; research_synthesizer.md:9; financial_analyst.md:8,16; plan_validator.md:51; agent.py:826 _generate_after_action_review; agent.py:722</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell is-best" data-score="3" data-scale-label="mature or central">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Synthesis at multiple lengths: 3 of 3, mature or central, column best. Evidence details." title="stratagem · Synthesis at multiple lengths · 3 of 3: mature or central, column best">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●●●</span>
+        <span class="score-number">3</span><span class="best-marker">best</span>
+        <span class="score-label">mature or central</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>create_report renders 4 formats from structured sections — _create_markdown_report/_create_pptx_report/_create_docx_report/_create_html_report tools/reports.py:56-63,77,126,198,270; create_pptx with title/bullets/table/blank layouts + pipe-CSV table parsing tools/presentation.py:103-190; create_spreadsheet tools/spreadsheet_create.py. Length/register templates: subagents/prompts/executive_synthesizer.md:45-70, frameworks/pyramid_principle.md, frameworks/content_design.md, frameworks/output_formats.md (format-routing table), flowchart_architect.md. Shipped examples in output/*.pptx, output/subagent_systems_research_report.docx.</p>
+      <p><strong>Cite:</strong> <code>tools/reports.py:56-63,77,126,198,270; tools/presentation.py:103-190; tools/spreadsheet_create.py; subagents/prompts/executive_synthesizer.md:45-70; frameworks/pyramid_principle.md; frameworks/content_design.md; frameworks/output_formats.md; flowchart_architect.md; output/*.pptx; output/subagent_systems_research_report.docx</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Model flexibility: 1 of 3, stub / partial / prompt-only. Evidence details." title="stratagem · Model flexibility · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Anthropic-only. Grep for ollama|mlx|llama_cpp|vllm|litellm|openai|gemini|groq|bedrock across src/, tests/, app/ hits only a test fixture string. Single dep claude-agent-sdk&gt;=0.1.48 pyproject.toml:11. Flexibility is tier selection, not provider: per-agent map agent.py:1344-1356 (opus/sonnet), orchestrator model or &quot;opus&quot; agent.py:1056, CLI --model {opus,sonnet,haiku} / --fast __main__.py:44,71, runtime per-agent override POST /api/agents/&lt;name&gt;/model ui.py:1546. No provider abstraction/factory/fallback, no embeddings model. Config surface: .env (LangSmith keys only) __main__.py:13-27 + /api/config.</p>
+      <p><strong>Cite:</strong> <code>src/; tests/; app/; claude-agent-sdk&gt;=0.1.48; pyproject.toml:11; agent.py:1344-1356; agent.py:1056; __main__.py:44,71; POST /api/agents/&lt;name&gt;/model; ui.py:1546; .env; __main__.py:13-27; /api/config</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td><td class="score-cell" data-score="1" data-scale-label="stub / partial / prompt-only">
+  <details class="score-disclosure">
+    <summary aria-label="stratagem, Codex + Claude Code integration: 1 of 3, stub / partial / prompt-only. Evidence details." title="stratagem · Codex + Claude Code integration · 1 of 3: stub / partial / prompt-only">
+      <span class="score-summary-content">
+        <span class="score-dots" aria-hidden="true">●○○</span>
+        <span class="score-number">1</span>
+        <span class="score-label">stub / partial / prompt-only</span>
+      </span>
+    </summary>
+    <div class="score-evidence">
+      <p>Plugin packaging is deleted, not dormant: b7538d9 removed plugin/.claude-plugin/plugin.json, .codex-plugin/plugin.json, .mcp.json, agents/research-orchestrator/AGENT.md, commands/stratagem.md, and all 4 SKILL.md (399 deletions). plugin/ is now empty directories only — git ls-files plugin returns nothing; find . -name .mcp.json -o -name plugin.json returns nothing. The MCP server still works standalone: create_sdk_mcp_server + stdio main server.py:49-77, so python -m stratagem.server is wireable by hand. AGENTS.md still documents /plugins install ~/dev/git-folder/stratagem/plugin — stale. Today an agent invokes it via CLI (stratagem &quot;question&quot;) or the HTTP/SSE UI.</p>
+      <p><strong>Cite:</strong> <code>plugin/.claude-plugin/plugin.json; .codex-plugin/plugin.json; .mcp.json; agents/research-orchestrator/AGENT.md; commands/stratagem.md; plugin/; find . -name .mcp.json -o -name plugin.json; server.py:49-77; python -m stratagem.server; AGENTS.md; /plugins install ~/dev/git-folder/stratagem/plugin</code></p>
+      <p class="evidence-mark">✅ verified</p>
+    </div>
+  </details>
+</td>
+  <td><span class="pill pill-warn">Needs review</span><span class="health-summary">Plugin packaging deleted</span></td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="area" id="subjects" aria-labelledby="subjects-heading">
+  <div class="section-heading">
+    <p class="eyebrow">Evidence by subject</p>
+    <h2 id="subjects-heading">Subjects</h2>
+    <p>Each card keeps health, scores, strengths, gaps, reuse candidates, and the recommended role together.</p>
+  </div>
+  <div class="subject-grid"><article class="subject-card">
+  <div class="subject-heading"><h3>market-intel</h3><span class="kind">app</span></div>
+  <p class="one-liner">A Next.js 15 App Router UI shell for an RSS→AI news-summary product where every data path is hardcoded mock state — the backend (pages/api/*) that the tests and lib/database-api.ts call was deleted and never replaced.</p>
+  <div class="subject-health"><span class="pill pill-bad">At risk</span><span class="health-summary">Dead — .git/refs missing, 40/40 tests fail at import, all data mocked</span><span class="health-summary">Last commit: 2025-06-15 · Tests: 40/40 fail at import</span></div>
+  <div class="mini-scores" aria-label="Scores for market-intel"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>The deleted summarizer&#x27;s contract is fully recoverable from its tests — exact model, params, system-prompt opener, output shape, and the 405/400/empty-choices error branches (__tests__/api/summarize.test.ts:23-100).</li><li>components/news-card.tsx implements a genuinely reusable &quot;structured brief&quot; card — lead → expandable Why-it-matters / Key-details / Bottom-line / sources — that maps cleanly onto any synthesis payload.</li><li>__tests__/integration/api.integration.test.ts:7-9 uses the skipIfNoApiKey pattern to keep live-API tests opt-in, which is the right gating idiom for a shared suite.</li><li>scripts/preflight-next.sh + POST-MORTEM.md encode a real, hard-won Next-15/React-19 failure mode (blank-but-&quot;Ready&quot; dev server) that transfers to sibling Next repos.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>The whole backend is missing, not stubbed. pages/ was deleted (POST-MORTEM.md §1 item 4 says a legacy pages/ folder was shadowing App Router — it was removed and its api/summarize handler went with it), stranding all 40 tests and all 6 DatabaseAPI methods. Nothing in the UI ever issues a network request.</li><li>Every &quot;AI&quot; behavior is a setTimeout faking latency: refresh app/page.tsx:82-86 (2 s), add-source components/rss-controls.tsx:31-36 (1 s), summarize components/summary-panel.tsx:23-42 (2 s), save :45-49 (1 s). Mock-data-as-real throughout.</li><li>Broken git (.git/refs/ absent) means ~2 weeks of working-tree changes have no recoverable history and git log/status/diff are unusable until the ref is rebuilt from .git/logs/HEAD.</li><li>.env.local holds a live-looking OPENAI_API_KEY plus Supabase URL/anon key in a repo whose .gitignore is the only thing protecting them; no code consumes any of the three.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>__tests__/api/summarize.test.ts:49-79</code> — the executable spec for a GPT-4o brief endpoint (model/temperature/max_tokens/system-prompt/response shape + error branches). Port this as the contract test for the unified repo&#x27;s summarizer; it is worth more than the code it tested.</li><li><code>components/news-card.tsx</code> — self-contained structured-brief card (collapsed lead, expandable why-it-matters / key-details / bottom-line, source-link chips). Drop-in renderer for any synthesis output with that field set.</li><li><code>components/summary-panel.tsx:24-41</code> — the markdown assembly template (&quot;Why it matters / Key insights / Bottom line / Sources&quot;); reuse as the prompt output format spec, discarding the setTimeout fake at :23.</li><li><code>components/ui/*</code> — a complete, current shadcn/Radix v1.x-on-React-19 component set already reconciled with Tailwind v4; cheaper to copy than to re-scaffold.</li><li><code>scripts/preflight-next.sh + scripts/super-repair.sh</code> — Next.js dev-server preflight and recovery, applicable to any sibling Next 15 app.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Retire. Salvage the summarizer contract test and news-card; the RSS role moves to the new collector.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>market-research</h3><span class="kind">app</span></div>
+  <p class="one-liner">A local-first, privacy-tiered document-research app (Vite/React web UI + mra Node CLI + thin SwiftUI Mac shell) that ingests files/URLs, indexes them in LanceDB with hybrid BM25+dense+rerank retrieval, and emits a cited Pyramid-Principle summary via Ollama or cloud LLMs.</p>
+  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">TS app + mra CLI</span><span class="health-summary">Last commit: 2026-05-12 · Tests: 84/84 vitest pass</span></div>
+  <div class="mini-scores" aria-label="Scores for market-research"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Retrieval stack is genuinely mature and self-contained: hybrid BM25+dense+RRF with graceful dense-only fallback (lanceVectorStore.ts:171-231), local cross-encoder rerank on by default, optional multi-query rewrite kept behind a flag with the honest note that it didn&#x27;t help.</li><li>Hierarchical merge is defensive in ways that read as hard-won: short alias chunk-ids so small local models can cite correctly, per-cluster char budget, per-source cluster fallback documented against an observed PPTX-truncation failure (hierarchicalMerge.ts:66-77).</li><li>True local-only path end-to-end — parse → embed → index → summarize → DOCX with zero cloud calls (cli/index.ts:256-390).</li><li>Privacy tiering is enforced in code, not just policy: sensitivity detection routes sensitive docs away from LlamaParse (hybridParser.ts:70-150).</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>Dead modules: src/lib/services/enhancedSummaryService.ts (407 lines), summaryService.ts, src/lib/processors/scalableDocumentProcessor.ts (487 lines) have zero importers outside themselves.</li><li>src/lib/services/localLLMService.ts:100-170 is a regex/keyword &quot;LLM&quot; — hardcoded business-term list and /trend/i patterns masquerading as extraction; superseded by the Ollama path.</li><li>The web UI&#x27;s Export Summary button is a no-op (D5 above); DOCX export exists only in the CLI. The two aggregationEngine paths also diverge — the OpenAI branch still uses the old single-pass prompt with no re-injection.</li><li>Repo hygiene: ~25 root-level status/assessment .md reports, dev*.log, 1.2 MB of committed Lighthouse output, PNG screenshots, 6 ad-hoc test-*.js scripts, SimpleTest.tsx, plus a stale duplicate ../src/lib/ (3 files) outside the git root.</li><li>.env.local is present on disk in the app root — inspect before any repo sharing.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>market-research-app/src/lib/services/lanceVectorStore.ts</code> — LanceDB store with hybrid BM25+dense+RRF search, FTS index creation, and dense-only fallback; pluggable embedder.</li><li><code>market-research-app/src/lib/aggregation/hierarchicalMerge.ts</code> — provider-agnostic (LlmClient = {chat(prompt, system)}) cluster→merge summarizer that returns a citation-bearing PyramidSummary; the most portable asset here.</li><li><code>market-research-app/src/lib/services/ollamaService.ts + reranker.ts</code> — local chat/embed client with model-missing fallback and health check, plus an in-process Xenova/bge-reranker-base cross-encoder.</li><li><code>market-research-app/src/lib/parsers/ (fileRouter.ts, powerPointParser.ts, excelParser.ts, wordParser.ts, hybridParser.ts)</code> — multi-format extraction with confidence scoring and sensitivity-based cloud/local routing.</li><li><code>market-research-app/cli/index.ts</code> — the mra command surface (scrape/parse/ingest/search/summarize/health) is the cleanest agent-callable entrypoint and the reference wiring for the whole pipeline.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Reference only (TS): port the reranker and hierarchical-merge ideas; park the app.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>market-research-platform</h3><span class="kind">platform</span></div>
+  <p class="one-liner">Local-first FastAPI + React platform that ingests documents/URLs, embeds them into SQLite (sqlite-vec + FTS5), and map-reduces a cited StrategyBrief into PPTX/DOCX/email/notes/outline deliverables.</p>
+  <div class="subject-health"><span class="pill pill-warn">Needs review</span><span class="health-summary">FastAPI + React platform</span><span class="health-summary">Last commit: 2026-06-11 · Tests: ~95 pytest (not run)</span></div>
+  <div class="mini-scores" aria-label="Scores for market-research-platform"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Provider abstraction is real, not cosmetic: one LLMProvider interface, streaming opt-in via supports_streaming, per-call model= override, and a processing_mode gate that makes &quot;local&quot; mean local (factory.py:442-458).</li><li>Vector store namespaces dense tables by (project_id, embedder_name) so changing embedding models can&#x27;t corrupt prior data; FTS survives re-embedding (vector_store.py:1-16).</li><li>Deterministic, no-LLM verification + quality layers (source tiering, claim support, 5-dim rubric) that other repos could bolt on unchanged.</li><li>Ollama model self-healing: if the configured tag isn&#x27;t installed, it auto-selects the strongest installed one instead of silently 404-ing every map call (factory.py:131-157).</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>MLX integration stops at the factory. grep -rl mlx hits only config, factory, embeddings, tests, docs/mlx.md — nothing in api/health.py, api/models.py, or the frontend. Worse, tier selection still asks Ollama for tags (strategy.py:198-220, _list_installed_ollama_tags), so with local_llm_provider=&quot;mlx&quot; and Ollama also running, an Ollama tag is sent to the MLX server as model. Tests are mocked-httpx only — no live MLX run ⚠️.</li><li>get_embedder() under embedding_provider=&quot;mlx&quot; logs _active.dim, which forces the probe HTTP call at selection time and raises if the MLX server is down — no graceful fallback, unlike the Ollama path (embeddings/__init__.py:216-221).</li><li>Dead pipeline: run_ingestion / run_research / build_research_graph have no callers outside graph/pipeline.py; api/documents.py re-implements parse→chunk→embed itself. graph/research.py docstring still cites LanceDB/A-RAG that no longer exist.</li><li>The graph pipeline is unreachable from the live app, so the runtime Kuzu store is empty; add_relation is also uncalled. api/research.py:25 still advertises &quot;LanceDB cosine&quot;.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>backend/app/llm/factory.py</code> — self-contained httpx-only Ollama/MLX/Claude provider + factory with local/cloud enforcement; drop-in for any repo needing local-first generation.</li><li><code>backend/app/embeddings/__init__.py</code> — embedder interface + auto-probe selection (Ollama preference table, MLX, ST fallback) returning L2-normalized vectors.</li><li><code>backend/app/storage/vector_store.py</code> — sqlite-vec + FTS5 hybrid search with RRF fusion, embedder-namespaced tables, reembed_project(); zero heavy deps.</li><li><code>backend/app/verification/ (source_scoring.py + brief.py)</code> — deterministic T1–T4 domain tiering and numeric/text claim-support checking; input is plain dicts + a pydantic brief.</li><li><code>backend/app/reporting/ renderers (pptx_generator.py, docx_generator.py, email_generator.py, notes_generator.py, outline_generator.py)</code> — all share generate_X(brief, path) -&gt; {&quot;path&quot;, …}; pure Python, no LLM, callable off any object matching reporting/models.py:StrategyBrief.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Donor for vector store, embeddings, MLX provider, email/notes/outline renderers, OCR. Its React UI is the natural “platform” face later; not needed for the agent workflow.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>Omniparse</h3><span class="kind">library</span></div>
+  <p class="one-liner">A TypeScript file-parsing SDK + CLI (plus an optional local Next.js app) that converts Excel/PPTX/Python/PDF files and directories into LLM-ready Markdown, text, and JSON — pure extraction, no intelligence layer.</p>
+  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">Published TS SDK + CLI</span><span class="health-summary">Last commit: 2026-06-08 · Tests: 51/51 pass</span></div>
+  <div class="mini-scores" aria-label="Scores for Omniparse"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Real, tested, single-pass OOXML parsing with no Python/native deps — Excel rich content is reverse-engineered straight from ZIP/XML rels chains (excel-parser-rich.ts:635-801), which is genuinely hard-won and reusable.</li><li>Clean unified dispatch contract: every parser returns the same ParseResult shape with markdown/text/metadata/estimatedTokens/parseTime (router.ts:31-50) — trivially composable as an ingest stage for another repo.</li><li>51/51 tests pass against real binary fixtures (39 .xlsx/.pptx/.xls/.py files under packages/sdk/tests/fixtures/), not mocks.</li><li>Published, provenance-signed package with dual-registry release automation.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>The CLI is a parallel implementation of the router. bin/omniparse.ts:141-155 re-declares SUPPORTED_EXTENSIONS and getFileType() and dynamically imports parsers directly instead of calling detectInputType/parse. Two detection tables to keep in sync; the CLI silently misses any router improvement.</li><li>.docx fixtures exist (tests/fixtures/large/ffc.docx, ffc.xls-adjacent) with no Word parser — dead fixtures implying unshipped capability.</li><li>Search is LIKE %q% over text/markdown with no FTS index (packages/web/lib/store.ts:147-155) — O(n) full-column scan, no ranking, no snippets beyond client-side slicing.</li><li>Committed build output (packages/sdk/dist/, 16 MB) and two .archive/dirty-cleanup-* folders; README license (MIT) contradicts package.json (Apache-2.0).</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>packages/sdk/src/router.ts</code> — parse(), parseMultiple(), detectInputType(); the whole ingest front door, concurrency-limited, one uniform result shape.</li><li><code>packages/sdk/src/parsers/excel-parser-rich.ts:887 extractRichContent(buffer)</code> — pure Buffer → {images, charts, comments, mergedCells, hyperlinks, namedRanges}; no filesystem coupling, the most valuable standalone unit here.</li><li><code>packages/sdk/src/parsers/python-parser.ts:197 parsePythonSource()</code> — runtime-free static analysis returning imports/functions/classes/variables; usable as a code-entity extractor feeding someone else&#x27;s graph builder.</li><li><code>packages/sdk/src/parsers/excel-parser-fast.ts:568 buildChunks()</code> — emits typed, size-bounded chunks explicitly designed for embedding/RAG; the natural seam to attach an embedder that this repo lacks.</li><li><code>packages/sdk/src/parsers/pptx-parser-fast.ts:323 parsePptxFile()</code> — single-pass ZIP read yielding slide text + speaker notes together, no python-pptx dependency.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Keep as-is, consumed by subprocess. Fix the CLI/router duplicate table; add DOCX.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>local-smartz</h3><span class="kind">app</span></div>
+  <p class="one-liner">A local-first multi-agent research application (Ollama + LangGraph/DeepAgents) that routes a query through planner→researcher→analyzer→fact-checker→writer specialists and saves markdown/HTML/DOCX reports — shipped as a CLI, an HTTP+SSE web UI, and a native macOS app.</p>
+  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">Python app + macOS shell</span><span class="health-summary">Last commit: 2026-07-16 · Tests: 1003 passed / 4 skipped</span></div>
+  <div class="mini-scores" aria-label="Scores for local-smartz"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Provider abstraction is genuinely mature and safety-conscious — one AgentRunner interface, four providers, and a local-only privacy boundary that fails closed on a corrupt config (runners/factory.py:47-73).</li><li>Numeric integrity is enforced by construction: the analyzer must derive every statistic through python_exec rather than assert it (agents/prompts/analyzer.md:23).</li><li>Fact-check-and-redo is wired into the graph, not just prompted — a needs_more verdict re-enters the researcher node with a bounded iteration cap.</li><li>1003-test suite passing on a 100-second run, covering routing, fallback, cost, local-only enforcement, and plugin integration.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>Embeddings and retrieval are catalog entries with no implementation — models/catalog.py:200-226 advertises qwen3-embedding but nothing embeds, stores, or retrieves. Any RAG/vector work starts from zero.</li><li>MCP + plugin tools are silently off on the default execution path (pipeline.py:151-159); the README&#x27;s plugin section (line ~93) also self-describes as &quot;being wired up&quot;.</li><li>src/localsmartz/domains/ is a one-pack scaffold — domains/core/__init__.py re-exports the same 8 tools; the pluggable-domain abstraction it implies is unbuilt.</li><li>Two full execution backends (graph + DeepAgents/patterns/, ~2.5K LOC) are maintained in parallel, and runners/factory.py documents a deliberate duplicate of agent.py::_create_model that must not be collapsed.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>src/localsmartz/runners/ (base.py, factory.py, cloud_anthropic.py, cloud_openai_compat.py, local_ollama.py, _retry.py)</code> — drop-in provider router: get_runner(provider) / create_langchain_model(provider, model_ref) with local-only fail-closed enforcement and turn-level retry. The single highest-value export.</li><li><code>src/localsmartz/tools/reports.py</code> — self-contained markdown/HTML/DOCX report + XLSX spreadsheet renderers with an artifact-registration hook; only depends on python-docx/openpyxl.</li><li><code>src/localsmartz/plugins/mcp_client.py</code> — dependency-free stdio MCP client (threaded read loop, timeouts, initialize/list_tools/call_tool) usable by any Python host.</li><li><code>src/localsmartz/agents/prompts/*.md</code> — 9 role prompts with explicit JSON output contracts (fact_checker verdict, reflector rubric) that are portable to any orchestrator.</li><li><code>src/localsmartz/models/ (catalog.py, registry.py, resolve.py, preflight.py)</code> — role-tagged local-model catalog with hardware-aware resolution; utils/hardware.py pairs with it for RAM-tier selection.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Donor for runners + MCP client; remains the local-first headless runner / UI that calls the spine.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>research-plugin</h3><span class="kind">plugin</span></div>
+  <p class="one-liner">A dual-host (Claude Code + Codex) plugin whose Python stdlib CLI persists, indexes, scores, verifies, and lifecycle-manages a central markdown+SQLite/FTS5 research knowledge base at ~/dev/research/, while all LLM work (search, extraction, synthesis) is delegated to the host agent.</p>
+  <div class="subject-health"><span class="pill pill-ok">Healthy</span><span class="health-summary">Live KB 187 entries · dual-host plugin</span><span class="health-summary">Last commit: 2026-07-14 · Tests: 3/3 checks pass</span></div>
+  <div class="mini-scores" aria-label="Scores for research-plugin"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">○○○</span>
+  <span><strong>0</strong> <span class="mini-scale-label">absent</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Credibility machinery is the standout: deterministic tier rules + seeded domain table + misinformation blocklist + a claim-verification loop that writes per-atom JSON artifacts and re-grades entry confidence (research.py:2125–research.py:2200).</li><li>Genuinely running, not a demo — 187 entries and 35 linked project files in the live DB, last written 2026-08-14.</li><li>Zero-dependency, host-neutral design: same code path serves Claude Code and Codex, and the connector policy is regression-tested as a static contract (tests/connector_policy_check.py).</li><li>The 13 skill reference files (2,635 lines) are a reusable, well-structured methodology corpus independent of this plugin&#x27;s code.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>No embeddings, no vector search, no semantic retrieval — retrieval is BM25/FTS5 only (research.py:880). This is the single biggest gap for a unified data-intelligence workflow.</li><li>data/topic-velocity.yaml is shipped and documented (skills/research/references/lifecycle.md:87) but never read by research.py — a dead config file; velocity comes from per-entry frontmatter instead.</li><li>_verify_code silently degrades from a --network=none Docker sandbox to unsandboxed subprocess.run([sys.executable, &quot;-c&quot;, code]) when Docker is absent (research.py:2109) — executes LLM-authored code on the host.</li><li>Staleness inputs source_version_drift and corroboration_loss are hardcoded to 0 with a &quot;would require external checks&quot; comment (research.py:3040), so 2 of 4 staleness signals are inert.</li><li>Dirty worktree: uncommitted deletions of .build-loop/ and .claude/ files that .gitignore now excludes; 5 such paths still tracked.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>research.py:1818 _score_domain_by_rule + research.py:313 seed_domain_scores + data/domain-scores-seed.json + data/iffy-domains.csv</code> — drop-in T1–T4 source-credibility tiering with 52 seeded domains and a misinformation blocklist.</li><li><code>research.py:1899–research.py:1974 _arxiv_check / _openalex_check / _title_similarity</code> — stdlib-only citation existence-and-title verification against arXiv and OpenAlex.</li><li><code>research.py:2375–research.py:2620 the profiling block (_profile_table_file, _profile_sqlite_db, _certainty_from_profile)</code> — schema/null/grain profiling of CSV/TSV/JSON/SQLite that emits a High/Medium/Low certainty grade with reasons.</li><li><code>research.py:3193–research.py:3384 the Omniparse bridge (_find_omniparse, _run_omniparse, _extract_and_cache) plus vendor/omniparse/</code> — content-hash-cached PDF/XLSX/PPTX/CSV → markdown extraction with a Node-absent fallback path.</li><li><code>skills/research/references/{templates,synthesis,output-contracts}.md</code> — 5 report templates, 3 synthesis modes, and structured output contracts any other repo&#x27;s synthesis prompts can adopt verbatim.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Spine. Grows an engine/ package (embeddings, graph, insight, renderers, runners) beside research.py; keeps stdlib-only for the host-mode path via lazy imports.</p>
+</article><article class="subject-card">
+  <div class="subject-heading"><h3>stratagem</h3><span class="kind">app</span></div>
+  <p class="one-liner">A Claude-Agent-SDK multi-agent market-research app that decomposes a question, fans out document/web/SEC extraction across 12 subagents, and renders md/pptx/docx/html deliverables — shipped as a CLI + local web UI + SwiftUI macOS shell, no longer as a plugin.</p>
+  <div class="subject-health"><span class="pill pill-warn">Needs review</span><span class="health-summary">Plugin packaging deleted</span><span class="health-summary">Last commit: 2026-06-04 · Tests: 89 pass / 7 stale-fail</span></div>
+  <div class="mini-scores" aria-label="Scores for stratagem"><div class="mini-score" title="sources it can ingest (web search, scraping, APIs, files, PDFs, DBs), how (scheduled? on-demand?), formats.">
+  <span class="mini-label"><strong>D1</strong> Data collection</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="scoring, classification, tagging, credibility/tier grading, dedup, taxonomy.">
+  <span class="mini-label"><strong>D2</strong> Assessment &amp; categorization</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="knowledge graph, entity/relationship extraction, linking, clustering, timelines, hierarchies; storage (DB, JSON, graph DB); visualization.">
+  <span class="mini-label"><strong>D3</strong> Graphs &amp; structures</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="trend detection, comparison, contradiction detection, gap analysis, “so-what” generation.">
+  <span class="mini-label"><strong>D4</strong> Insight extraction</span>
+  <span class="score-dots" aria-hidden="true">●●○</span>
+  <span><strong>2</strong> <span class="mini-scale-label">working but narrow</span></span>
+</div><div class="mini-score" title="long report, short report, key highlights/bullets, PowerPoint outline + slide text, other (email, memo, exec summary). Name the exact templates/prompts/renderers.">
+  <span class="mini-label"><strong>D5</strong> Synthesis at multiple lengths</span>
+  <span class="score-dots" aria-hidden="true">●●●</span>
+  <span><strong>3</strong> <span class="mini-scale-label">mature or central</span></span>
+</div><div class="mini-score" title="which providers, is there a provider abstraction (single interface / factory / router), local (Ollama, MLX, llama.cpp, LM Studio) vs cloud (Anthropic, OpenAI, Gemini, ...), embeddings model choice, config surface (env vars, config file), fallback/routing logic.">
+  <span class="mini-label"><strong>D6</strong> Model flexibility</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div><div class="mini-score" title="is it a Claude Code plugin (skills/commands/agents/hooks/MCP)? Codex (AGENTS.md, codex exec)? Both? Or standalone app/API? How does an agent invoke it?">
+  <span class="mini-label"><strong>D7</strong> Codex + Claude Code integration</span>
+  <span class="score-dots" aria-hidden="true">●○○</span>
+  <span><strong>1</strong> <span class="mini-scale-label">stub / partial / prompt-only</span></span>
+</div></div>
+  <div class="subject-columns">
+    <div><h4>Strengths</h4><ul class="clean-list"><li>Deepest synthesis-renderer stack of any repo here: four report formats + native PPTX/XLSX builders that write real files and self-register in a manifest.</li><li>Twelve role-specific prompt files encode a genuine research method (planner → extractors → verifier → synthesizer → critic → after-action), reusable verbatim by any host.</li><li>Cross-run learning that actually persists: observations → topic/common memory → token-budgeted scaffold injection memory.py:188 → agent promotion, with LLM compression + deterministic fallback memory.py:74,98.</li><li>SEC EDGAR search/download is first-class and ticker-cached — a data source the other repos likely lack.</li></ul></div>
+    <div><h4>Gaps</h4><ul class="clean-list"><li>plugin/ is 8 empty directories; AGENTS.md still instructs installing it, and 3 tests still assert its files exist (tests/test_integration.py:70-76) — 3 of the 7 failures.</li><li>Other 4 failures are stale counts, not breakage: assert len(ALL_TOOLS) == 12 vs 13 actual test_integration.py:11, and NavGator component/connection counts (26 vs 25, 34 vs 32).</li><li>Zero retrieval layer — no embeddings, no vector store, no graph. Cross-document linking happens only inside an LLM context window via file-based handoffs.</li><li>Provider lock-in to Anthropic at the SDK level; swapping models means swapping claude-agent-sdk itself.</li><li>app/build/ Xcode intermediates are committed; 8 Swift view files sit uncommitted since ~May.</li></ul></div>
+  </div>
+  <div class="role-callout"><h4>Reuse candidates</h4><ul class="clean-list reuse-list"><li><code>src/stratagem/tools/reports.py</code> — create_report(sections, format=markdown|pptx|html|docx), one structured-section input → four renderers. Highest-value single import.</li><li><code>src/stratagem/tools/presentation.py</code> — create_pptx (title/bullets/table layouts, pipe/CSV table parsing) + read_pptx; the &quot;PowerPoint outline + slide text&quot; capability, already working.</li><li><code>src/stratagem/tools/sec_edgar.py + tools/sec_client.py</code> — EDGAR company/filing search and download with ticker-map cache; self-contained, httpx-only.</li><li><code>src/stratagem/memory.py + src/stratagem/tools/memory.py</code> — observation capture (category/confidence/tags/scope, dedup) → aggregation → budgeted scaffold; a drop-in cross-run memory layer with no DB dependency.</li><li><code>src/stratagem/subagents/prompts/*.md + src/stratagem/frameworks/*.md</code> — 12 role prompts (source_verifier&#x27;s contradiction grading, executive_synthesizer, report_critic rubric) plus pyramid-principle/content-design/format-routing references; pure text, host-neutral.</li></ul></div>
+  <p class="role-callout"><strong>Role:</strong> Donor for renderers, SEC EDGAR, memory, prompts. Then either re-point its agents at the spine or freeze it as the Anthropic-SDK reference implementation.</p>
+</article></div>
+</section>
+
+<section class="area" id="findings" aria-labelledby="findings-heading">
+  <div class="section-heading">
+    <p class="eyebrow">Disposition and composition</p>
+    <h2 id="findings-heading">Findings</h2>
+    <p>Overlaps identify what to consolidate; gaps show what no subject supplies; findings retain severity, state, and record.</p>
+  </div>
+  <div class="findings-stack">
+    <article class="panel">
+      <div class="panel-header"><h3>Overlaps</h3><p>The same capability implemented more than once.</p></div>
+      <div class="table-wrap">
+        <table><caption>Capability overlap, current implementations, and the implementation to keep.</caption><thead><tr><th scope="col">Capability</th><th scope="col">Implementations</th><th scope="col">Keep</th></tr></thead><tbody><tr>
+  <th scope="row">Document parsing (PDF/XLSX/PPTX/DOCX)</th>
+  <td><strong>Omniparse:</strong> TS, tested, published<br><strong>market-research:</strong> parsers/ (TS)<br><strong>market-research-platform:</strong> backend/app/parsers/ (Py, +OCR)<br><strong>stratagem:</strong> tools/{pdf,spreadsheet,pptx,docx} (Py)<br><strong>local-smartz:</strong> tools/documents.py (Py)</td>
+  <td>Omniparse as the front door (research-plugin already vendors it); use MRP&#x27;s OCR and DOCX paths for formats Omniparse lacks</td>
+</tr><tr>
+  <th scope="row">LLM provider abstraction</th>
+  <td><strong>local-smartz:</strong> runners/ (ollama/anthropic/openai/groq, fail-closed)<br><strong>market-research-platform:</strong> llm/factory.py (ollama/mlx/claude)<br><strong>market-research:</strong> constants.ts + aggregationEngine.resolveProvider (ollama/openai/groq)</td>
+  <td>local-smartz runners + MRP&#x27;s MLXProvider grafted in</td>
+</tr><tr>
+  <th scope="row">Report renderers</th>
+  <td><strong>stratagem:</strong> reports.py (md/pptx/docx/html) + presentation.py<br><strong>market-research-platform:</strong> 5 generators (pptx/docx/email/notes/outline)<br><strong>local-smartz:</strong> reports.py (md/html/docx)<br><strong>market-research:</strong> CLI (docx/json)</td>
+  <td>stratagem&#x27;s four + MRP&#x27;s email/notes/outline → one renderers package</td>
+</tr><tr>
+  <th scope="row">Source credibility tiers</th>
+  <td><strong>research-plugin:</strong> _score_domain_by_rule + 52-domain seed + iffy list<br><strong>market-research-platform:</strong> verification/source_scoring.py (~55 domains)</td>
+  <td>research-plugin&#x27;s (has the blocklist and LLM write-back); merge MRP&#x27;s domain list into the seed</td>
+</tr><tr>
+  <th scope="row">Vector / hybrid retrieval</th>
+  <td><strong>market-research:</strong> LanceDB (TS, + reranker)<br><strong>market-research-platform:</strong> sqlite-vec + FTS5 (Py)</td>
+  <td>MRP&#x27;s — SQLite matches research-plugin&#x27;s store; port the reranker idea later</td>
+</tr><tr>
+  <th scope="row">Web scrape</th>
+  <td><strong>stratagem:</strong> tools/web.py<br><strong>local-smartz:</strong> tools/web.py<br><strong>market-research-platform:</strong> Node sidecar<br><strong>market-research:</strong> @tyroneross/scraper-app</td>
+  <td>local-smartz/stratagem httpx+bs4 (near-identical; pick one)</td>
+</tr><tr>
+  <th scope="row">Pyramid-Principle synthesis prompts</th>
+  <td><strong>stratagem:</strong> frameworks/ + executive_synthesizer.md<br><strong>research-plugin:</strong> synthesis.md + 5 templates<br><strong>market-research:</strong> constants.ts<br><strong>market-research-platform:</strong> /ask<br><strong>local-smartz:</strong> writer.md</td>
+  <td>research-plugin templates + stratagem role prompts (both host-neutral text)</td>
+</tr><tr>
+  <th scope="row">Cross-run memory / threads</th>
+  <td><strong>stratagem:</strong> memory.py + .stratagem/threads<br><strong>local-smartz:</strong> threads.py + LangGraph checkpointer (ported from stratagem)</td>
+  <td>stratagem&#x27;s observation → scaffold model</td>
+</tr></tbody></table>
+      </div>
+    </article>
+    <article class="panel">
+      <div class="panel-header"><h3>Cross-subject gaps</h3><p>Capabilities absent or incomplete across the audited set.</p></div>
+      <div class="panel-body"><ul class="gap-list"><li><strong>Entity / relationship graph</strong><p>Best anywhere is 2/3. research-plugin has wikilink backlinks + MOC hierarchies, but no entities. MRP defines spaCy NER and Kuzu graph code, but the pipeline is unreachable and the runtime graph is empty. Nobody links entities across documents or visualizes a knowledge graph (stratagem&#x27;s only graph is its own code architecture).</p></li><li><strong>Deterministic insight engine</strong><p>Contradiction, trend, comparison, and gap detection exist only as prompt instructions (stratagem source_verifier.md, local-smartz analyzer.md, research-plugin synthesis.md). Closest to code: local-smartz&#x27;s bounded fact-check→re-research loop and research-plugin&#x27;s atom verifier. Nothing compares atoms across entries.</p></li><li><strong>Continuous / scheduled collection</strong><p>Every repo is on-demand. market-intel was meant to be the RSS feed and is dead. No watcher, cron, or feed reader anywhere — your LaunchAgent fleet is the obvious host for one.</p></li><li><strong>Web search in headless mode</strong><p>Only local-smartz (ddgs) and stratagem (Claude WebSearch builtin) search the web from code; research-plugin delegates to host tools by policy — fine interactively, absent when running headless.</p></li><li><strong>Multi-length synthesis as a first-class register</strong><p>Renderers exist; what&#x27;s missing is one contract that says “long report / short report / key highlights / deck outline” and routes to templates. research-plugin&#x27;s output-contracts.md + stratagem&#x27;s output_formats.md format-routing table are the two halves.</p></li></ul></div>
+    </article>
+    <article class="panel">
+      <div class="panel-header"><h3>Findings needing disposition</h3><p>Severity and state are always written, never color-only.</p></div>
+      <div class="table-wrap">
+        <table><caption>Subject findings with severity, disposition state, and durable record.</caption><thead><tr><th scope="col">Subject</th><th scope="col">Severity</th><th scope="col">Finding</th><th scope="col">State</th><th scope="col">Record</th></tr></thead><tbody><tr>
+  <th scope="row">market-intel</th>
+  <td><span class="pill pill-high">high</span></td>
+  <td>.git/refs/ missing (repo unusable); .env.local holds a live-looking OpenAI key + Supabase keys with no consumer in code. Blast radius if revoked: none in this repo. Action: confirm whether the key is still active in the OpenAI dashboard; if unused elsewhere, revoke. Provenance unknown.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:2b128569</code></td>
+</tr><tr>
+  <th scope="row">research-plugin</th>
+  <td><span class="pill pill-high">high</span></td>
+  <td>_verify_code runs LLM-authored code unsandboxed when Docker is absent (research.py:2109). Should fail closed (skip → ❓) instead.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:2434d911</code></td>
+</tr><tr>
+  <th scope="row">stratagem</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>7 failing tests are stale assertions (plugin files, tool count 12→13, NavGator counts); AGENTS.md still instructs installing the deleted plugin; Xcode intermediates committed.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:e665255a</code></td>
+</tr><tr>
+  <th scope="row">market-research-platform</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>MLX half-wired (tier selection sends Ollama tags to MLX; embedder probe raises without fallback); the graph pipeline is unreachable and the runtime Kuzu store is empty; no README.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:006f476c</code></td>
+</tr><tr>
+  <th scope="row">local-smartz</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>MCP + plugin tools are disabled on the default graph pipeline (pipeline.py:151-159; default selected at pipeline.py:65-78) while README advertises them.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:0a4b1914</code></td>
+</tr><tr>
+  <th scope="row">market-research</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>dead Export button, ~900 lines dead modules, .env.local on disk (inspect before sharing).</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:64525fa5</code></td>
+</tr><tr>
+  <th scope="row">Omniparse</th>
+  <td><span class="pill pill-normal">normal</span></td>
+  <td>CLI/router duplicate detection tables; license mismatch (README MIT vs package Apache-2.0); CI runs no tests.</td>
+  <td><span class="pill pill-escalated">escalated</span></td>
+  <td><code class="record">oc:dc678965</code></td>
+</tr></tbody></table>
+      </div>
+    </article>
+  </div>
+</section>
+      <footer class="footer">Source: <code>~/dev/docs/audits/2026-08-15-data-intel-repo-audit/index.html</code> · Generated 2026-08-15</footer>
+    </main>
+  </div>
+</body>
+</html>
