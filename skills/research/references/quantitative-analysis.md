@@ -48,10 +48,32 @@ Profile output should include:
 
 Use `research.py analyze-plan --input <path> --question "..."` to create an analysis run directory with:
 
-- `analysis-plan.yaml` — inputs, profiles, assumptions, metrics scaffold, validations, certainty rubric.
+- `analysis-plan.yaml` — inputs, profiles, assumptions, metric specs, validations, certainty rubric.
 - `analysis.py` — self-contained stdlib Python script generated from the profile.
 
-The generated script should be auditable and conservative. It should compute only generic profile summaries unless the analysis plan has explicit metric definitions.
+The generated script is auditable and conservative: it computes exactly the aggregations declared in the plan's `metrics:` block and nothing else. Metric specs are data, never evaluated as code.
+
+`analyze-plan` scaffolds `metrics:` from the question. It maps "per/by X" and "top N X" phrases to columns that exist in the profile, turns `p50`/`p90`/`median` into percentiles, "error rate" into a truthy-share rate, and "by week/day/month" into a time bucket. Phrases it cannot map to a real column are printed and recorded under `metric_inference.unmatched` rather than guessed at.
+
+**Always read back the scaffolded metrics before trusting the run.** Inference cannot derive filters, joins, or custom denominators. When it misses part of the question — a scoped subset such as "per-mcp-server", a non-default denominator, a derived column — declare metrics explicitly with `--metrics` (inline JSON or a JSON/YAML file), which replaces inference:
+
+```json
+[{"name": "mcp_by_server",
+  "group_by": ["subclass"],
+  "filter": {"column": "surface", "op": "eq", "value": "mcp"},
+  "aggregations": [{"name": "calls", "op": "count"},
+                   {"name": "error_pct", "op": "rate", "column": "is_error"},
+                   {"name": "p90_latency_ms", "op": "percentile", "column": "latency_ms", "q": 0.9}],
+  "top_n": 15}]
+```
+
+Spec fields: `name`, `input`, `table` (SQLite), `group_by`, `bucket` (`{column, unit}`; unit ∈ hour/day/week/month/year), `filter` (`eq`/`ne`/`in`/`not_in`/`contains`/`gt`/`gte`/`lt`/`lte`/`blank`/`nonblank`), `aggregations` (`count`/`share`/`count_distinct`/`rate`/`sum`/`mean`/`min`/`max`/`median`/`percentile`), `sort_by`, `sort_desc`, `top_n`.
+
+Semantics worth stating in any writeup: percentiles are nearest-rank (`rank = ceil(q × n)`, no interpolation) over rows whose value parses as a number, so `coverage` reports the denominator; `rate` counts truthy values over all rows in the group unless `"denominator": "nonblank"` is set; `share` is the group's share of scoped rows.
+
+Prefer `--metrics` over hand-editing `analysis.py`. A hand-edit invalidates `script_sha256`, forces `analyze-run --allow-modified-script`, and leaves `metrics:` describing something the script no longer does — the plan stops being an accurate record of the analysis.
+
+Use `--no-infer-metrics` when a profiling-only pass is genuinely what you want.
 
 ### Phase 4: Run
 

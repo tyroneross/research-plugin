@@ -89,7 +89,7 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:verify <slug>` | Run claim verification on an entry |
 | `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
 | `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
-| `/research:analyze-plan --input <path> --question "..."` | Generate a self-contained stdlib Python analysis plan/script |
+| `/research:analyze-plan --input <path> --question "..."` | Generate a self-contained stdlib Python analysis plan/script, with group-by / percentile / rate metrics scaffolded from the question (override with `--metrics`) |
 | `/research:analyze-run --plan <analysis-plan.yaml>` | Run the generated analysis script and write results/audit artifacts |
 | `/research:review` | Surface stale / review-due entries |
 | `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
