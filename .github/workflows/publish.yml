@@ -38,8 +38,8 @@ jobs:
 
       - name: Verify plugin checks
         run: |
-          python3 tests/research_depth_check.py
-          python3 tests/search_quality_check.py
+          python3 -m pip install pytest
+          python3 -m pytest -q
 
       - name: Verify package contents
         run: npm pack --dry-run

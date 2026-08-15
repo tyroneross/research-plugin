@@ -12,14 +12,15 @@ Central, token-efficient research knowledge base. Persists findings to `~/dev/re
 
 ## Entry point
 
-- Slash commands: `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`
+- Slash commands: `/research:optimize`, `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`
 - Direct: `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" <subcommand>`
 - Via skill: user language matching the `research` skill's description triggers the full-flow, which ends by persisting via Phase 6.
+- Skills: `research` (general flow; Phase 1 = query optimization) and `financial-research` (margin, COGS, cost buckets, filings, operating-model analysis).
 
 ## How research gets persisted
 
 1. User asks Claude to research something.
-2. `research` skill runs Phases 1-5 (frame → source → execute → synthesize → deliver) using existing methodology.
+2. `research` skill runs Phases 1-5 (optimize → source → execute → synthesize → deliver): Phase 1 produces a decision card, one or more meta-questions, MECE sub-question groups, and section contracts that Phase 2 executes and Phase 4/5 checks off as the coverage summary.
 3. **Phase 6**: Claude writes a three-layer markdown entry (TL;DR / Notes / Raw) with rich frontmatter, then invokes `research.py save` which:
    - upserts into SQLite,
    - writes the canonical entry to `~/dev/research/topics/<top>/<slug>.md`,

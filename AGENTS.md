@@ -12,14 +12,15 @@ Central, token-efficient research knowledge base. Persists findings to `~/dev/re
 
 ## Entry point
 
-- Slash commands: `/research:research` (top-of-funnel — run the full research flow on a topic: frame, source, execute, synthesize, deliver, persist to `~/dev/research/`), `/research:depth` (classify a research request as light, standard, or deep before sourcing), `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`
+- Slash commands: `/research:optimize` (turn a raw request into a claim-safe research contract), `/research:research` (top-of-funnel — run the full research flow on a topic: frame, source, execute, synthesize, deliver, persist to `~/dev/research/`), `/research:depth` (classify a research request as light, standard, or deep before sourcing), `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`
 - Direct: `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" <subcommand>`
 - Via skill: user language matching the `research` skill's description triggers the full-flow, which ends by persisting via Phase 6.
+- Skills: `research` (general flow; Phase 1 = query optimization) and `financial-research` (margin, COGS, cost buckets, filings, operating-model analysis).
 
 ## How research gets persisted
 
 1. User asks Codex to research something.
-2. `research` skill runs Phases 1-5 (frame → source → execute → synthesize → deliver) using existing methodology.
+2. `research` skill runs Phases 1-5 (optimize → source → execute → synthesize → deliver): Phase 1 produces a decision card, one or more meta-questions, MECE sub-question groups, and section contracts that Phase 2 executes and Phase 4/5 checks off as the coverage summary.
 3. **Phase 6**: Codex writes a three-layer markdown entry (TL;DR / Notes / Raw) with rich frontmatter, then invokes `research.py save` which:
    - upserts into SQLite,
    - writes the canonical entry to `~/dev/research/topics/<top>/<slug>.md`,
@@ -48,7 +49,7 @@ Legacy v0.3.0 artifacts — `<project>/research/` file copies, `<project>/resear
 
 - Don't call external LLM APIs from scripts. Codex (this runtime) does any LLM work.
 - Don't construct ad-hoc wrappers around connector calls. Use the connector's published structured schema; after an invocation error, retry one minimal valid request and then fall back to Browser or a known official URL.
-- Don't add extraction libraries (trafilatura/pymupdf/etc.) — WebFetch and Read cover it.
+- Don't add extraction libraries (trafilatura/pymupdf/etc.) — the host fetch and file-read tools cover it.
 - Don't add a vector database. SQLite FTS5 with BM25 is sufficient at personal-scale corpora.
 - Don't delete research files. Archive via redirect stub (`status: archived`) so inbound links still resolve.
-- Don't write to `.Codex/`. Plugin data goes under its own `.<toolname>/` namespace per global AGENTS.md.
+- Don't write to the host's own config directory (`.codex/`, `.claude/`). Plugin data goes under its own `.<toolname>/` namespace per global AGENTS.md.

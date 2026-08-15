@@ -1,13 +1,13 @@
 ---
 name: research
-description: Use when the user asks to research, investigate, evaluate, compare options, extract findings, synthesize, analyze CSV/databases, or save to the research library. Sourced, verified, persisted to ~/dev/research/.
+description: Use when the user asks to research, investigate, evaluate, compare options, optimize a research question, extract findings, synthesize, analyze CSV/databases, or save to the research library. Frames the request as meta-questions and MECE section contracts before sourcing. Sourced, verified, persisted to ~/dev/research/.
 ---
 
 # Research
 
 Structured research methodology for web and technical investigations. Produces cited, verified findings with confidence markers, persisted to a central knowledge base.
 
-Supports four core workflows: **general research** (full 5-phase + persist), **collection** (source -> evidence), **synthesis** (evidence -> output), and **quantitative/database analysis** (data/schema -> generated Python analysis -> certainty-graded results). Use the **deep research architecture overlay** when sources need deterministic intake, parser routing, provenance, search/fetch-style evidence records, and claim QA. Use the **active-project ingestion overlay** when source materials need to become durable project wiki memory with chronology, contradictions, evolving themes, and decision relevance. All workflows end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
+Phase 1 is **query optimization**: identify one or more meta-questions, decompose each into MECE sub-question groups that become the output's section headings, and carry them forward as section contracts. Supports four core workflows: **general research** (full 5-phase + persist), **collection** (source -> evidence), **synthesis** (evidence -> output), and **quantitative/database analysis** (data/schema -> generated Python analysis -> certainty-graded results). Use the **deep research architecture overlay** when sources need deterministic intake, parser routing, provenance, search/fetch-style evidence records, and claim QA. Use the **active-project ingestion overlay** when source materials need to become durable project wiki memory with chronology, contradictions, evolving themes, and decision relevance. Financial and operating-model questions route to the **`financial-research`** skill, which adds term authority, measurement records, an attribution ladder, and cost-bucket controls. All workflows end at Phase 6 (persist to `~/dev/research/`) when the output warrants keeping.
 
 ## Workflow Detection
 
@@ -16,6 +16,9 @@ Route to the appropriate workflow based on user language:
 | Trigger Language | Workflow | Reference |
 |-----------------|----------|-----------|
 | "research", "investigate", "evaluate", "compare", "look into", "what's better X or Y" | **General Research** | Phases 1-6 below |
+| "optimize this prompt/question", "make this research-ready", vague or multi-part request, voice transcript | **Query Optimization** | `references/query-optimization.md` · `/research:optimize` |
+| "margin", "cost of sales", "COGS", "gross/operating margin", "EBITDA", "working capital", "unit economics", "cost bucket", "P&L", "financial model input", "comparable companies", "filings", "10-K", "earnings call" | **Financial Research** | `financial-research` skill |
+| "section contracts", "query ledger", "source register", "claim register", "reconcile sources", multi-section deep run | **Deep Research Orchestration** | `references/deep-orchestration.md` |
 | "extract", "collect", "what does this say", "pull data from", "analyze this document", "key claims" | **Collection** | `references/collection.md` |
 | "index credible sources", "source intake", "parser routing", "deep research architecture", "mixed files", "parse quality", "search/fetch evidence" | **Deep Research Architecture Overlay** | `references/deep-research-architecture.md` |
 | "ingest into project wiki", "active project wiki", "project memory ingestion", "preserve chronology", "evolving themes", "contradictions over time" | **Active Project Ingestion Overlay** | `references/active-project-ingestion.md` |
@@ -51,15 +54,20 @@ Depth controls effort, not quality. Even light research must be accurate, cite e
 - **Gaps** — what no source answered and what evidence would change the conclusion.
 
 **Sequential workflow:** For thorough research on a topic, the full pipeline is:
-1. **General Research** (Phase 1-3) to identify and gather sources
-2. **Collection** to extract structured evidence from those sources
-3. **Synthesis** to transform evidence into actionable output
-4. **Persistence** (Phase 6) to write the result into `~/dev/research/`
 
-Steps 2-3 can be invoked independently when the user already has sources or evidence.
-Quantitative/database analysis can be inserted after collection whenever claims require calculations, SQL, table joins, or schema inspection.
-For mixed-source or deep research intake, apply `references/deep-research-architecture.md` before synthesis: create a source/intake register, route each file through the right parser, preserve raw output, record extraction confidence, and treat the resulting evidence as searchable/fetchable records.
-For active project wiki ingestion, run Collection first, apply `references/active-project-ingestion.md` before synthesis, then persist durable outputs as separate wiki-ready entries instead of one giant package unless requested.
+```text
+optimize -> depth -> plan -> research -> reconcile -> synthesize -> persist
+```
+
+1. **Optimize** (Phase 1) — decision card, meta-questions, MECE sub-question groups, section contracts
+2. **Depth** — classify light / standard / deep; the fork's quick / balanced / deep are aliases (quick = light, balanced = standard)
+3. **Plan** (Phase 2) — section contracts become the source plan; build the coverage map and query ledger
+4. **Research** (Phase 3) — gather evidence; maintain source and claim registers
+5. **Reconcile** — compare sources on basis before value; expose contradictions; prevent scope and cost-bucket blending
+6. **Synthesize** (Phase 4-5) — answer each section, then cross-section takeaways, then explicit unresolved gaps
+7. **Persist** (Phase 6) — write the result into `~/dev/research/`
+
+**Collection** (evidence extraction) inserts between steps 3 and 4 when the user already has sources; **Synthesis** modes can be invoked independently when the user already has evidence. Quantitative/database analysis inserts after collection whenever claims require calculations, SQL, joins, or schema inspection. For mixed-source intake apply `references/deep-research-architecture.md` before synthesis (source/intake register, parser routing, preserved raw output, extraction confidence); for project-wiki ingestion run Collection first, then `references/active-project-ingestion.md`, then persist durable outputs as separate wiki-ready entries.
 
 ---
 
@@ -146,22 +154,34 @@ Full methodology and safety rules: `references/quantitative-analysis.md`
 
 ### Phase 1: Frame the Question
 
-Before searching, define:
+Framing is query optimization. Full protocol: `references/query-optimization.md`; command surface: `/research:optimize`.
 
-1. **Research question** — One clear question. Restate vague requests as specific questions.
-   - Vague: "Look into Redis" → Specific: "Is Redis suitable as a primary session store for a Node.js app with 10K concurrent users?"
-2. **Research type** — Determines strategy and output format:
+**Never force distinct questions into one.** A request has as many meta-questions as it has decisions, and they stay distinct through planning, execution, and synthesis. Collapsing them hides coverage gaps behind a tidy restatement.
+
+Before searching:
+
+1. **Classify the input** into four registers, kept separate for the whole run: USER-PROVIDED FACTS · WORKING HYPOTHESES · REQUESTED TESTS · UNSUPPORTED ASSUMPTIONS. Facts are not re-derived; hypotheses are tested, not assumed; assumptions are named or scoped out.
+2. **Decision card** — fill it before drafting anything: decision this research informs · what we must know by the end · flagship question(s) · required scope (entity/segment/geography/product/period) · required basis (unit + denominator) · minimum useful answer · what changes depending on the answer · the output format the user asked for.
+3. **Identify the meta-question(s)** — one per decision. Split test: could the two parts be answered by different evidence, and could one be true while the other is false? If yes, they are separate meta-questions.
+4. **Decompose each into MECE sub-question groups** — themes named after the **decision components**; these become the output's section headings. Scope, direct answer, drivers, boundaries, and confidence are evidence checks applied *inside* each theme, never the headings themselves.
+5. **Emit section contracts** — per meta-question, a table of `Section | Exact question | Evidence required | Expected output | Completion rule`. Completion rules must be objectively checkable ("two independent T1/T2 sources dated within 12 months, or the gap is stated"), never "answered".
+6. **Score readiness 0–24** across decision, scope, time/period, definitions, evidence expectations, metrics/basis, comparisons, output requirements. ≥18 proceed · 12–17 proceed with assumptions stated in the contract · <12 ask at most three targeted questions, or state assumptions and proceed if the user said "just research it".
+7. **Research type** — Determines strategy and output format:
    - **Current state** — What's the latest on X? (pricing, versions, features, status)
    - **Comparison** — X vs Y across defined criteria
    - **Evaluation** — Should we use X? (fit assessment against requirements)
    - **Deep dive** — How does X work? (architecture, internals, patterns)
    - **Survey** — What options exist for X? (landscape scan)
-3. **Scope constraints** — Time budget, depth needed, output format
-4. **Known context** — What the user already knows (avoid re-researching)
+8. **Scope constraints** — Time budget, depth needed, output format
+9. **Known context** — What the user already knows (avoid re-researching)
+
+Per-sub-question standard: **one ask · short · concrete · basis-defined · neutral first · evidence-seeking · decision-linked**. Optimization levels Q0 (light cleanup) → Q4 (full research contract) set how much of the above to apply: `light` → Q0-Q1, `standard` → Q2-Q3, `deep` → Q4. Any financial or operating-model question is Q4 and routes to the `financial-research` skill.
 
 ### Phase 2: Source Strategy
 
 Select sources based on research type. Always prefer higher-tier sources.
+
+**The section contracts from Phase 1 are the source plan.** Work one section at a time against its `Evidence required` column until its completion rule is met or provably unmeetable. A section that cannot be completed becomes a stated gap, never a quietly thinner section. No finding may satisfy two sections — if one does, the themes were not mutually exclusive and the contract is fixed rather than the evidence double-counted.
 
 Before searching, create a **coverage map**:
 1. Name the required source lanes for this query: primary/original, independent, counter-evidence, temporal/currentness, and gaps.
@@ -246,7 +266,9 @@ Compile findings into structured output. Use the appropriate template from `refe
 - Lead with the answer, then evidence
 - Separate facts from interpretation
 - Flag stale data explicitly
-- Include a coverage summary: lanes covered, lanes missing, and strongest counter-evidence
+- Include a **coverage summary that checks off the Phase 1 section contracts** — one line per sub-question, marked met / partially met / unmet with the reason. Then lanes covered, lanes missing, and strongest counter-evidence
+- Keep meta-questions separate through the conclusion: two meta-questions produce two verdicts, even when they point the same direction
+- For multi-section or deep runs, run the **reconcile** step before writing conclusions — see `references/deep-orchestration.md`
 - Include a "Limitations" section for what couldn't be verified
 - End with actionable next steps or recommendations
 
@@ -257,9 +279,10 @@ For deeper synthesis (authorial or executive modes), see `references/synthesis.m
 Present findings inline in the conversation. For anything the user will want to refer back to — proceed to Phase 6.
 
 Always include:
-1. **Confidence summary** — Overall confidence in findings
-2. **Open questions** — What couldn't be answered
-3. **Sources list** — All URLs/paths consulted
+1. **Coverage summary** — every Phase 1 sub-question checked off as met / partially met / unmet
+2. **Confidence summary** — Overall confidence in findings
+3. **Open questions / unresolved gaps** — what no source answered, which completion rules went unmet, and what evidence would change the conclusion
+4. **Sources list** — All URLs/paths consulted
 
 ### Phase 6: Persist
 
@@ -307,6 +330,8 @@ Always include:
 ## Additional Resources
 
 For detailed methodology and output formats, consult:
+- **`references/query-optimization.md`** — Phase 1 contract: input registers, decision card, meta-questions, MECE groups, section contracts, Q0-Q4 levels, 0-24 readiness score
+- **`references/deep-orchestration.md`** — Section contracts in execution, query ledger, source and claim registers, reconcile step, cross-section synthesis, completion rules
 - **`references/credibility.md`** — Two-dimensional credibility framework (source quality + claim corroboration)
 - **`references/source_scoring.md`** — Deterministic tier scoring pipeline (domain cache → rules → LLM residue)
 - **`references/collection.md`** — 4 collection modes (standard, technical PDF, concise, large corpus)

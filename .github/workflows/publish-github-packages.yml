@@ -39,9 +39,8 @@ jobs:
       - name: Verify research routing
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install pyyaml
-          python3 tests/research_depth_check.py
-          python3 tests/search_quality_check.py
+          python3 -m pip install pyyaml pytest
+          python3 -m pytest -q
 
       - name: Prepare GitHub Packages metadata
         run: |

@@ -55,7 +55,7 @@ Claude Code's 12 skill/slash activations break down as 5 × `Skill(research:rese
 
 ### 2.3 Host verdicts
 
-**Codex — WIRED and dominant.** `~/.codex/config.toml:41` registers `[plugins."research@ross-labs-local"] enabled = true`; line 613 enables the `post_tool_use` hook with a pinned trust hash. The cached install at `~/.codex/plugins/cache/ross-labs-local/research/local/research.py` is byte-identical to the repo file (`diff -q` exit 0). 325 invocations across 33 of 2,207 sessions (1.5%), monthly Apr 45 · May 66 · Jun 51 · Jul 163 · **Aug 0**. Top workdirs: ObsidianVault (71), build-loop (55), research-plugin (46, dev work), research (31), rosslabs-agent-harness (22), personal-llm-wiki (14), WorkWiki (12). ✅
+**Codex — WIRED and dominant.** `~/.codex/config.toml:41` registers `[plugins."research@ross-labs-local"] enabled = true`; line 613 enables the `post_tool_use` hook with a pinned trust hash. The cached install at `~/.codex/plugins/cache/ross-labs-local/research/local/research.py` is byte-identical to the repo file (`diff -q` exit 0). 325 invocations across 33 of 2,207 sessions (1.5%), monthly Apr 45 · May 66 · Jun 51 · Jul 163 · **Aug 0**. Top workdirs: ObsidianVault (71), build-loop (55), research-plugin (46, dev work), research (31), rosslabs-agent-harness (22), personal-llm-wiki (14), a private work-notes vault (12). ✅
 
 **Claude Code — installed, enabled, effectively unrouted.** Symlinked at `~/.claude/plugins/research → /Users/tyroneross/dev/git-folder/research-plugin` and enabled via `settings.json:531`. 17 non-audit CLI calls plus 12 skill/slash activations, against 881 WebSearch and 729 WebFetch calls in the same corpus (✅). Of 320 total Skill-tool calls, `build-loop:build-loop` took 138 and `research:research` took 5.
 
@@ -152,16 +152,16 @@ Other recurring failures, each repeating across months rather than once:
 
 The user's stated preference is the opposite default: do **not** force distinct questions into one; name the meta-question(s), then break each into sub-questions organized into MECE themes. Two existing artifacts already encode this and were not consulted when the skill was written:
 
-- **WorkWiki `communications-alphasights-goal-led-question-guide`** (2026-07-19, confidence medium-high, read-only source): a *decision card* filled before drafting (decision → "by the end we need to know" → flagship question → required scope/basis → minimum useful answer → what changes depending on the answer), then **project decision components as MECE section headings**, with five evidence checks (scope · direct answer · drivers · boundaries · confidence) applied *within* sections rather than as section titles, and a per-question standard (one ask · short · concrete · basis-defined · neutral first). Built for expert calls; the framing discipline transfers directly to a research brief.
+- **A private work-notes question-design guide** (2026-07-19, confidence medium-high, read-only source, not in this repo): a *decision card* filled before drafting (decision → "by the end we need to know" → flagship question → required scope/basis → minimum useful answer → what changes depending on the answer), then **project decision components as MECE section headings**, with five evidence checks (scope · direct answer · drivers · boundaries · confidence) applied *within* sections rather than as section titles, and a per-question standard (one ask · short · concrete · basis-defined · neutral first). Built for expert calls; the framing discipline transfers directly to a research brief.
 - **The work-machine fork of this plugin** (see §3.8) already ships an `optimize` phase and "section contracts with exact questions, evidence requirements, expected outputs, and completion rules" plus a query ledger — i.e., the meta-question → sub-question → section mapping this repo lacks.
 
 Consequence today: multi-part requests ("compare X and Y and tell me whether Z still holds") get flattened into a single restated question, the output has no section-per-sub-question structure to be MECE against, and coverage gaps are invisible because there is no list of sub-questions to check off.
 
 ### 3.8 The plugin has forked: the work machine runs 0.5.3 with features this repo does not have (added 2026-08-15)
 
-WorkWiki `wiki/tools/tool-research-plugin.md` (updated 2026-07-27) documents a **second canonical source** at `/Users/trossjr/work-dev/research`, shared release **0.5.3**, installed in both Codex (`research@personal`, `0.5.3+codex.20260727150324`) and Claude Code (`research@personal-shared`) via local marketplaces, with source/cache parity verified 2026-07-27. This repo is **0.5.2** (`plugin.json`, `package.json` ✅). The work fork's documented capabilities absent here (✅ grep of `commands/`, `skills/`, `tests/` returns nothing for `optimize`, `section contract`, `query ledger`, `readiness`):
+A private work-notes tool card (updated 2026-07-27) documents a **second canonical source** at the work machine's canonical checkout (path withheld — work-machine local), shared release **0.5.3**, installed in both Codex (`research@personal`, `0.5.3+codex.20260727150324`) and Claude Code (`research@personal-shared`) via local marketplaces, with source/cache parity verified 2026-07-27. This repo is **0.5.2** (`plugin.json`, `package.json` ✅). The work fork's documented capabilities absent here (✅ grep of `commands/`, `skills/`, `tests/` returns nothing for `optimize`, `section contract`, `query ledger`, `readiness`):
 
-| Work fork 0.5.3 (per WorkWiki card) | This repo 0.5.2 |
+| Work fork 0.5.3 (per the work-notes card) | This repo 0.5.2 |
 |---|---|
 | `/research:optimize` — Q0–Q4 optimization levels, 0–24 readiness score across scope/time/definitions/evidence/metrics/comparisons/output; separates user facts, hypotheses, requested tests, unsupported assumptions | absent |
 | Deep-research orchestration: section contracts, query ledger, source + claim registers, cross-section synthesis, explicit unresolved gaps | partial (`deep-research-architecture.md`, untracked) |
@@ -170,7 +170,7 @@ WorkWiki `wiki/tools/tool-research-plugin.md` (updated 2026-07-27) documents a *
 | Depth vocabulary: quick / balanced / deep | light / standard / deep |
 | `RESEARCH_CONTENT_DIR` / `RESEARCH_INDEX_DIR` split roots | `RESEARCH_PLUGIN_ROOT` only |
 
-⚠️ The work fork is not on this machine; the comparison rests on the WorkWiki card, not a diff. ❓ Whether the fork was branched from this repo's uncommitted dual-host work (§3.6) or independently is unknown — the WorkWiki card was written 2026-07-27, twelve days after this repo's last commit and during the window the dual-host change set was being edited. Either way: **two 0.5.x lineages, the more capable one undocumented here, and the less capable one is the GitHub-published source of truth.**
+⚠️ The work fork is not on this machine; the comparison rests on the work-notes card, not a diff. ❓ Whether the fork was branched from this repo's uncommitted dual-host work (§3.6) or independently is unknown — that card was written 2026-07-27, twelve days after this repo's last commit and during the window the dual-host change set was being edited. Either way: **two 0.5.x lineages, the more capable one undocumented here, and the less capable one is the GitHub-published source of truth.**
 
 ---
 
@@ -223,8 +223,8 @@ WorkWiki `wiki/tools/tool-research-plugin.md` (updated 2026-07-27) documents a *
 *UX:* multi-part asks stop being flattened; the delivered answer is sectioned per sub-question so gaps are visible; the same sub-question list drives Codex section fan-out.
 
 **12. Reconcile the fork.** — effort **M**
-*Where:* this repo ↔ `/Users/trossjr/work-dev/research` (work machine).
-*Change:* diff 0.5.3 against this tree (including the uncommitted dual-host set), decide the canonical lineage, and land the delta here — at minimum `optimize`, the two contract tests, the split content/index roots, and the quick/balanced/deep vocabulary decision. Record the outcome in this repo's CHANGELOG and the WorkWiki tool card (read-only from here — update from the work machine).
+*Where:* this repo ↔ the work machine's canonical checkout (path withheld — work-machine local).
+*Change:* diff 0.5.3 against this tree (including the uncommitted dual-host set), decide the canonical lineage, and land the delta here — at minimum `optimize`, the two contract tests, the split content/index roots, and the quick/balanced/deep vocabulary decision. Record the outcome in this repo's CHANGELOG and the work-notes tool card (read-only from here — update from the work machine).
 *Evidence:* §3.8. Suggestion #4 (commit the dual-host work) is a prerequisite: reconciling against a dirty tree hides which side introduced what.
 
 ### Do not do these
@@ -300,9 +300,9 @@ grep -c 'research.py' ~/.zsh_history ~/.bash_history  # 0, 0
 
 ### 5.3b Sources added after user review (2026-08-15)
 
-- `~/WorkWiki/wiki/tools/tool-research-plugin.md` (2026-07-27) — work-fork status card. Read-only.
-- `~/WorkWiki/wiki/communications/interviews/communications-alphasights-goal-led-question-guide.md` (2026-07-19) — decision-card + MECE section method.
-- `~/WorkWiki/wiki/communications/interviews/communications-alphasights-expert-calls.md` (2026-07-19) — five-artifact evidence chain; note the WorkWiki live-log corrected "AlphaSense" → "AlphaSights" for the expert-network vendor; AlphaSense (the platform) appears separately as a T4 lead-sheet source in the hyperscale research pack.
+- Private work-notes tool card (2026-07-27) — work-fork status. Read-only, not in this repo; path withheld.
+- Private work-notes question-design guide (2026-07-19) — decision-card + MECE section method. Read-only, path withheld.
+- Private work-notes expert-call guide (2026-07-19) — five-artifact evidence chain and source-priority order. Read-only, path withheld.
 - `grep -rn -i "one clear question\|sub-question" skills/` · `grep -rli "optimize\|section contract\|query ledger\|readiness" commands skills research.py tests` (no hits beyond a methodology anti-example) · `plugin.json` / `package.json` version fields.
 
 ### 5.4 What could not be verified

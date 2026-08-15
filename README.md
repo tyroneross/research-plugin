@@ -106,6 +106,7 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:review` | Surface stale / review-due entries |
 | `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
 | `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse and capture source-intake metadata |
+| `/research:optimize <request>` | Turn a raw request into a claim-safe research contract: decision card, meta-questions, MECE sub-question groups, section contracts, 0-24 readiness score |
 
 ## Search
 
