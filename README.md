@@ -107,6 +107,7 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
 | `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse and capture source-intake metadata |
 | `/research:optimize <request>` | Turn a raw request into a claim-safe research contract: decision card, meta-questions, MECE sub-question groups, section contracts, 0-24 readiness score |
+| `/research:dashboard <audit.json> --out <file.html>` | Render a capability audit (subjects × dimensions with evidence, pipelines, recommended flow) into one self-contained HTML dashboard; `--validate-only` checks the payload. Skill: `skills/audit-dashboard/` |
 
 ## Search
 
