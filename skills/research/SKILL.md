@@ -1,6 +1,6 @@
 ---
 name: research
-description: Use when the user asks to research, investigate, evaluate, compare options, optimize a research question, extract findings, synthesize, analyze CSV/databases, or save to the research library. Frames the request as meta-questions and MECE section contracts before sourcing. Sourced, verified, persisted to ~/dev/research/.
+description: Use when the user asks to research, investigate, evaluate, compare options, optimize a research question, extract findings, synthesize, analyze CSV/databases, or save to the research library. Frames the request as meta-questions and MECE section contracts before sourcing. Sourced, verified, persisted to ~/dev/research/. Not for rendering an existing audit's findings as a visual HTML dashboard; use `audit-dashboard` instead. Not for a repo-grounded pre-build decision packet tied to an active build-loop run; use the build-loop plugin's own research skill for that.
 ---
 
 # Research
