@@ -29,5 +29,82 @@
     "structuredWriting": true,
     "promptBuilder": false,
     "deepAgents": false
-  }
+  },
+  "runs": [
+    {
+      "run_id": "hook_20260815T221923Z",
+      "date": "20260815T221923Z",
+      "goal": "(hook-only commit; no orchestrator run)",
+      "outcome": "partial",
+      "phases": {},
+      "filesTouched": [],
+      "diagnosticCommands": [],
+      "manualInterventions": [],
+      "active_experimental_artifacts": [],
+      "judge_decisions": [
+        {
+          "judge_id": "independent-auditor-hook",
+          "target": "ca04149",
+          "status": "packet_emitted",
+          "verdict": "pending",
+          "brief": "47 files staged",
+          "ts": "2026-08-15T22:19:23+00:00",
+          "risk_level": "high",
+          "risky_files": [
+            ".claude-plugin/plugin.json",
+            ".claude/CLAUDE.md",
+            ".claude/settings.json",
+            ".codex-plugin/plugin.json",
+            ".gitignore",
+            "AGENTS.md",
+            "CLAUDE.md",
+            "PRIVACY.md",
+            "README.md",
+            "TERMS.md",
+            "commands/analyze-plan.md",
+            "commands/analyze-run.md",
+            "commands/archive.md",
+            "commands/compress.md",
+            "commands/db-profile.md",
+            "commands/depth.md",
+            "commands/extract.md",
+            "commands/index.md",
+            "commands/ingest.md",
+            "commands/init.md"
+          ]
+        },
+        {
+          "judge_id": "independent-auditor-hook",
+          "target": "3dbba9a",
+          "status": "packet_emitted",
+          "verdict": "pending",
+          "brief": "22 files staged",
+          "ts": "2026-08-15T22:42:56+00:00",
+          "risk_level": "high",
+          "risky_files": [
+            ".claude-plugin/plugin.json",
+            ".codex-plugin/plugin.json",
+            ".github/workflows/publish-github-packages.yml",
+            ".github/workflows/publish.yml",
+            "AGENTS.md",
+            "CHANGELOG.md",
+            "CLAUDE.md",
+            "README.md",
+            "commands/optimize.md",
+            "docs/audits/2026-08-15-usage-audit.md",
+            "package-lock.json",
+            "package.json",
+            "pytest.ini",
+            "skills/financial-research/SKILL.md",
+            "skills/financial-research/references/evidence-package-template.md",
+            "skills/financial-research/references/financial-controls.md",
+            "skills/research/SKILL.md",
+            "skills/research/references/deep-orchestration.md",
+            "skills/research/references/query-optimization.md",
+            "tests/financial_research_contract_check.py"
+          ]
+        }
+      ]
+    }
+  ]
 }
