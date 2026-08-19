@@ -2,7 +2,8 @@
   "name": "research",
   "description": "Structured research with central knowledge base, source scoring, and claim verification",
   "author": {
-    "name": "Tyrone Ross"
+    "name": "Tyrone Ross",
+    "url": "https://github.com/tyroneross"
   },
   "repository": "https://github.com/tyroneross/research-plugin",
   "license": "Apache-2.0",
@@ -14,5 +15,6 @@
     "source-scoring",
     "fts5",
     "zettelkasten"
-  ]
+  ],
+  "homepage": "https://github.com/tyroneross/research-plugin"
 }

@@ -2,7 +2,8 @@
   "name": "research",
   "description": "Structured research with central persistence at ~/dev/research/, source scoring, claim verification, quantitative/database analysis, lifecycle management, bulk ingestion, sync-from-markdown, and project symlink views.",
   "author": {
-    "name": "Tyrone Ross"
+    "name": "Tyrone Ross",
+    "url": "https://github.com/tyroneross"
   },
   "repository": "https://github.com/tyroneross/research-plugin",
   "license": "Apache-2.0",
@@ -33,5 +34,6 @@
     "defaultPrompt": [
       "Research a topic with sourced findings, confidence notes, and optional persistence to ~/dev/research/."
     ]
-  }
+  },
+  "homepage": "https://github.com/tyroneross/research-plugin"
 }
