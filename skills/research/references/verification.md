@@ -1,6 +1,24 @@
 # Verification (v0.2+)
 
-Deterministic verification of atomic claims. LLM extracts atoms; scripts verify.
+Deterministic verification of atomic claims. The host extracts atoms; scripts verify.
+
+A source observation is claim-eligible only when it has a validated content hash and either an exact locator or an explicit reason why a locator is unavailable. Legacy or incomplete observations may guide recapture work; they do not pass the merge gate as factual evidence.
+
+## Quantitative acceptance rule
+
+Numeric text matching only verifies transcription. It does not verify arithmetic.
+
+A quantitative claim ships as fact only when `research.py calculate --spec <file>` creates a `passed` receipt containing:
+
+- claim and run IDs;
+- formula or query and its hash;
+- unit, denominator, grain, and assumptions;
+- exact input values and source observation IDs;
+- plugin code hash, command, local runtime, and environment versions;
+- result and output hash;
+- at least one passing validation check.
+
+Missing or ambiguous denominator, grain, input observation, or validation produces `inconclusive`. Failed checks produce `failed`. Corrections append a new receipt linked with `correction_of_receipt_id`; they never overwrite the earlier receipt.
 
 ## Pattern
 
@@ -88,7 +106,7 @@ python research.py verify <slug> --dry-run # extract atoms, don't run verifiers
 ## What this is not
 
 - Not a theorem prover. Lean/Coq are overkill for the claims we actually make.
-- Not a full fact-checking service. Judgment calls (contested interpretations, qualitative claims) still need Claude.
+- Not a full fact-checking service. Judgment calls (contested interpretations, qualitative claims) still need a host agent or human reviewer.
 - Not a safety sandbox for arbitrary code. v0.3 code execution assumes the user ran the research themselves; don't use it to verify untrusted third-party code.
 
 ## Extending

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added append-only run and event history, normalized source observations, graph-ready entities and relationships, topic-scoped trust observations, and source/dependency index exports.
+- Added deterministic calculation receipts. Quantitative claims now require source-linked inputs, units, denominator, grain, assumptions, hashes, local runtime metadata, and passing validation checks; ambiguity returns `inconclusive`.
+- Added a vendor-neutral `research-orchestrator` skill for hypothesis/falsifier framing, bounded second-/third-level link traversal, host-native parallel task packets, and contradiction-preserving merge validation.
+- Added bounded local hook status logging and a `doctor` command for chain integrity, disk/index parity, provenance coverage, malformed entries, and duplicate slugs.
+- Added an optional macOS Apple Vision OCR adapter. The core runtime remains host- and vendor-neutral.
+
 All notable changes to the research plugin.
 
 ## [0.6.0] — 2026-08-15

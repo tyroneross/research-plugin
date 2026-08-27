@@ -17,10 +17,13 @@ script persists, queries, scores, and verifies.
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import hashlib
+import ipaddress
 import json
 import os
+import platform
 import random
 import re
 import shutil
@@ -28,9 +31,11 @@ import sqlite3
 import statistics
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -147,6 +152,273 @@ CREATE TRIGGER IF NOT EXISTS linked_files_au AFTER UPDATE ON linked_files BEGIN
   VALUES ('delete', old.id, old.project, old.relpath, old.title, old.summary, old.body);
   INSERT INTO linked_files_fts(rowid, project, relpath, title, summary, body)
   VALUES (new.id, new.project, new.relpath, new.title, new.summary, new.body);
+END;
+
+CREATE TABLE IF NOT EXISTS research_runs (
+  run_id TEXT PRIMARY KEY,
+  started_at TEXT NOT NULL,
+  completed_at TEXT,
+  objective TEXT,
+  intent TEXT,
+  outcome TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  actor_type TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  host TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  tool_version TEXT NOT NULL,
+  contract_json TEXT NOT NULL DEFAULT '{}',
+  contract_hash TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT UNIQUE NOT NULL,
+  event_type TEXT NOT NULL,
+  occurred_at TEXT NOT NULL,
+  run_id TEXT,
+  actor_type TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  host TEXT NOT NULL DEFAULT 'unknown',
+  session_id TEXT NOT NULL DEFAULT 'unknown',
+  tool_version TEXT NOT NULL DEFAULT 'unknown',
+  payload_json TEXT NOT NULL,
+  previous_hash TEXT NOT NULL,
+  event_hash TEXT UNIQUE NOT NULL,
+  hash_scheme TEXT NOT NULL DEFAULT 'sha256-json-sort-keys-v2-provenance',
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS audit_events_one_successor
+  ON audit_events(previous_hash);
+
+CREATE TRIGGER IF NOT EXISTS audit_events_no_update
+BEFORE UPDATE ON audit_events BEGIN
+  SELECT RAISE(ABORT, 'audit_events is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS audit_events_no_delete
+BEFORE DELETE ON audit_events BEGIN
+  SELECT RAISE(ABORT, 'audit_events is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS sources (
+  source_id TEXT PRIMARY KEY,
+  canonical_url TEXT UNIQUE NOT NULL,
+  domain TEXT NOT NULL,
+  source_kind TEXT,
+  name TEXT,
+  first_seen_at TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS source_observations (
+  observation_id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  entry_slug TEXT,
+  published_at TEXT,
+  modified_at TEXT,
+  captured_at TEXT NOT NULL,
+  final_url TEXT,
+  content_hash TEXT,
+  normalized_hash TEXT,
+  capture_method TEXT NOT NULL,
+  extractor TEXT,
+  extractor_version TEXT,
+  locator TEXT,
+  raw_ref TEXT,
+  status TEXT NOT NULL,
+  change_from_observation_id TEXT,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(source_id) REFERENCES sources(source_id),
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id),
+  FOREIGN KEY(change_from_observation_id) REFERENCES source_observations(observation_id)
+);
+
+CREATE INDEX IF NOT EXISTS source_observations_source_time
+  ON source_observations(source_id, captured_at);
+CREATE INDEX IF NOT EXISTS source_observations_run
+  ON source_observations(run_id);
+
+CREATE TRIGGER IF NOT EXISTS source_observations_no_update
+BEFORE UPDATE ON source_observations BEGIN
+  SELECT RAISE(ABORT, 'source_observations is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS source_observations_no_delete
+BEFORE DELETE ON source_observations BEGIN
+  SELECT RAISE(ABORT, 'source_observations is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS graph_entities (
+  entity_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  canonical_key TEXT NOT NULL,
+  label TEXT,
+  created_at TEXT NOT NULL,
+  retired_at TEXT,
+  properties_json TEXT NOT NULL DEFAULT '{}',
+  UNIQUE(kind, canonical_key)
+);
+
+CREATE TABLE IF NOT EXISTS graph_edges (
+  edge_id TEXT PRIMARY KEY,
+  subject_id TEXT NOT NULL,
+  predicate TEXT NOT NULL,
+  object_id TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  observed_at TEXT NOT NULL,
+  valid_from TEXT,
+  valid_to TEXT,
+  evidence_observation_id TEXT,
+  locator TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  confidence TEXT,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(subject_id) REFERENCES graph_entities(entity_id),
+  FOREIGN KEY(object_id) REFERENCES graph_entities(entity_id),
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id),
+  FOREIGN KEY(evidence_observation_id) REFERENCES source_observations(observation_id)
+);
+
+CREATE INDEX IF NOT EXISTS graph_edges_subject ON graph_edges(subject_id, predicate);
+CREATE INDEX IF NOT EXISTS graph_edges_object ON graph_edges(object_id, predicate);
+
+CREATE TRIGGER IF NOT EXISTS graph_edges_no_update
+BEFORE UPDATE ON graph_edges BEGIN
+  SELECT RAISE(ABORT, 'graph_edges is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS graph_edges_no_delete
+BEFORE DELETE ON graph_edges BEGIN
+  SELECT RAISE(ABORT, 'graph_edges is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS trust_observations (
+  trust_observation_id TEXT PRIMARY KEY,
+  subject_id TEXT NOT NULL,
+  run_id TEXT NOT NULL,
+  topic_key TEXT NOT NULL,
+  observed_at TEXT NOT NULL,
+  dimension TEXT NOT NULL,
+  rating TEXT NOT NULL,
+  rationale TEXT NOT NULL,
+  evidence_observation_id TEXT,
+  formula_version TEXT NOT NULL,
+  FOREIGN KEY(subject_id) REFERENCES graph_entities(entity_id),
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id),
+  FOREIGN KEY(evidence_observation_id) REFERENCES source_observations(observation_id)
+);
+
+CREATE INDEX IF NOT EXISTS trust_observations_subject_topic_time
+  ON trust_observations(subject_id, topic_key, observed_at);
+
+CREATE TRIGGER IF NOT EXISTS trust_observations_no_update
+BEFORE UPDATE ON trust_observations BEGIN
+  SELECT RAISE(ABORT, 'trust_observations is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trust_observations_no_delete
+BEFORE DELETE ON trust_observations BEGIN
+  SELECT RAISE(ABORT, 'trust_observations is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS discrepancies (
+  discrepancy_id TEXT PRIMARY KEY,
+  left_claim_id TEXT NOT NULL,
+  right_claim_id TEXT NOT NULL,
+  discrepancy_type TEXT NOT NULL,
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  status TEXT NOT NULL,
+  resolution_claim_id TEXT,
+  run_id TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id)
+);
+
+CREATE TRIGGER IF NOT EXISTS discrepancies_no_update
+BEFORE UPDATE ON discrepancies BEGIN
+  SELECT RAISE(ABORT, 'discrepancies is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS discrepancies_no_delete
+BEFORE DELETE ON discrepancies BEGIN
+  SELECT RAISE(ABORT, 'discrepancies is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS traversal_links (
+  traversal_link_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  parent_observation_id TEXT,
+  discovered_at TEXT NOT NULL,
+  discovery_order INTEGER NOT NULL,
+  depth INTEGER NOT NULL,
+  displayed_url TEXT NOT NULL,
+  resolved_url TEXT,
+  canonical_url TEXT,
+  decision TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  evidence_gap TEXT,
+  child_observation_id TEXT,
+  bytes INTEGER,
+  elapsed_ms INTEGER,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id),
+  FOREIGN KEY(parent_observation_id) REFERENCES source_observations(observation_id),
+  FOREIGN KEY(child_observation_id) REFERENCES source_observations(observation_id)
+);
+
+CREATE INDEX IF NOT EXISTS traversal_links_run_order
+  ON traversal_links(run_id, depth, discovery_order);
+
+CREATE TRIGGER IF NOT EXISTS traversal_links_no_update
+BEFORE UPDATE ON traversal_links BEGIN
+  SELECT RAISE(ABORT, 'traversal_links is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS traversal_links_no_delete
+BEFORE DELETE ON traversal_links BEGIN
+  SELECT RAISE(ABORT, 'traversal_links is append-only');
+END;
+
+CREATE TABLE IF NOT EXISTS calculation_receipts (
+  receipt_id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  claim_id TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  correction_of_receipt_id TEXT,
+  status TEXT NOT NULL,
+  formula TEXT NOT NULL,
+  formula_hash TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  denominator TEXT NOT NULL,
+  grain TEXT NOT NULL,
+  assumptions_json TEXT NOT NULL,
+  inputs_json TEXT NOT NULL,
+  input_hash TEXT NOT NULL,
+  code_hash TEXT NOT NULL,
+  command_json TEXT NOT NULL,
+  runtime_ms INTEGER NOT NULL,
+  result_text TEXT,
+  output_hash TEXT NOT NULL,
+  checks_json TEXT NOT NULL,
+  environment_json TEXT NOT NULL,
+  receipt_hash TEXT NOT NULL DEFAULT '',
+  receipt_path TEXT NOT NULL,
+  FOREIGN KEY(run_id) REFERENCES research_runs(run_id),
+  FOREIGN KEY(correction_of_receipt_id) REFERENCES calculation_receipts(receipt_id)
+);
+
+CREATE TRIGGER IF NOT EXISTS calculation_receipts_no_update
+BEFORE UPDATE ON calculation_receipts BEGIN
+  SELECT RAISE(ABORT, 'calculation_receipts is append-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS calculation_receipts_no_delete
+BEFORE DELETE ON calculation_receipts BEGIN
+  SELECT RAISE(ABORT, 'calculation_receipts is append-only');
 END;
 """
 
@@ -307,7 +579,476 @@ def ensure_db() -> None:
     conn = db_connect()
     with conn:
         conn.executescript(SCHEMA)
+        run_columns = {row["name"] for row in conn.execute("PRAGMA table_info(research_runs)")}
+        if "contract_hash" not in run_columns:
+            conn.execute("ALTER TABLE research_runs ADD COLUMN contract_hash TEXT NOT NULL DEFAULT ''")
+        event_columns = {row["name"] for row in conn.execute("PRAGMA table_info(audit_events)")}
+        for column in ("host", "session_id", "tool_version"):
+            if column not in event_columns:
+                conn.execute(f"ALTER TABLE audit_events ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")
+        receipt_columns = {row["name"] for row in conn.execute("PRAGMA table_info(calculation_receipts)")}
+        if "receipt_hash" not in receipt_columns:
+            conn.execute("ALTER TABLE calculation_receipts ADD COLUMN receipt_hash TEXT NOT NULL DEFAULT ''")
     conn.close()
+
+
+def _canonical_json(value: Any) -> str:
+    """Stable local serialization for hashes; this is not RFC 8785 JCS."""
+    return json.dumps(_stringify_dates(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+SHA256_REF_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def _validate_hash_ref(value: Any, field: str) -> str:
+    text = str(value or "")
+    if text and not SHA256_REF_RE.fullmatch(text):
+        raise ValueError(f"{field} must use sha256:<64 lowercase hex>")
+    return text
+
+
+def _validate_iso_date(value: Any, field: str, *, timezone_required: bool = False) -> str:
+    text = str(value or "")
+    if not text:
+        return text
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            date.fromisoformat(text)
+        except ValueError as exc:
+            raise ValueError(f"{field} must be ISO-8601") from exc
+        if timezone_required:
+            raise ValueError(f"{field} must include a timezone")
+        return text
+    if timezone_required and parsed.tzinfo is None:
+        raise ValueError(f"{field} must include a timezone")
+    return text
+
+
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex}"
+
+
+def _contract_hash(contract: dict[str, Any]) -> str:
+    payload = {key: value for key, value in contract.items() if key != "created_at"}
+    return "sha256:" + _sha256_text(_canonical_json(payload))
+
+
+def _actor_from_args(args: argparse.Namespace) -> dict[str, str]:
+    return {
+        "actor_type": str(getattr(args, "actor_type", None) or os.environ.get("RESEARCH_ACTOR_TYPE") or "unknown"),
+        "actor_id": str(getattr(args, "actor_id", None) or os.environ.get("RESEARCH_ACTOR_ID") or "unknown"),
+        "host": str(getattr(args, "host", None) or os.environ.get("RESEARCH_HOST") or "unknown"),
+        "session_id": str(getattr(args, "session_id", None) or os.environ.get("RESEARCH_SESSION_ID") or "unknown"),
+        "tool_version": str(getattr(args, "tool_version", None) or os.environ.get("RESEARCH_TOOL_VERSION") or "unknown"),
+    }
+
+
+def _ensure_run(
+    conn: sqlite3.Connection,
+    run_id: str,
+    actor: dict[str, str],
+    *,
+    objective: str = "",
+    intent: str = "",
+    outcome: str = "",
+    contract: dict[str, Any] | None = None,
+) -> None:
+    contract_payload = contract or {}
+    contract_json = _canonical_json(contract_payload)
+    contract_hash = _contract_hash(contract_payload) if contract_payload else ""
+    existing = conn.execute("SELECT * FROM research_runs WHERE run_id=?", (run_id,)).fetchone()
+    if existing:
+        if contract_hash and existing["contract_hash"] and existing["contract_hash"] != contract_hash:
+            raise ValueError(f"run contract differs from initialized contract for {run_id}")
+        enriched = {
+            field: actor[field]
+            for field in ("actor_type", "actor_id", "host", "session_id", "tool_version")
+            if str(existing[field] or "unknown") == "unknown" and str(actor[field] or "unknown") != "unknown"
+        }
+        conn.execute(
+            """
+            UPDATE research_runs SET
+              objective=CASE WHEN objective='' THEN ? ELSE objective END,
+              intent=CASE WHEN intent='' THEN ? ELSE intent END,
+              outcome=CASE WHEN outcome='' THEN ? ELSE outcome END,
+              actor_type=CASE WHEN actor_type='unknown' THEN ? ELSE actor_type END,
+              actor_id=CASE WHEN actor_id='unknown' THEN ? ELSE actor_id END,
+              host=CASE WHEN host='unknown' THEN ? ELSE host END,
+              session_id=CASE WHEN session_id='unknown' THEN ? ELSE session_id END,
+              tool_version=CASE WHEN tool_version='unknown' THEN ? ELSE tool_version END,
+              contract_json=CASE WHEN contract_hash='' AND ?!='' THEN ? ELSE contract_json END,
+              contract_hash=CASE WHEN contract_hash='' AND ?!='' THEN ? ELSE contract_hash END
+            WHERE run_id=?
+            """,
+            (
+                objective, intent, outcome,
+                actor["actor_type"], actor["actor_id"], actor["host"], actor["session_id"], actor["tool_version"],
+                contract_hash, contract_json, contract_hash, contract_hash, run_id,
+            ),
+        )
+        if enriched:
+            _append_event(
+                conn,
+                event_type="run.provenance_enriched",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"enriched_fields": enriched},
+                actor_snapshot=actor,
+            )
+        return
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO research_runs
+          (run_id, started_at, objective, intent, outcome, status, actor_type,
+           actor_id, host, session_id, tool_version, contract_json, contract_hash)
+        VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            now_iso(),
+            objective,
+            intent,
+            outcome,
+            actor["actor_type"],
+            actor["actor_id"],
+            actor["host"],
+            actor["session_id"],
+            actor["tool_version"],
+            contract_json,
+            contract_hash,
+        ),
+    )
+    _append_event(
+        conn,
+        event_type="run.created",
+        run_id=run_id,
+        actor_type=actor["actor_type"],
+        actor_id=actor["actor_id"],
+        payload={"objective": objective, "intent": intent, "outcome": outcome, "contract_hash": contract_hash},
+        actor_snapshot=actor,
+    )
+
+
+def _append_event(
+    conn: sqlite3.Connection,
+    *,
+    event_type: str,
+    run_id: str | None,
+    actor_type: str,
+    actor_id: str,
+    payload: dict[str, Any],
+    actor_snapshot: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    previous = conn.execute("SELECT event_hash FROM audit_events ORDER BY seq DESC LIMIT 1").fetchone()
+    previous_hash = previous["event_hash"] if previous else "GENESIS"
+    run_actor = conn.execute(
+        "SELECT host, session_id, tool_version FROM research_runs WHERE run_id=?", (run_id,)
+    ).fetchone() if run_id else None
+    snapshot = actor_snapshot or {}
+    event = {
+        "event_id": _new_id("evt"),
+        "event_type": event_type,
+        "occurred_at": now_iso(),
+        "run_id": run_id,
+        "actor_type": str(snapshot.get("actor_type") or actor_type),
+        "actor_id": str(snapshot.get("actor_id") or actor_id),
+        "host": str(snapshot.get("host") or (run_actor["host"] if run_actor else "unknown")),
+        "session_id": str(snapshot.get("session_id") or (run_actor["session_id"] if run_actor else "unknown")),
+        "tool_version": str(snapshot.get("tool_version") or (run_actor["tool_version"] if run_actor else "unknown")),
+        "payload": _stringify_dates(payload),
+        "previous_hash": previous_hash,
+        "hash_scheme": "sha256-json-sort-keys-v2-provenance",
+    }
+    event_hash = _sha256_text(_canonical_json(event))
+    conn.execute(
+        """
+        INSERT INTO audit_events
+          (event_id, event_type, occurred_at, run_id, actor_type, actor_id,
+           host, session_id, tool_version, payload_json, previous_hash, event_hash, hash_scheme)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            event["event_id"],
+            event_type,
+            event["occurred_at"],
+            run_id,
+            event["actor_type"],
+            event["actor_id"],
+            event["host"],
+            event["session_id"],
+            event["tool_version"],
+            _canonical_json(event["payload"]),
+            previous_hash,
+            event_hash,
+            event["hash_scheme"],
+        ),
+    )
+    event["event_hash"] = event_hash
+    return event
+
+
+def _verify_event_chain(conn: sqlite3.Connection) -> tuple[bool, list[dict[str, Any]]]:
+    previous_hash = "GENESIS"
+    errors: list[dict[str, Any]] = []
+    for row in conn.execute("SELECT * FROM audit_events ORDER BY seq"):
+        payload = json.loads(row["payload_json"])
+        event = {
+            "event_id": row["event_id"],
+            "event_type": row["event_type"],
+            "occurred_at": row["occurred_at"],
+            "run_id": row["run_id"],
+            "actor_type": row["actor_type"],
+            "actor_id": row["actor_id"],
+            "payload": payload,
+            "previous_hash": row["previous_hash"],
+            "hash_scheme": row["hash_scheme"],
+        }
+        if row["hash_scheme"] == "sha256-json-sort-keys-v2-provenance":
+            event.update({
+                "host": row["host"],
+                "session_id": row["session_id"],
+                "tool_version": row["tool_version"],
+            })
+        expected = _sha256_text(_canonical_json(event))
+        if row["previous_hash"] != previous_hash or row["event_hash"] != expected:
+            errors.append({"seq": row["seq"], "event_id": row["event_id"], "reason": "chain_or_hash_mismatch"})
+        previous_hash = row["event_hash"]
+    return not errors, errors
+
+
+def _canonical_source_url(value: str) -> str:
+    parsed = urllib.parse.urlsplit(value.strip())
+    if parsed.scheme.lower() == "file":
+        local_path = Path(urllib.parse.unquote(parsed.path)).expanduser()
+        if not local_path.is_absolute():
+            raise ValueError(f"file source must use an absolute path: {value}")
+        return local_path.resolve().as_uri()
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"source URL must be absolute HTTP(S) or file: {value}")
+    host = parsed.hostname.lower() if parsed.hostname else ""
+    port = parsed.port
+    netloc = host
+    if port and not ((parsed.scheme.lower() == "http" and port == 80) or (parsed.scheme.lower() == "https" and port == 443)):
+        netloc = f"{host}:{port}"
+    path = parsed.path or "/"
+    return urllib.parse.urlunsplit((parsed.scheme.lower(), netloc, path, parsed.query, ""))
+
+
+def _record_sources_for_entry(
+    conn: sqlite3.Connection,
+    *,
+    sources: list[Any],
+    run_id: str,
+    entry_slug: str,
+) -> list[str]:
+    observation_ids: list[str] = []
+    for item in sources:
+        source = {"url": item} if isinstance(item, str) else dict(item or {})
+        url = source.get("url") or source.get("source_url")
+        if not url:
+            continue
+        try:
+            canonical_url = _canonical_source_url(str(url))
+        except ValueError:
+            continue
+        source_id = "src-" + _sha256_text(canonical_url)[:32]
+        captured_at = str(source.get("captured_at") or source.get("captured") or now_iso())
+        content_hash = _validate_hash_ref(source.get("content_hash"), "content_hash")
+        normalized_hash = _validate_hash_ref(source.get("normalized_hash"), "normalized_hash")
+        if canonical_url.startswith("file:") and content_hash:
+            local_path = Path(urllib.parse.unquote(urllib.parse.urlsplit(canonical_url).path))
+            if local_path.is_file():
+                actual_hash = "sha256:" + _file_sha256(local_path)
+                if actual_hash != content_hash:
+                    raise ValueError(f"content_hash does not match local file: {local_path}")
+        published_at = source.get("published_at") or source.get("published")
+        if captured_at == "0001-01-01T00:00:00Z":
+            if not source.get("legacy_import") or not source.get("captured_at_unknown_reason"):
+                raise ValueError("unknown captured_at requires legacy_import and captured_at_unknown_reason")
+        else:
+            _validate_iso_date(captured_at, "captured_at", timezone_required=True)
+        if published_at:
+            _validate_iso_date(published_at, "published_at")
+        if source.get("modified_at") or source.get("modified"):
+            _validate_iso_date(source.get("modified_at") or source.get("modified"), "modified_at")
+        if not content_hash:
+            source.setdefault("content_hash_unknown_reason", "not provided by entry source metadata")
+        if not published_at:
+            source.setdefault("published_at_unknown_reason", "not provided by entry source metadata")
+        observation_status = str(
+            source.get("status")
+            or ("captured" if content_hash and (published_at or source.get("published_at_unknown_reason")) else "incomplete")
+        )
+        observation_key = _canonical_json({
+            "source_id": source_id,
+            "run_id": run_id,
+            "entry_slug": entry_slug,
+            "captured_at": captured_at,
+            "content_hash": content_hash,
+        })
+        observation_id = "obs-" + _sha256_text(observation_key)[:32]
+        prior = conn.execute(
+            """SELECT observation_id, content_hash FROM source_observations
+               WHERE source_id=?
+               ORDER BY CASE WHEN captured_at='0001-01-01T00:00:00Z' THEN 0 ELSE 1 END DESC,
+                        captured_at DESC LIMIT 1""",
+            (source_id,),
+        ).fetchone()
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO sources
+              (source_id, canonical_url, domain, source_kind, name, first_seen_at, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                source_id,
+                canonical_url,
+                etld1(canonical_url) or str(source.get("domain") or "local-file"),
+                str(source.get("kind") or source.get("type") or "web"),
+                str(source.get("name") or source.get("title") or ""),
+                captured_at,
+                _canonical_json({k: v for k, v in source.items() if k not in {"url", "source_url"}}),
+            ),
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO source_observations
+              (observation_id, source_id, run_id, entry_slug, published_at,
+               modified_at, captured_at, final_url, content_hash, normalized_hash,
+               capture_method, extractor, extractor_version, locator, raw_ref,
+               status, change_from_observation_id, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                observation_id,
+                source_id,
+                run_id,
+                entry_slug,
+                published_at,
+                source.get("modified_at") or source.get("modified"),
+                captured_at,
+                source.get("final_url") or canonical_url,
+                content_hash,
+                normalized_hash,
+                str(source.get("capture_method") or source.get("method") or "host-tool"),
+                source.get("extractor") or source.get("parser"),
+                source.get("extractor_version") or source.get("parser_version"),
+                source.get("locator"),
+                source.get("raw_ref"),
+                observation_status,
+                prior["observation_id"] if prior and prior["content_hash"] != content_hash else None,
+                _canonical_json(source),
+            ),
+        )
+        observation_ids.append(observation_id)
+    return observation_ids
+
+
+def _graph_entity(
+    conn: sqlite3.Connection,
+    *,
+    kind: str,
+    canonical_key: str,
+    label: str = "",
+    properties: dict[str, Any] | None = None,
+) -> str:
+    entity_id = "ent-" + _sha256_text(f"{kind}:{canonical_key}")[:32]
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO graph_entities
+          (entity_id, kind, canonical_key, label, created_at, properties_json)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (entity_id, kind, canonical_key, label, now_iso(), _canonical_json(properties or {})),
+    )
+    return entity_id
+
+
+def _graph_edge(
+    conn: sqlite3.Connection,
+    *,
+    subject_id: str,
+    predicate: str,
+    object_id: str,
+    run_id: str,
+    evidence_observation_id: str | None = None,
+    locator: str | None = None,
+    status: str = "active",
+    confidence: str | None = None,
+) -> str:
+    key = _canonical_json({
+        "subject": subject_id,
+        "predicate": predicate,
+        "object": object_id,
+        "run_id": run_id,
+        "evidence": evidence_observation_id,
+        "locator": locator,
+    })
+    edge_id = "edge-" + _sha256_text(key)[:32]
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO graph_edges
+          (edge_id, subject_id, predicate, object_id, run_id, observed_at,
+           evidence_observation_id, locator, status, confidence, metadata_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '{}')
+        """,
+        (edge_id, subject_id, predicate, object_id, run_id, now_iso(), evidence_observation_id, locator, status, confidence),
+    )
+    return edge_id
+
+
+def _record_entry_graph(
+    conn: sqlite3.Connection,
+    *,
+    slug: str,
+    title: str,
+    run_id: str,
+    observation_ids: list[str],
+) -> None:
+    run_entity = _graph_entity(conn, kind="run", canonical_key=run_id, label=run_id)
+    entry_entity = _graph_entity(conn, kind="entry", canonical_key=slug, label=title or slug)
+    _graph_edge(conn, subject_id=entry_entity, predicate="wasGeneratedBy", object_id=run_entity, run_id=run_id)
+    for observation_id in observation_ids:
+        row = conn.execute(
+            """
+            SELECT o.source_id, o.locator, o.change_from_observation_id, s.canonical_url, s.name
+            FROM source_observations o JOIN sources s ON s.source_id=o.source_id
+            WHERE o.observation_id=?
+            """,
+            (observation_id,),
+        ).fetchone()
+        if not row:
+            continue
+        source_entity = _graph_entity(
+            conn, kind="source", canonical_key=row["canonical_url"], label=row["name"] or row["canonical_url"]
+        )
+        observation_entity = _graph_entity(conn, kind="observation", canonical_key=observation_id, label=observation_id)
+        _graph_edge(conn, subject_id=observation_entity, predicate="wasDerivedFrom", object_id=source_entity, run_id=run_id, evidence_observation_id=observation_id, locator=row["locator"])
+        _graph_edge(conn, subject_id=entry_entity, predicate="hadPrimarySource", object_id=observation_entity, run_id=run_id, evidence_observation_id=observation_id, locator=row["locator"])
+        _graph_edge(conn, subject_id=run_entity, predicate="used", object_id=observation_entity, run_id=run_id, evidence_observation_id=observation_id)
+        if row["change_from_observation_id"]:
+            prior_entity = _graph_entity(
+                conn,
+                kind="observation",
+                canonical_key=row["change_from_observation_id"],
+                label=row["change_from_observation_id"],
+            )
+            _graph_edge(
+                conn,
+                subject_id=observation_entity,
+                predicate="wasRevisionOf",
+                object_id=prior_entity,
+                run_id=run_id,
+                evidence_observation_id=observation_id,
+                locator=row["locator"],
+            )
 
 
 def seed_domain_scores(refresh: bool = False) -> int:
@@ -730,6 +1471,16 @@ def cmd_save(args: argparse.Namespace) -> int:
     fm.setdefault("workflow", "general")
     fm.setdefault("confidence", "inferred")
     fm.setdefault("corroboration", 0)
+    actor = _actor_from_args(args)
+    run_id = str(getattr(args, "run_id", None) or os.environ.get("RESEARCH_RUN_ID") or _new_id("run"))
+    fm["research_run_id"] = run_id
+    fm["provenance"] = {
+        "actor_type": actor["actor_type"],
+        "actor_id": actor["actor_id"],
+        "host": actor["host"],
+        "session_id": actor["session_id"],
+        "tool_version": actor["tool_version"],
+    }
     for list_key, default in [
         ("topics", [top_level_topic(fm["slug"])]),
         ("projects", []),
@@ -740,6 +1491,24 @@ def cmd_save(args: argparse.Namespace) -> int:
     ]:
         if fm.get(list_key) is None:
             fm[list_key] = default
+
+    # Reject malformed claimed identities before writing the canonical file.
+    try:
+        for item in fm.get("sources", []):
+            source = {"url": item} if isinstance(item, str) else dict(item or {})
+            url = source.get("url") or source.get("source_url")
+            if not url:
+                continue
+            canonical_source = _canonical_source_url(str(url))
+            claimed_hash = _validate_hash_ref(source.get("content_hash"), "content_hash")
+            _validate_hash_ref(source.get("normalized_hash"), "normalized_hash")
+            if canonical_source.startswith("file:") and claimed_hash:
+                local_path = Path(urllib.parse.unquote(urllib.parse.urlsplit(canonical_source).path))
+                if local_path.is_file() and "sha256:" + _file_sha256(local_path) != claimed_hash:
+                    raise ValueError(f"content_hash does not match local file: {local_path}")
+    except (TypeError, ValueError) as exc:
+        print(f"ERROR: invalid source metadata: {exc}", file=sys.stderr)
+        return 2
 
     # Collision resolution
     original_slug = fm["slug"]
@@ -789,9 +1558,17 @@ def cmd_save(args: argparse.Namespace) -> int:
         json.dumps(verification),
         json.dumps(fm.get("inbound", [])),
     )
-    conn.execute(
-        """
-        INSERT INTO entries
+    with conn:
+        _ensure_run(
+            conn,
+            run_id,
+            actor,
+            objective=str(fm.get("research_question") or fm.get("title") or fm["slug"]),
+            outcome=str(fm.get("decision_use") or "persisted research entry"),
+        )
+        conn.execute(
+            """
+            INSERT INTO entries
           (slug, path, title, topics, projects, tags, sources, status, workflow,
            created, reviewed, topic_velocity, confidence, corroboration,
            tldr, notes, raw, verification, inbound)
@@ -815,10 +1592,54 @@ def cmd_save(args: argparse.Namespace) -> int:
           raw=excluded.raw,
           verification=excluded.verification,
           inbound=excluded.inbound
-        """,
-        row,
-    )
-    conn.commit()
+            """,
+            row,
+        )
+        observation_ids = _record_sources_for_entry(
+            conn,
+            sources=fm.get("sources", []),
+            run_id=run_id,
+            entry_slug=fm["slug"],
+        )
+        _record_entry_graph(
+            conn,
+            slug=fm["slug"],
+            title=str(fm.get("title") or fm["slug"]),
+            run_id=run_id,
+            observation_ids=observation_ids,
+        )
+        prior_run_status = conn.execute("SELECT status FROM research_runs WHERE run_id=?", (run_id,)).fetchone()["status"]
+        completed_at = now_iso()
+        conn.execute(
+            "UPDATE research_runs SET status='completed', completed_at=COALESCE(completed_at, ?) WHERE run_id=?",
+            (completed_at, run_id),
+        )
+        _append_event(
+            conn,
+            event_type="entry.saved",
+            run_id=run_id,
+            actor_type=actor["actor_type"],
+            actor_id=actor["actor_id"],
+            payload={
+                "slug": fm["slug"],
+                "canonical_path": str(canonical),
+                "canonical_sha256": _file_sha256(canonical),
+                "source_observation_ids": observation_ids,
+                "projects": fm.get("projects", []),
+                "topics": fm.get("topics", []),
+            },
+            actor_snapshot=actor,
+        )
+        if prior_run_status != "completed":
+            _append_event(
+                conn,
+                event_type="run.completed",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"completed_at": completed_at, "final_entry_slug": fm["slug"]},
+                actor_snapshot=actor,
+            )
     conn.close()
 
     # v0.3.1: plugin-managed projects get ONE symlink at <content-root>/projects/<name>/<slug>.md.
@@ -852,6 +1673,7 @@ def cmd_save(args: argparse.Namespace) -> int:
     if not skip_index:
         print(f"  Portfolio: {content_path('PORTFOLIO.md')}")
     print(f"  Corroboration: {fm.get('corroboration', 0)}  Confidence: {fm.get('confidence')}")
+    print(f"  Run: {run_id}")
     return 0
 
 
@@ -1632,6 +2454,19 @@ def _rebuild_indexes() -> None:
     content_path("index.md").write_text("".join(lines))
 
     # by-topic.md
+    by_topic: dict[str, list[dict]] = {}
+    for r in rows:
+        for topic in r["topics"]:
+            by_topic.setdefault(topic, []).append(r)
+    lines = ["# Research by Topic\n", f"Last rebuilt: {today_iso()}\n\n"]
+    for topic in sorted(by_topic):
+        lines.append(f"## {topic}\n\n")
+        for r in sorted(by_topic[topic], key=lambda x: x["reviewed"], reverse=True):
+            lines.append(f"- [`{r['slug']}`]({r['path']}) — {r['title']} ({r['reviewed']}, {r['confidence']})\n")
+        lines.append("\n")
+    content_path("by-topic.md").write_text("".join(lines))
+
+    # by-tag.md
     by_tag: dict[str, list[dict]] = {}
     for r in rows:
         for tag in r["tags"]:
@@ -1642,7 +2477,7 @@ def _rebuild_indexes() -> None:
         for r in sorted(by_tag[tag], key=lambda x: x["reviewed"], reverse=True):
             lines.append(f"- [`{r['slug']}`]({r['path']}) — {r['title']} ({r['reviewed']}, {r['confidence']})\n")
         lines.append("\n")
-    content_path("by-topic.md").write_text("".join(lines))
+    content_path("by-tag.md").write_text("".join(lines))
 
     # by-project.md
     by_proj: dict[str, list[dict]] = {"(cross-cutting)": []}
@@ -1707,6 +2542,7 @@ def _rebuild_indexes() -> None:
             if fm.get("inbound") != inbound:
                 fm["inbound"] = inbound
                 path.write_text(dump_frontmatter(fm, body))
+    _write_source_indexes(conn)
     conn.commit()
     conn.close()
 
@@ -2136,7 +2972,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     atoms_path = args.atoms or str(entry_path.parent / f"{args.slug}.atoms.json")
     if not Path(atoms_path).exists():
         print(f"ERROR: no atoms file at {atoms_path}.", file=sys.stderr)
-        print("Extract atoms first (Claude writes JSON list of "
+        print("Extract atoms first (the host agent writes a JSON list of "
               "{atom_id, type, claim, doi?, code?} to that path).", file=sys.stderr)
         return 2
     atoms = json.loads(Path(atoms_path).read_text())
@@ -3009,6 +3845,1634 @@ def cmd_analyze_run(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- audit, sources, calculations, and run contracts ----------
+
+TRUST_DIMENSIONS = {
+    "citation_grounding",
+    "uncertainty_calibration",
+    "correction_behavior",
+    "declared_opinion_bias_framing",
+    "unsupported_absolute_language",
+    "nuance",
+    "discrepancy_history",
+}
+
+
+def cmd_source_record(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    path = Path(args.manifest).expanduser().resolve()
+    try:
+        manifest = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: invalid source manifest: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(manifest, dict) or not manifest.get("url"):
+        print("ERROR: source manifest requires an absolute url", file=sys.stderr)
+        return 2
+    if not manifest.get("content_hash") and not manifest.get("content_hash_unknown_reason"):
+        print("ERROR: source manifest requires content_hash or content_hash_unknown_reason", file=sys.stderr)
+        return 2
+    try:
+        _validate_hash_ref(manifest.get("content_hash"), "content_hash")
+        _validate_hash_ref(manifest.get("normalized_hash"), "normalized_hash")
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    if not (manifest.get("published_at") or manifest.get("published") or manifest.get("published_at_unknown_reason")):
+        print("ERROR: source manifest requires published_at or published_at_unknown_reason", file=sys.stderr)
+        return 2
+    if not (manifest.get("locator") or manifest.get("locator_unknown_reason")):
+        print("ERROR: source manifest requires locator or locator_unknown_reason", file=sys.stderr)
+        return 2
+    actor = _actor_from_args(args)
+    run_id = str(args.run_id or manifest.get("run_id") or os.environ.get("RESEARCH_RUN_ID") or _new_id("run"))
+    entry_slug = str(args.entry_slug or manifest.get("entry_slug") or "")
+    conn = db_connect()
+    try:
+        with conn:
+            _ensure_run(conn, run_id, actor, objective="source capture")
+            observations = _record_sources_for_entry(
+                conn,
+                sources=[manifest],
+                run_id=run_id,
+                entry_slug=entry_slug,
+            )
+            if not observations:
+                raise ValueError("manifest URL could not be normalized")
+            if entry_slug:
+                _record_entry_graph(
+                    conn,
+                    slug=entry_slug,
+                    title=entry_slug,
+                    run_id=run_id,
+                    observation_ids=observations,
+                )
+            _append_event(
+                conn,
+                event_type="source.observed",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"observation_id": observations[0], "entry_slug": entry_slug},
+                actor_snapshot=actor,
+            )
+    except (ValueError, sqlite3.Error) as exc:
+        print(f"ERROR: source record failed: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(json.dumps({"run_id": run_id, "observation_id": observations[0]}, indent=2))
+    return 0
+
+
+def _source_ledger_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT s.source_id, s.canonical_url, s.domain, s.source_kind, s.name,
+               CASE WHEN MIN(o.captured_at)='0001-01-01T00:00:00Z'
+                    THEN 'unknown' ELSE MIN(o.captured_at) END AS first_captured_at,
+               CASE WHEN MAX(o.captured_at)='0001-01-01T00:00:00Z'
+                    THEN 'unknown' ELSE MAX(o.captured_at) END AS last_captured_at,
+               COUNT(DISTINCT o.observation_id) AS capture_count,
+               COUNT(DISTINCT o.run_id) AS run_count,
+               COUNT(DISTINCT NULLIF(o.entry_slug, '')) AS entry_count
+        FROM sources s
+        LEFT JOIN source_observations o ON o.source_id = s.source_id
+        GROUP BY s.source_id
+        ORDER BY last_captured_at DESC, s.canonical_url
+        """
+    ).fetchall()
+
+
+def _write_source_indexes(conn: sqlite3.Connection) -> list[Path]:
+    rows = _source_ledger_rows(conn)
+    outputs: list[Path] = []
+    ledger = content_path("SOURCE-LEDGER.md")
+    lines = [
+        "# Research Source Ledger\n\n",
+        f"Generated: {now_iso()}\n\n",
+        "| Source | Domain | First captured | Last captured | Runs | Entries |\n",
+        "|---|---|---:|---:|---:|---:|\n",
+    ]
+    for row in rows:
+        label = row["name"] or row["canonical_url"]
+        lines.append(
+            f"| [{label}]({row['canonical_url']}) | {row['domain']} | "
+            f"{row['first_captured_at'] or ''} | {row['last_captured_at'] or ''} | "
+            f"{row['run_count']} | {row['entry_count']} |\n"
+        )
+    ledger.write_text("".join(lines))
+    outputs.append(ledger)
+
+    projects: dict[str, list[sqlite3.Row]] = {}
+    for row in conn.execute("SELECT slug, title, path, projects FROM entries ORDER BY title"):
+        for project in json.loads(row["projects"] or "[]"):
+            projects.setdefault(str(project), []).append(row)
+    for project, entries in projects.items():
+        project_dir = content_path("projects", project)
+        project_dir.mkdir(parents=True, exist_ok=True)
+        index = project_dir / "INDEX.md"
+        project_lines = [f"# {project} research index\n\n", f"Generated: {now_iso()}\n\n"]
+        for entry in entries:
+            project_lines.append(f"- [{entry['title'] or entry['slug']}]({Path(entry['path']).name})\n")
+        index.write_text("".join(project_lines))
+        outputs.append(index)
+    return outputs
+
+
+def cmd_source_index(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    conn = db_connect()
+    with conn:
+        outputs = _write_source_indexes(conn)
+    conn.close()
+    for path in outputs:
+        print(path)
+    return 0
+
+
+def cmd_legacy_source_import(args: argparse.Namespace) -> int:
+    """Normalize historical entry source lists without inventing missing provenance."""
+    ensure_layout()
+    ensure_db()
+    conn = db_connect()
+    rows = conn.execute("SELECT slug, title, sources FROM entries ORDER BY slug").fetchall()
+    planned_entries = 0
+    planned_sources = 0
+    imported_entries = 0
+    imported_observations = 0
+    skipped_sources = 0
+    skipped_reasons: list[dict[str, str]] = []
+    actor = {
+        "actor_type": "migration",
+        "actor_id": "legacy-source-import",
+        "host": "unknown",
+        "session_id": "unknown",
+        "tool_version": "legacy-import-v1",
+    }
+    try:
+        with conn:
+            for row in rows:
+                raw_sources = json.loads(row["sources"] or "[]")
+                candidates: list[dict[str, Any]] = []
+                for raw in raw_sources:
+                    if not isinstance(raw, (str, dict)):
+                        skipped_sources += 1
+                        skipped_reasons.append({"entry_slug": row["slug"], "reason": "source is not a string or object"})
+                        continue
+                    source = {"url": raw} if isinstance(raw, str) else dict(raw)
+                    if not (source.get("url") or source.get("source_url")):
+                        continue
+                    raw_url = str(source.get("url") or source.get("source_url"))
+                    if Path(raw_url).is_absolute() and not urllib.parse.urlsplit(raw_url).scheme:
+                        source["url"] = Path(raw_url).resolve().as_uri()
+                    raw_captured = source.get("captured_at") or source.get("captured")
+                    if raw_captured:
+                        try:
+                            _validate_iso_date(raw_captured, "captured_at", timezone_required=True)
+                        except ValueError:
+                            source["legacy_captured_at_raw"] = raw_captured
+                            source["captured_at"] = "0001-01-01T00:00:00Z"
+                        else:
+                            source["captured_at"] = raw_captured
+                    else:
+                        source["captured_at"] = "0001-01-01T00:00:00Z"
+                    if source["captured_at"] == "0001-01-01T00:00:00Z":
+                        source.setdefault("captured_at_unknown_reason", "not retained in historical entry or lacked timezone")
+                    if source.get("content_hash"):
+                        try:
+                            _validate_hash_ref(source.get("content_hash"), "content_hash")
+                        except ValueError:
+                            source["legacy_content_hash_raw"] = source.pop("content_hash")
+                    if not source.get("content_hash"):
+                        source.setdefault("content_hash_unknown_reason", "not retained in historical entry")
+                    source.setdefault("published_at_unknown_reason", "not retained in historical entry")
+                    source.setdefault("capture_method", "legacy-entry-import")
+                    source.setdefault("status", "legacy-provenance-unknown")
+                    source.setdefault("legacy_import", True)
+                    try:
+                        canonical_url = _canonical_source_url(str(source.get("url") or source.get("source_url")))
+                    except ValueError as exc:
+                        skipped_sources += 1
+                        skipped_reasons.append({"entry_slug": row["slug"], "reason": str(exc)})
+                        continue
+                    source_id = "src-" + _sha256_text(canonical_url)[:32]
+                    already_normalized = conn.execute(
+                        "SELECT 1 FROM source_observations WHERE entry_slug=? AND source_id=? LIMIT 1",
+                        (row["slug"], source_id),
+                    ).fetchone()
+                    if not already_normalized:
+                        candidates.append(source)
+                if not candidates:
+                    continue
+                planned_entries += 1
+                planned_sources += len(candidates)
+                if not args.apply:
+                    continue
+                run_id = "legacy-" + _sha256_text(str(row["slug"]))[:24]
+                _ensure_run(
+                    conn,
+                    run_id,
+                    actor,
+                    objective=f"Import historical source metadata for {row['slug']}",
+                    outcome="normalized source ledger with unknown provenance preserved",
+                )
+                observation_ids = _record_sources_for_entry(
+                    conn,
+                    sources=candidates,
+                    run_id=run_id,
+                    entry_slug=str(row["slug"]),
+                )
+                _record_entry_graph(
+                    conn,
+                    slug=str(row["slug"]),
+                    title=str(row["title"] or row["slug"]),
+                    run_id=run_id,
+                    observation_ids=observation_ids,
+                )
+                _append_event(
+                    conn,
+                    event_type="legacy.sources_imported",
+                    run_id=run_id,
+                    actor_type=actor["actor_type"],
+                    actor_id=actor["actor_id"],
+                    payload={
+                        "entry_slug": row["slug"],
+                        "source_observation_ids": observation_ids,
+                        "provenance_status": "unknown",
+                    },
+                    actor_snapshot=actor,
+                )
+                imported_entries += 1
+                imported_observations += len(observation_ids)
+            if args.apply:
+                _write_source_indexes(conn)
+    except (ValueError, sqlite3.Error) as exc:
+        print(f"ERROR: legacy source import failed: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    result = {
+        "mode": "apply" if args.apply else "dry-run",
+        "planned_entries": planned_entries,
+        "planned_sources": planned_sources,
+        "imported_entries": imported_entries,
+        "imported_observations": imported_observations,
+        "skipped_sources": skipped_sources,
+        "skipped_reason_samples": skipped_reasons[:20],
+    }
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def cmd_trust_record(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    path = Path(args.manifest).expanduser().resolve()
+    try:
+        manifest = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: invalid trust manifest: {exc}", file=sys.stderr)
+        return 2
+    subject = manifest.get("subject") or {}
+    observations = manifest.get("observations") or []
+    run_id = str(args.run_id or manifest.get("run_id") or "")
+    errors: list[str] = []
+    if not run_id:
+        errors.append("missing run_id")
+    if not subject.get("kind") or not subject.get("canonical_key"):
+        errors.append("subject requires kind and canonical_key")
+    if not manifest.get("topic_key"):
+        errors.append("missing topic_key")
+    if not observations:
+        errors.append("observations must be non-empty")
+    for item in observations:
+        if item.get("dimension") not in TRUST_DIMENSIONS:
+            errors.append(f"unsupported trust dimension: {item.get('dimension')}")
+        if not item.get("rating") or not item.get("rationale"):
+            errors.append("each trust observation requires rating and rationale")
+    if errors:
+        print(json.dumps({"status": "invalid", "errors": errors}, indent=2))
+        return 2
+    actor = _actor_from_args(args)
+    conn = db_connect()
+    ids: list[str] = []
+    try:
+        with conn:
+            _ensure_run(conn, run_id, actor, objective="source trust observation")
+            subject_id = _graph_entity(
+                conn,
+                kind=str(subject["kind"]),
+                canonical_key=str(subject["canonical_key"]),
+                label=str(subject.get("label") or subject["canonical_key"]),
+                properties=subject.get("properties") or {},
+            )
+            for item in observations:
+                trust_id = _new_id("trust")
+                evidence_id = item.get("evidence_observation_id")
+                if evidence_id and not conn.execute("SELECT 1 FROM source_observations WHERE observation_id=?", (evidence_id,)).fetchone():
+                    raise ValueError(f"unknown evidence_observation_id: {evidence_id}")
+                conn.execute(
+                    """
+                    INSERT INTO trust_observations
+                      (trust_observation_id, subject_id, run_id, topic_key, observed_at,
+                       dimension, rating, rationale, evidence_observation_id, formula_version)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        trust_id, subject_id, run_id, str(manifest["topic_key"]), now_iso(),
+                        str(item["dimension"]), str(item["rating"]), str(item["rationale"]),
+                        evidence_id, str(item.get("formula_version") or "observation-v1"),
+                    ),
+                )
+                ids.append(trust_id)
+            _append_event(
+                conn,
+                event_type="trust.observed",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"subject_id": subject_id, "topic_key": manifest["topic_key"], "trust_observation_ids": ids},
+                actor_snapshot=actor,
+            )
+    except (ValueError, sqlite3.Error) as exc:
+        print(f"ERROR: trust record failed: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(json.dumps({"status": "recorded", "trust_observation_ids": ids}, indent=2))
+    return 0
+
+
+def cmd_graph_export(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    conn = db_connect()
+    params: list[Any] = []
+    where = ""
+    if args.run_id:
+        where = " WHERE e.run_id=?"
+        params.append(args.run_id)
+    rows = conn.execute(
+        """
+        SELECT e.edge_id, e.predicate, e.run_id, e.observed_at, e.status,
+               s.entity_id AS subject_id, s.kind AS subject_kind, s.label AS subject_label,
+               o.entity_id AS object_id, o.kind AS object_kind, o.label AS object_label
+        FROM graph_edges e
+        JOIN graph_entities s ON s.entity_id=e.subject_id
+        JOIN graph_entities o ON o.entity_id=e.object_id
+        """ + where + " ORDER BY e.observed_at, e.edge_id",
+        params,
+    ).fetchall()
+    trust_where = " WHERE t.run_id=?" if args.run_id else ""
+    trust_rows = conn.execute(
+        """
+        SELECT t.*, e.kind AS subject_kind, e.label AS subject_label
+        FROM trust_observations t JOIN graph_entities e ON e.entity_id=t.subject_id
+        """ + trust_where + " ORDER BY t.observed_at, t.trust_observation_id",
+        params,
+    ).fetchall()
+    discrepancy_where = " WHERE run_id=?" if args.run_id else ""
+    discrepancy_rows = conn.execute(
+        "SELECT * FROM discrepancies" + discrepancy_where + " ORDER BY first_seen_at, discrepancy_id",
+        params,
+    ).fetchall()
+    traversal_where = " WHERE run_id=?" if args.run_id else ""
+    traversal_rows = conn.execute(
+        "SELECT * FROM traversal_links" + traversal_where + " ORDER BY depth, discovery_order, traversal_link_id",
+        params,
+    ).fetchall()
+    revision_where = " WHERE run_id=? AND change_from_observation_id IS NOT NULL" if args.run_id else " WHERE change_from_observation_id IS NOT NULL"
+    revision_rows = conn.execute(
+        """
+        SELECT observation_id, change_from_observation_id, source_id, run_id,
+               captured_at, published_at, modified_at, locator
+        FROM source_observations
+        """ + revision_where + " ORDER BY captured_at, observation_id",
+        params,
+    ).fetchall()
+    observation_where = " WHERE o.run_id=?" if args.run_id else ""
+    observation_rows = conn.execute(
+        """
+        SELECT o.observation_id, o.source_id, s.canonical_url, o.run_id,
+               o.entry_slug, o.published_at, o.modified_at, o.captured_at,
+               o.content_hash, o.normalized_hash, o.capture_method, o.extractor,
+               o.extractor_version, o.locator, o.raw_ref, o.status,
+               o.change_from_observation_id
+        FROM source_observations o JOIN sources s ON s.source_id=o.source_id
+        """ + observation_where + " ORDER BY o.captured_at, o.observation_id",
+        params,
+    ).fetchall()
+    conn.close()
+    output = Path(args.output).expanduser().resolve() if args.output else content_path("graphs", "research-graph.md")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if args.format == "json":
+        output.write_text(
+            json.dumps(
+                {
+                    "generated_at": now_iso(),
+                    "run_id": args.run_id,
+                    "edges": [dict(row) for row in rows],
+                    "trust_observations": [dict(row) for row in trust_rows],
+                    "discrepancies": [dict(row) for row in discrepancy_rows],
+                    "source_revisions": [dict(row) for row in revision_rows],
+                    "source_observations": [dict(row) for row in observation_rows],
+                    "traversal_links": [dict(row) for row in traversal_rows],
+                },
+                indent=2,
+                ensure_ascii=False,
+            ) + "\n"
+        )
+    else:
+        labels: dict[str, str] = {}
+        lines = ["# Research dependency graph\n\n", f"Generated: {now_iso()}\n\n", "```mermaid\nflowchart LR\n"]
+        for row in rows:
+            labels[row["subject_id"]] = f"{row['subject_kind']}: {row['subject_label']}"
+            labels[row["object_id"]] = f"{row['object_kind']}: {row['object_label']}"
+        for entity_id, label in sorted(labels.items()):
+            safe_label = str(label).replace('"', "'").replace("\n", " ")
+            lines.append(f"  {entity_id.replace('-', '_')}[\"{safe_label}\"]\n")
+        for row in rows:
+            lines.append(
+                f"  {row['subject_id'].replace('-', '_')} -->|{row['predicate']}| {row['object_id'].replace('-', '_')}\n"
+            )
+        for row in trust_rows:
+            trust_node = row["trust_observation_id"].replace("-", "_")
+            safe = f"trust {row['dimension']}: {row['rating']} ({row['observed_at']})".replace('"', "'")
+            lines.append(f"  {trust_node}[\"{safe}\"]\n")
+            lines.append(f"  {row['subject_id'].replace('-', '_')} -.->|assessedBy| {trust_node}\n")
+        for row in discrepancy_rows:
+            left = "ent_" + _sha256_text(f"claim:{row['run_id']}:{row['left_claim_id']}")[:32]
+            right = "ent_" + _sha256_text(f"claim:{row['run_id']}:{row['right_claim_id']}")[:32]
+            lines.append(f"  {left} -->|{row['status']} discrepancy| {right}\n")
+        for row in traversal_rows:
+            link_node = row["traversal_link_id"].replace("-", "_")
+            safe_url = str(row["canonical_url"] or row["displayed_url"]).replace('"', "'")
+            lines.append(f"  {link_node}[\"link {row['depth']}: {row['decision']} {safe_url}\"]\n")
+            if row["parent_observation_id"]:
+                parent = "ent_" + _sha256_text(f"observation:{row['parent_observation_id']}")[:32]
+                lines.append(f"  {parent} -.->|discovered| {link_node}\n")
+        lines.append("```\n")
+        output.write_text("".join(lines))
+    print(output)
+    return 0
+
+
+def _private_or_local_host(host: str) -> bool:
+    lowered = host.lower().rstrip(".")
+    if lowered in {"localhost", "localhost.localdomain"} or lowered.endswith(".local"):
+        return True
+    try:
+        address = ipaddress.ip_address(lowered)
+    except ValueError:
+        return False
+    return not address.is_global
+
+
+def _redact_url_credentials(value: str) -> str:
+    parsed = urllib.parse.urlsplit(value)
+    if parsed.username is None and parsed.password is None:
+        return value
+    host = parsed.hostname or "redacted-host"
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    netloc = host + (f":{parsed.port}" if parsed.port else "")
+    return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+
+
+def cmd_traversal_record(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    path = Path(args.manifest).expanduser().resolve()
+    try:
+        manifest = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: invalid traversal manifest: {exc}", file=sys.stderr)
+        return 2
+    run_id = str(args.run_id or manifest.get("run_id") or "")
+    links = manifest.get("links")
+    if not run_id or not isinstance(links, list) or not links:
+        print("ERROR: traversal manifest requires run_id and a non-empty links list", file=sys.stderr)
+        return 2
+    actor = _actor_from_args(args)
+    conn = db_connect()
+    run = conn.execute("SELECT contract_json FROM research_runs WHERE run_id=?", (run_id,)).fetchone()
+    if not run:
+        conn.close()
+        print(f"ERROR: run must be initialized before traversal: {run_id}", file=sys.stderr)
+        return 2
+    contract = json.loads(run["contract_json"] or "{}")
+    contract_errors = _run_contract_errors(contract)
+    if contract_errors:
+        conn.close()
+        print(json.dumps({"status": "invalid_contract", "errors": contract_errors}, indent=2))
+        return 2
+    policy = contract["traversal"]
+    allowed_domains = [str(item).lower().rstrip(".") for item in policy["allowed_domains"]]
+    existing = conn.execute(
+        """
+        SELECT COUNT(*) AS links,
+               COALESCE(SUM(CASE WHEN decision IN ('queued','captured') THEN 1 ELSE 0 END),0) AS accepted,
+               COALESCE(SUM(bytes),0) AS bytes,
+               COALESCE(SUM(elapsed_ms),0) AS elapsed_ms
+        FROM traversal_links WHERE run_id=?
+        """,
+        (run_id,),
+    ).fetchone()
+    accepted_count = int(existing["accepted"])
+    used_bytes = int(existing["bytes"])
+    used_ms = int(existing["elapsed_ms"])
+    parent_observation_id = manifest.get("parent_observation_id")
+    if parent_observation_id and not conn.execute(
+        "SELECT 1 FROM source_observations WHERE observation_id=?", (parent_observation_id,)
+    ).fetchone():
+        conn.close()
+        print(f"ERROR: unknown parent_observation_id: {parent_observation_id}", file=sys.stderr)
+        return 2
+    records: list[dict[str, Any]] = []
+    try:
+        with conn:
+            for offset, link in enumerate(links):
+                if not isinstance(link, dict):
+                    raise ValueError(f"link {offset} must be an object")
+                displayed = str(link.get("displayed_url") or link.get("url") or "")
+                resolved = str(link.get("resolved_url") or displayed)
+                depth = link.get("depth")
+                order = link.get("discovery_order", int(existing["links"]) + offset + 1)
+                reason = "accepted_by_policy"
+                decision = "captured" if link.get("child_observation_id") else "queued"
+                canonical = ""
+                parsed = urllib.parse.urlsplit(resolved)
+                displayed_parsed = urllib.parse.urlsplit(displayed)
+                host = (parsed.hostname or "").lower().rstrip(".")
+                has_credentials = any(
+                    value is not None
+                    for value in (parsed.username, parsed.password, displayed_parsed.username, displayed_parsed.password)
+                )
+                if has_credentials:
+                    displayed = _redact_url_credentials(displayed)
+                    resolved = _redact_url_credentials(resolved)
+                    parsed = urllib.parse.urlsplit(resolved)
+                try:
+                    canonical = _canonical_source_url(resolved)
+                except ValueError:
+                    decision, reason = "rejected", "invalid_or_unsupported_url"
+                if not isinstance(depth, int) or isinstance(depth, bool) or depth < 1:
+                    decision, reason = "rejected", "invalid_depth"
+                    depth = -1
+                elif depth > int(policy["max_depth"]):
+                    decision, reason = "rejected", "depth_limit"
+                elif parsed.scheme.lower() not in {"http", "https"}:
+                    decision, reason = "rejected", "web_traversal_requires_http"
+                elif has_credentials:
+                    decision, reason = "rejected", "credential_bearing_url"
+                elif _private_or_local_host(host):
+                    decision, reason = "rejected", "private_or_local_destination"
+                elif not any(host == domain or host.endswith("." + domain) for domain in allowed_domains):
+                    decision, reason = "rejected", "domain_not_allowed"
+                elif link.get("robots_allowed") is not True:
+                    decision, reason = "rejected", "robots_not_confirmed_allowed"
+                child_id = link.get("child_observation_id")
+                if child_id and not conn.execute("SELECT 1 FROM source_observations WHERE observation_id=?", (child_id,)).fetchone():
+                    decision, reason = "rejected", "unknown_child_observation"
+                link_bytes = int(link.get("bytes") or 0)
+                elapsed_ms = int(link.get("elapsed_ms") or 0)
+                if link_bytes < 0 or elapsed_ms < 0:
+                    decision, reason = "rejected", "negative_measurement"
+                if decision in {"queued", "captured"} and accepted_count + 1 > int(policy["max_pages"]):
+                    decision, reason = "rejected", "page_budget"
+                if decision in {"queued", "captured"} and used_bytes + link_bytes > int(policy["max_bytes"]):
+                    decision, reason = "rejected", "byte_budget"
+                if decision in {"queued", "captured"} and used_ms + elapsed_ms > int(policy["max_seconds"]) * 1000:
+                    decision, reason = "rejected", "time_budget"
+                record_id = _new_id("link")
+                conn.execute(
+                    """
+                    INSERT INTO traversal_links
+                      (traversal_link_id, run_id, parent_observation_id, discovered_at,
+                       discovery_order, depth, displayed_url, resolved_url, canonical_url,
+                       decision, reason, evidence_gap, child_observation_id, bytes,
+                       elapsed_ms, metadata_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        record_id, run_id, parent_observation_id, now_iso(), int(order), int(depth),
+                        displayed, resolved, canonical, decision, reason, link.get("evidence_gap"),
+                        child_id if decision == "captured" else None, link_bytes, elapsed_ms,
+                        _canonical_json({**link, "url": displayed, "displayed_url": displayed, "resolved_url": resolved}),
+                    ),
+                )
+                if decision in {"queued", "captured"}:
+                    accepted_count += 1
+                    used_bytes += link_bytes
+                    used_ms += elapsed_ms
+                records.append({"traversal_link_id": record_id, "decision": decision, "reason": reason, "canonical_url": canonical})
+            _append_event(
+                conn,
+                event_type="traversal.recorded",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"parent_observation_id": parent_observation_id, "records": records},
+                actor_snapshot=actor,
+            )
+    except (ValueError, sqlite3.Error) as exc:
+        print(f"ERROR: traversal record failed: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(json.dumps({"run_id": run_id, "records": records}, indent=2))
+    return 0
+
+
+def _doctor_report() -> dict[str, Any]:
+    ensure_layout()
+    ensure_db()
+    conn = db_connect()
+    chain_ok, chain_errors = _verify_event_chain(conn)
+    disk_files = list(content_path("topics").glob("**/*.md"))
+    malformed: list[dict[str, str]] = []
+    slug_counts: dict[str, int] = {}
+    for path in disk_files:
+        try:
+            fm, _ = parse_frontmatter(path.read_text(), fatal=False)
+        except (OSError, ValueError) as exc:
+            malformed.append({"path": str(path), "reason": str(exc)})
+            continue
+        slug = str(fm.get("slug") or "")
+        if not slug:
+            malformed.append({"path": str(path), "reason": "missing_slug"})
+        else:
+            slug_counts[slug] = slug_counts.get(slug, 0) + 1
+    duplicates = sorted(slug for slug, count in slug_counts.items() if count > 1)
+    db_entries = conn.execute("SELECT COUNT(*) AS n FROM entries").fetchone()["n"]
+    counts = {
+        "disk_topic_files": len(disk_files),
+        "db_entries": db_entries,
+        "runs": conn.execute("SELECT COUNT(*) AS n FROM research_runs").fetchone()["n"],
+        "events": conn.execute("SELECT COUNT(*) AS n FROM audit_events").fetchone()["n"],
+        "sources": conn.execute("SELECT COUNT(*) AS n FROM sources").fetchone()["n"],
+        "source_observations": conn.execute("SELECT COUNT(*) AS n FROM source_observations").fetchone()["n"],
+        "calculation_receipts": conn.execute("SELECT COUNT(*) AS n FROM calculation_receipts").fetchone()["n"],
+    }
+    provenance_rows = conn.execute(
+        "SELECT actor_type, actor_id, host, session_id, tool_version FROM research_runs"
+    ).fetchall()
+    provenance_unknown = {
+        field: sum(1 for row in provenance_rows if not row[field] or row[field] == "unknown")
+        for field in ("actor_type", "actor_id", "host", "session_id", "tool_version")
+    }
+    provenance_snapshots = {
+        row["run_id"]: row
+        for row in conn.execute(
+            """
+            SELECT e.* FROM audit_events e
+            JOIN (
+              SELECT run_id, MAX(seq) AS seq FROM audit_events
+              WHERE event_type IN ('run.created', 'run.provenance_enriched')
+              GROUP BY run_id
+            ) latest ON latest.seq=e.seq
+            """
+        )
+    }
+    provenance_snapshot_errors: list[dict[str, Any]] = []
+    for row in conn.execute(
+        "SELECT run_id, actor_type, actor_id, host, session_id, tool_version FROM research_runs"
+    ):
+        snapshot = provenance_snapshots.get(row["run_id"])
+        if not snapshot:
+            provenance_snapshot_errors.append({"run_id": row["run_id"], "reason": "missing_append_only_snapshot"})
+            continue
+        mismatched = [
+            field for field in ("actor_type", "actor_id", "host", "session_id", "tool_version")
+            if row[field] != snapshot[field]
+        ]
+        if mismatched:
+            provenance_snapshot_errors.append({"run_id": row["run_id"], "reason": "snapshot_mismatch", "fields": mismatched})
+    entries_missing_source_history: list[str] = []
+    for row in conn.execute("SELECT slug, sources FROM entries"):
+        source_items = json.loads(row["sources"] or "[]")
+        if source_items and not conn.execute(
+            "SELECT 1 FROM source_observations WHERE entry_slug=? LIMIT 1", (row["slug"],)
+        ).fetchone():
+            entries_missing_source_history.append(row["slug"])
+    incomplete_observations = [
+        dict(row)
+        for row in conn.execute(
+            """
+            SELECT observation_id, entry_slug, source_id, status,
+                   CASE WHEN content_hash='' THEN 1 ELSE 0 END AS missing_content_hash,
+                   CASE WHEN published_at IS NULL OR published_at='' THEN 1 ELSE 0 END AS missing_published_at
+            FROM source_observations
+            WHERE status='incomplete' OR content_hash=''
+            ORDER BY captured_at, observation_id
+            """
+        )
+    ]
+    receipt_integrity_errors: list[dict[str, str]] = []
+    indexed_receipt_paths: set[str] = set()
+    for row in conn.execute("SELECT receipt_id, receipt_hash, receipt_path FROM calculation_receipts ORDER BY created_at"):
+        indexed_receipt_paths.add(str(Path(row["receipt_path"]).resolve()))
+        if not row["receipt_hash"]:
+            receipt_integrity_errors.append({"receipt_id": row["receipt_id"], "reason": "missing_receipt_hash"})
+            continue
+        try:
+            receipt_payload = json.loads(Path(row["receipt_path"]).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            receipt_integrity_errors.append({"receipt_id": row["receipt_id"], "reason": f"unreadable_receipt:{exc}"})
+            continue
+        embedded_hash = str(receipt_payload.pop("receipt_hash", ""))
+        actual_hash = "sha256:" + _sha256_text(_canonical_json(receipt_payload))
+        if embedded_hash != row["receipt_hash"] or actual_hash != row["receipt_hash"]:
+            receipt_integrity_errors.append({"receipt_id": row["receipt_id"], "reason": "receipt_hash_mismatch"})
+    for receipt_file in index_path("calculation-receipts").glob("*.json"):
+        if str(receipt_file.resolve()) not in indexed_receipt_paths:
+            receipt_integrity_errors.append({"receipt_id": receipt_file.stem, "reason": "unindexed_receipt_file"})
+    merge_integrity_errors: list[dict[str, str]] = []
+    for row in conn.execute(
+        "SELECT event_id, payload_json FROM audit_events WHERE event_type IN ('run.merge_validated','run.merge_rejected') ORDER BY seq"
+    ):
+        payload = json.loads(row["payload_json"] or "{}")
+        attempt_path_value = payload.get("attempt_path")
+        if not attempt_path_value:
+            continue
+        attempt_path = Path(attempt_path_value)
+        if not attempt_path.is_file():
+            merge_integrity_errors.append({"event_id": row["event_id"], "reason": "missing_merge_attempt"})
+            continue
+        actual_attempt_hash = "sha256:" + _file_sha256(attempt_path)
+        if actual_attempt_hash != payload.get("attempt_hash"):
+            merge_integrity_errors.append({"event_id": row["event_id"], "reason": "merge_attempt_hash_mismatch"})
+            continue
+        try:
+            attempt = json.loads(attempt_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            merge_integrity_errors.append({"event_id": row["event_id"], "reason": "invalid_merge_attempt"})
+            continue
+        input_provenance = attempt.get("input_provenance") or {}
+        input_records = list(input_provenance.get("results") or [])
+        if input_provenance.get("reconciliation"):
+            input_records.append(input_provenance["reconciliation"])
+        for item in input_records:
+            snapshot_path = Path(str(item.get("snapshot_path") or ""))
+            if not snapshot_path.is_file():
+                merge_integrity_errors.append({"event_id": row["event_id"], "reason": "missing_merge_input_snapshot"})
+                continue
+            actual_input_hash = "sha256:" + _file_sha256(snapshot_path)
+            if actual_input_hash != item.get("content_hash"):
+                merge_integrity_errors.append({"event_id": row["event_id"], "reason": "merge_input_hash_mismatch"})
+    conn.close()
+    checks = {
+        "event_chain": {"passed": chain_ok, "errors": chain_errors},
+        "disk_index_parity": {"passed": len(slug_counts) == db_entries, "disk_valid_unique_slugs": len(slug_counts), "db_entries": db_entries},
+        "frontmatter": {"passed": not malformed, "malformed": malformed},
+        "duplicate_slugs": {"passed": not duplicates, "slugs": duplicates},
+        "run_provenance": {
+            "passed": (not provenance_rows or all(count == 0 for count in provenance_unknown.values())) and not provenance_snapshot_errors,
+            "total": len(provenance_rows),
+            "unknown_by_field": provenance_unknown,
+            "snapshot_errors": provenance_snapshot_errors,
+        },
+        "source_history": {
+            "passed": not entries_missing_source_history and not incomplete_observations,
+            "entries_missing_normalized_history": sorted(entries_missing_source_history),
+            "incomplete_observations": incomplete_observations,
+        },
+        "calculation_receipt_integrity": {
+            "passed": not receipt_integrity_errors,
+            "errors": receipt_integrity_errors,
+        },
+        "merge_attempt_integrity": {
+            "passed": not merge_integrity_errors,
+            "errors": merge_integrity_errors,
+        },
+    }
+    return {"status": "passed" if all(v["passed"] for v in checks.values()) else "findings", "counts": counts, "checks": checks}
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    report = _doctor_report()
+    if args.json:
+        print(json.dumps(report, indent=2))
+    else:
+        print(f"Research doctor: {report['status']}")
+        for name, check in report["checks"].items():
+            print(f"  {'PASS' if check['passed'] else 'FINDING'} {name}")
+        print("  " + " ".join(f"{key}={value}" for key, value in report["counts"].items()))
+    return 0 if report["status"] == "passed" else 1
+
+
+def _decimal_value(value: Any) -> Decimal:
+    if isinstance(value, bool) or value is None:
+        raise ValueError("calculation inputs must be numeric")
+    try:
+        parsed = Decimal(str(value))
+        if not parsed.is_finite():
+            raise ValueError(f"numeric input must be finite: {value}")
+        return parsed
+    except InvalidOperation as exc:
+        raise ValueError(f"invalid numeric input: {value}") from exc
+
+
+def _safe_calculate(expression: str, values: dict[str, Decimal]) -> Decimal | bool:
+    tree = ast.parse(expression, mode="eval")
+
+    def walk(node: ast.AST) -> Decimal | bool:
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Name) and node.id in values:
+            return values[node.id]
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float, str)) and not isinstance(node.value, bool):
+            return _decimal_value(node.value)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            value = walk(node.operand)
+            if isinstance(value, bool):
+                raise ValueError("boolean cannot be used as a number")
+            return value if isinstance(node.op, ast.UAdd) else -value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow)):
+            left, right = walk(node.left), walk(node.right)
+            if isinstance(left, bool) or isinstance(right, bool):
+                raise ValueError("boolean cannot be used as a number")
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                if right == 0:
+                    raise ZeroDivisionError("denominator is zero")
+                return left / right
+            exponent = int(right)
+            if Decimal(exponent) != right or abs(exponent) > 100:
+                raise ValueError("exponent must be an integer between -100 and 100")
+            return left ** exponent
+        if isinstance(node, ast.Compare) and len(node.ops) == 1 and len(node.comparators) == 1:
+            left, right = walk(node.left), walk(node.comparators[0])
+            op = node.ops[0]
+            if isinstance(op, ast.Eq):
+                return left == right
+            if isinstance(op, ast.NotEq):
+                return left != right
+            if isinstance(op, ast.Lt):
+                return left < right
+            if isinstance(op, ast.LtE):
+                return left <= right
+            if isinstance(op, ast.Gt):
+                return left > right
+            if isinstance(op, ast.GtE):
+                return left >= right
+        raise ValueError(f"unsupported calculation syntax: {type(node).__name__}")
+
+    return walk(tree)
+
+
+def _validate_calculation_spec(spec: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    for field in ("run_id", "claim_id", "formula", "unit", "denominator", "grain", "inputs", "assumptions", "checks"):
+        if field not in spec:
+            errors.append(f"missing {field}")
+    if not isinstance(spec.get("inputs"), list) or not spec.get("inputs"):
+        errors.append("inputs must be a non-empty list")
+    if not isinstance(spec.get("assumptions"), list):
+        errors.append("assumptions must be a list")
+    if not isinstance(spec.get("checks"), list) or not spec.get("checks"):
+        errors.append("checks must be a non-empty list")
+    for field in ("unit", "denominator", "grain"):
+        value = str(spec.get(field) or "").strip().lower()
+        if value in {"", "unknown", "tbd", "ambiguous", "none", "null", "not_applicable"}:
+            errors.append(f"{field} must be explicit; use not_applicable: <reason> when it does not apply")
+    names: list[str] = []
+    for item in spec.get("inputs") or []:
+        if not isinstance(item, dict) or not all(key in item for key in ("name", "value", "source_observation_id")):
+            errors.append("each input requires name, value, and source_observation_id")
+            continue
+        name = str(item["name"])
+        names.append(name)
+        if not name.isidentifier():
+            errors.append(f"input name must be a Python identifier: {name}")
+    if len(names) != len(set(names)):
+        errors.append("input names must be unique")
+    for check in spec.get("checks") or []:
+        if not isinstance(check, dict) or not check.get("name") or not check.get("expression"):
+            errors.append("each check requires name and expression")
+    return errors
+
+
+def cmd_calculate(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    spec_path = Path(args.spec).expanduser().resolve()
+    try:
+        spec = json.loads(spec_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: invalid calculation spec: {exc}", file=sys.stderr)
+        return 2
+    errors = _validate_calculation_spec(spec)
+    resolved_inputs: list[dict[str, Any]] = []
+    lookup_conn = db_connect()
+    for item in spec.get("inputs") or []:
+        resolved = dict(item) if isinstance(item, dict) else {}
+        observation_id = resolved.get("source_observation_id")
+        row = lookup_conn.execute(
+            "SELECT source_id, content_hash, normalized_hash FROM source_observations WHERE observation_id=?",
+            (observation_id,),
+        ).fetchone() if observation_id else None
+        if not row:
+            errors.append(f"unknown source_observation_id: {observation_id}")
+        else:
+            resolved["source_id"] = row["source_id"]
+            resolved["source_content_hash"] = row["content_hash"]
+            resolved["source_normalized_hash"] = row["normalized_hash"]
+            if not row["content_hash"]:
+                errors.append(f"source observation lacks a content hash: {observation_id}")
+        resolved_inputs.append(resolved)
+    correction_id = spec.get("correction_of_receipt_id")
+    if correction_id and not lookup_conn.execute(
+        "SELECT 1 FROM calculation_receipts WHERE receipt_id=?", (correction_id,)
+    ).fetchone():
+        lookup_conn.close()
+        print(f"ERROR: unknown correction_of_receipt_id: {correction_id}", file=sys.stderr)
+        return 2
+    lookup_conn.close()
+    actor = _actor_from_args(args)
+    started = time.perf_counter_ns()
+    result_text: str | None = None
+    check_results: list[dict[str, Any]] = []
+    status = "inconclusive" if errors else "passed"
+    failure = ""
+    try:
+        values = {str(item["name"]): _decimal_value(item["value"]) for item in resolved_inputs}
+        if not errors:
+            result = _safe_calculate(str(spec["formula"]), values)
+            if isinstance(result, bool):
+                raise ValueError("formula must produce a number")
+            result_text = format(result, "f")
+            values["result"] = result
+            for check in spec["checks"]:
+                expression = str(check.get("expression") or "")
+                check_value = _safe_calculate(expression, values) if expression else False
+                if not isinstance(check_value, bool):
+                    raise ValueError(f"check must be a boolean comparison: {expression}")
+                passed = check_value
+                check_results.append({"name": str(check.get("name") or expression), "expression": expression, "passed": passed})
+            if not all(item["passed"] for item in check_results):
+                status = "failed"
+    except (ValueError, ZeroDivisionError, InvalidOperation, SyntaxError) as exc:
+        status = "inconclusive"
+        failure = str(exc)
+    runtime_ms = max(0, (time.perf_counter_ns() - started) // 1_000_000)
+    receipt_id = _new_id("calc")
+    receipt_dir = index_path("calculation-receipts")
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    receipt_path = receipt_dir / f"{receipt_id}.json"
+    input_payload = resolved_inputs
+    output_payload = {"result": result_text, "unit": spec.get("unit"), "status": status}
+    receipt = {
+        "receipt_id": receipt_id,
+        "run_id": str(spec.get("run_id") or "unknown"),
+        "claim_id": str(spec.get("claim_id") or "unknown"),
+        "created_at": now_iso(),
+        "correction_of_receipt_id": spec.get("correction_of_receipt_id"),
+        "status": status,
+        "failure": failure,
+        "formula": str(spec.get("formula") or ""),
+        "formula_hash": _sha256_text(str(spec.get("formula") or "")),
+        "unit": str(spec.get("unit") or "unknown"),
+        "denominator": str(spec.get("denominator") or "unknown"),
+        "grain": str(spec.get("grain") or "unknown"),
+        "assumptions": spec.get("assumptions") or [],
+        "inputs": input_payload,
+        "input_hash": _sha256_text(_canonical_json(input_payload)),
+        "code_hash": _file_sha256(Path(__file__)),
+        "command": [sys.executable, str(Path(__file__).resolve()), "calculate", "--spec", str(spec_path)],
+        "runtime_ms": runtime_ms,
+        "result_text": result_text,
+        "output_hash": _sha256_text(_canonical_json(output_payload)),
+        "checks": check_results,
+        "validation_errors": errors,
+        "environment": {
+            "python": platform.python_version(),
+            "sqlite": sqlite3.sqlite_version,
+            "platform": platform.platform(),
+            "timezone": str(datetime.now().astimezone().tzinfo),
+        },
+    }
+    receipt["receipt_hash"] = "sha256:" + _sha256_text(_canonical_json(receipt))
+    receipt_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
+    conn = db_connect()
+    try:
+        with conn:
+            _ensure_run(conn, receipt["run_id"], actor, objective="deterministic calculation")
+            conn.execute(
+                """
+                INSERT INTO calculation_receipts
+                  (receipt_id, run_id, claim_id, created_at, correction_of_receipt_id,
+                   status, formula, formula_hash, unit, denominator, grain,
+                   assumptions_json, inputs_json, input_hash, code_hash, command_json,
+                   runtime_ms, result_text, output_hash, checks_json, environment_json,
+                   receipt_hash, receipt_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    receipt_id, receipt["run_id"], receipt["claim_id"], receipt["created_at"],
+                    receipt["correction_of_receipt_id"], status, receipt["formula"], receipt["formula_hash"],
+                    receipt["unit"], receipt["denominator"], receipt["grain"],
+                    _canonical_json(receipt["assumptions"]), _canonical_json(input_payload), receipt["input_hash"],
+                    receipt["code_hash"], _canonical_json(receipt["command"]), runtime_ms, result_text,
+                    receipt["output_hash"], _canonical_json(check_results), _canonical_json(receipt["environment"]),
+                    receipt["receipt_hash"],
+                    str(receipt_path),
+                ),
+            )
+            run_entity = _graph_entity(conn, kind="run", canonical_key=receipt["run_id"], label=receipt["run_id"])
+            claim_entity = _graph_entity(
+                conn,
+                kind="claim",
+                canonical_key=f"{receipt['run_id']}:{receipt['claim_id']}",
+                label=receipt["claim_id"],
+            )
+            calc_entity = _graph_entity(conn, kind="calculation", canonical_key=receipt_id, label=receipt_id)
+            _graph_edge(conn, subject_id=claim_entity, predicate="wasGeneratedBy", object_id=calc_entity, run_id=receipt["run_id"], status=status)
+            _graph_edge(conn, subject_id=calc_entity, predicate="wasGeneratedBy", object_id=run_entity, run_id=receipt["run_id"], status=status)
+            for item in input_payload:
+                observation_entity = _graph_entity(
+                    conn,
+                    kind="observation",
+                    canonical_key=str(item["source_observation_id"]),
+                    label=str(item["source_observation_id"]),
+                )
+                _graph_edge(
+                    conn,
+                    subject_id=calc_entity,
+                    predicate="used",
+                    object_id=observation_entity,
+                    run_id=receipt["run_id"],
+                    evidence_observation_id=str(item["source_observation_id"]),
+                    status=status,
+                )
+            _append_event(
+                conn,
+                event_type="calculation.recorded",
+                run_id=receipt["run_id"],
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={"receipt_id": receipt_id, "claim_id": receipt["claim_id"], "status": status, "output_hash": receipt["output_hash"], "receipt_hash": receipt["receipt_hash"]},
+                actor_snapshot=actor,
+            )
+    except (ValueError, sqlite3.Error) as exc:
+        try:
+            receipt_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        print(f"ERROR: could not persist calculation receipt: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(receipt_path)
+    print(json.dumps({"receipt_id": receipt_id, "status": status, "result": result_text}, indent=2))
+    return 0 if status == "passed" else 2
+
+
+def _load_contract(path: Path) -> dict[str, Any]:
+    data = json.loads(path.read_text())
+    if not isinstance(data, dict):
+        raise ValueError("run contract must be a JSON object")
+    return data
+
+
+def _run_contract_errors(contract: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    for field in (
+        "objective", "intent", "outcome", "success_criteria", "wrong_answer_consequence",
+        "decision_card", "section_contracts", "source_policy", "hypotheses", "tasks",
+        "merge_strategy", "traversal",
+    ):
+        if not contract.get(field):
+            errors.append(f"missing {field}")
+    success_criteria = contract.get("success_criteria")
+    if not isinstance(success_criteria, list) or not success_criteria or not all(
+        isinstance(item, str) and item.strip() for item in success_criteria
+    ):
+        errors.append("success_criteria must be a non-empty list of strings")
+    decision_card = contract.get("decision_card")
+    if not isinstance(decision_card, dict) or not all(
+        isinstance(decision_card.get(field), str) and decision_card[field].strip()
+        for field in ("decision", "use")
+    ):
+        errors.append("decision_card requires decision and use")
+    source_policy = contract.get("source_policy")
+    if not isinstance(source_policy, dict):
+        errors.append("source_policy must be an object")
+    else:
+        lanes = source_policy.get("coverage_lanes")
+        if not isinstance(lanes, list) or not lanes or not all(isinstance(item, str) and item.strip() for item in lanes):
+            errors.append("source_policy.coverage_lanes must be a non-empty list of strings")
+        elif not {"primary", "independent", "counter-evidence", "currentness"}.issubset(set(lanes)):
+            errors.append("source_policy.coverage_lanes must include primary, independent, counter-evidence, and currentness")
+        for quality in ("good", "poor"):
+            values = source_policy.get(quality)
+            if not isinstance(values, list) or not values or not all(isinstance(item, str) and item.strip() for item in values):
+                errors.append(f"source_policy.{quality} must be a non-empty list of strings")
+    merge_strategy = contract.get("merge_strategy")
+    if not isinstance(merge_strategy, dict):
+        errors.append("merge_strategy must be an object")
+    else:
+        if merge_strategy.get("single_writer") is not True:
+            errors.append("merge_strategy.single_writer must be true")
+        if merge_strategy.get("preserve_contradictions") is not True:
+            errors.append("merge_strategy.preserve_contradictions must be true")
+    hypotheses = contract.get("hypotheses")
+    if not isinstance(hypotheses, list) or not hypotheses:
+        errors.append("hypotheses must be a non-empty list")
+        hypotheses = []
+    for index, hypothesis in enumerate(hypotheses):
+        if not isinstance(hypothesis, dict) or not all(
+            hypothesis.get(field) for field in ("hypothesis_id", "statement", "falsifiers", "decision_consequence")
+        ):
+            errors.append(f"hypothesis {index} requires hypothesis_id, statement, falsifiers, and decision_consequence")
+        elif not isinstance(hypothesis.get("falsifiers"), list) or not all(
+            isinstance(item, str) and item.strip() for item in hypothesis["falsifiers"]
+        ):
+            errors.append(f"hypothesis {index} falsifiers must be a non-empty list of strings")
+    task_ids: list[str] = []
+    owned_sections: list[str] = []
+    tasks = contract.get("tasks")
+    if not isinstance(tasks, list) or not tasks:
+        errors.append("tasks must be a non-empty list")
+        tasks = []
+    for index, task in enumerate(tasks):
+        if not isinstance(task, dict) or not all(task.get(field) for field in ("task_id", "section", "question")):
+            errors.append(f"task {index} requires task_id, section, and question")
+            continue
+        if not isinstance(task.get("depends_on"), list) or not all(isinstance(item, str) for item in task["depends_on"]):
+            errors.append(f"task {index} depends_on must be a list of task IDs")
+        task_ids.append(str(task["task_id"]))
+        owned_sections.append(str(task["section"]))
+    if len(task_ids) != len(set(task_ids)):
+        errors.append("task_id values must be unique")
+    if len(owned_sections) != len(set(owned_sections)):
+        errors.append("each section must have one task owner")
+    for index, task in enumerate(tasks):
+        if isinstance(task, dict):
+            unknown_dependencies = sorted(set(task.get("depends_on") or []) - set(task_ids))
+            if unknown_dependencies:
+                errors.append(f"task {index} has unknown dependencies: {unknown_dependencies}")
+    section_contracts = contract.get("section_contracts")
+    if not isinstance(section_contracts, list) or not section_contracts:
+        errors.append("section_contracts must be a non-empty list")
+    else:
+        contract_sections: list[str] = []
+        for index, section_contract in enumerate(section_contracts):
+            if not isinstance(section_contract, dict) or not section_contract.get("section"):
+                errors.append(f"section_contract {index} requires section")
+                continue
+            criteria = section_contract.get("completion_criteria")
+            if not isinstance(criteria, list) or not criteria or not all(isinstance(item, str) and item.strip() for item in criteria):
+                errors.append(f"section_contract {index} completion_criteria must be a non-empty list of strings")
+            contract_sections.append(str(section_contract["section"]))
+        if set(contract_sections) != set(owned_sections):
+            errors.append("section_contracts must match task-owned sections exactly")
+    traversal = contract.get("traversal")
+    if not isinstance(traversal, dict):
+        errors.append("traversal must be an object")
+        traversal = {}
+    depth = traversal.get("max_depth")
+    if depth not in (1, 2, 3):
+        errors.append("traversal.max_depth must be 1, 2, or 3")
+    if depth == 3 and not traversal.get("depth_3_reason"):
+        errors.append("depth 3 requires depth_3_reason")
+    for field in ("max_pages", "max_bytes", "max_seconds"):
+        value = traversal.get(field)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            errors.append(f"traversal.{field} must be a positive integer")
+    domains = traversal.get("allowed_domains")
+    if not isinstance(domains, list) or not domains or not all(
+        isinstance(item, str) and item.strip() and "://" not in item and "/" not in item for item in domains
+    ):
+        errors.append("traversal.allowed_domains must be a non-empty list of domain names")
+    if traversal and traversal.get("robots_policy") != "respect-fail-closed":
+        errors.append("traversal.robots_policy must be respect-fail-closed")
+    return errors
+
+
+def cmd_run_init(args: argparse.Namespace) -> int:
+    ensure_layout()
+    ensure_db()
+    source = Path(args.contract).expanduser().resolve()
+    try:
+        contract = _load_contract(source)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(f"ERROR: invalid run contract: {exc}", file=sys.stderr)
+        return 2
+    errors = _run_contract_errors(contract)
+    if errors:
+        print(json.dumps({"status": "invalid", "errors": errors}, indent=2))
+        return 2
+    run_id = str(contract.get("run_id") or _new_id("run"))
+    contract["run_id"] = run_id
+    contract.setdefault("created_at", now_iso())
+    actor = _actor_from_args(args)
+    run_dir = index_path("runs", run_id)
+    run_dir.mkdir(parents=True, exist_ok=False)
+    contract_path = run_dir / "contract.json"
+    contract_path.write_text(json.dumps(contract, indent=2, ensure_ascii=False) + "\n")
+    initialized_contract_hash = _contract_hash(contract)
+    task_dir = run_dir / "tasks"
+    task_dir.mkdir()
+    for task in contract["tasks"]:
+        packet = {
+            "run_id": run_id,
+            "initialized_contract_hash": initialized_contract_hash,
+            "task": task,
+            "objective": contract["objective"],
+            "source_policy": contract["source_policy"],
+            "traversal": contract["traversal"],
+            "required_result_fields": [
+                "run_id", "initialized_contract_hash", "task_id", "claims",
+                "source_observation_ids", "reused_observation_ids", "limitations",
+            ],
+        }
+        (task_dir / f"{task['task_id']}.json").write_text(json.dumps(packet, indent=2, ensure_ascii=False) + "\n")
+    conn = db_connect()
+    with conn:
+        _ensure_run(
+            conn, run_id, actor, objective=str(contract["objective"]), intent=str(contract["intent"]),
+            outcome=str(contract["outcome"]), contract=contract,
+        )
+        _append_event(
+            conn, event_type="run.initialized", run_id=run_id,
+            actor_type=actor["actor_type"], actor_id=actor["actor_id"],
+            payload={"contract_path": str(contract_path), "contract_hash": _file_sha256(contract_path), "task_ids": [t["task_id"] for t in contract["tasks"]]},
+            actor_snapshot=actor,
+        )
+    conn.close()
+    print(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "contract_hash": initialized_contract_hash,
+                "contract": str(contract_path),
+                "tasks": str(task_dir),
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def cmd_run_validate(args: argparse.Namespace) -> int:
+    try:
+        contract = _load_contract(Path(args.contract).expanduser().resolve())
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(json.dumps({"status": "invalid", "errors": [str(exc)]}, indent=2))
+        return 2
+    errors = _run_contract_errors(contract)
+    print(json.dumps({"status": "valid" if not errors else "invalid", "errors": errors}, indent=2))
+    return 0 if not errors else 2
+
+
+def cmd_run_merge(args: argparse.Namespace) -> int:
+    ensure_db()
+    try:
+        contract_path_input = Path(args.contract).expanduser().resolve()
+        contract = _load_contract(contract_path_input)
+        result_input_blobs: list[tuple[Path, bytes, dict[str, Any]]] = []
+        for raw_path in args.result:
+            result_path = Path(raw_path).expanduser().resolve()
+            raw_bytes = result_path.read_bytes()
+            result = json.loads(raw_bytes.decode("utf-8"))
+            if not isinstance(result, dict):
+                raise ValueError(f"worker result must be a JSON object: {result_path}")
+            result_input_blobs.append((result_path, raw_bytes, result))
+        results = [item[2] for item in result_input_blobs]
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        print(json.dumps({"status": "invalid", "errors": [str(exc)]}, indent=2))
+        return 2
+    errors = _run_contract_errors(contract)
+    initialized_run_id = str(contract.get("run_id") or "")
+    guard_conn = db_connect()
+    initialized = guard_conn.execute(
+        "SELECT contract_hash FROM research_runs WHERE run_id=?", (initialized_run_id,)
+    ).fetchone() if initialized_run_id else None
+    guard_conn.close()
+    binding_error = ""
+    if not initialized:
+        binding_error = "run contract must be initialized before merge"
+    elif initialized["contract_hash"] != _contract_hash(contract):
+        binding_error = "merge contract differs from the initialized contract"
+    if binding_error:
+        errors.append(binding_error)
+        if initialized and initialized_run_id:
+            actor = _actor_from_args(args)
+            audit_conn = db_connect()
+            with audit_conn:
+                _append_event(
+                    audit_conn,
+                    event_type="run.merge_rejected",
+                    run_id=initialized_run_id,
+                    actor_type=actor["actor_type"],
+                    actor_id=actor["actor_id"],
+                    payload={"status": "invalid", "errors": errors, "candidate_contract_hash": _contract_hash(contract)},
+                    actor_snapshot=actor,
+                )
+            audit_conn.close()
+        print(json.dumps({"run_id": initialized_run_id or None, "status": "invalid", "errors": errors, "claims": [], "limitations": []}, indent=2))
+        return 2
+    reconciliation_items: list[dict[str, Any]] = []
+    reconciliation_input_blob: tuple[Path, bytes, dict[str, Any]] | None = None
+    if args.reconciliation:
+        try:
+            reconciliation_path = Path(args.reconciliation).expanduser().resolve()
+            reconciliation_bytes = reconciliation_path.read_bytes()
+            reconciliation_manifest = json.loads(reconciliation_bytes.decode("utf-8"))
+            if not isinstance(reconciliation_manifest, dict):
+                raise ValueError("reconciliation manifest must be a JSON object")
+            reconciliation_input_blob = (reconciliation_path, reconciliation_bytes, reconciliation_manifest)
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"invalid reconciliation manifest: {exc}")
+        else:
+            if reconciliation_manifest.get("run_id") != initialized_run_id:
+                errors.append("reconciliation manifest run_id does not match the contract")
+            if reconciliation_manifest.get("initialized_contract_hash") != initialized["contract_hash"]:
+                errors.append("reconciliation manifest contract hash does not match the initialized contract")
+            items = reconciliation_manifest.get("reconciliations")
+            if not isinstance(items, list):
+                errors.append("reconciliation manifest requires a reconciliations list")
+            else:
+                reconciliation_items = [item for item in items if isinstance(item, dict)]
+                if len(reconciliation_items) != len(items):
+                    errors.append("each reconciliation must be an object")
+    expected = {str(task["task_id"]) for task in contract.get("tasks") or [] if isinstance(task, dict) and task.get("task_id")}
+    returned_ids = [str(result.get("task_id") or "") for result in results]
+    returned = set(returned_ids)
+    if returned != expected:
+        errors.append(f"task result mismatch: expected {sorted(expected)}, received {sorted(returned)}")
+    duplicate_task_ids = sorted({task_id for task_id in returned_ids if returned_ids.count(task_id) > 1})
+    if duplicate_task_ids:
+        errors.append(f"duplicate task results: {duplicate_task_ids}")
+    claims: dict[str, dict[str, Any]] = {}
+    declared_reused_observation_ids: set[str] = set()
+    conn = db_connect()
+    for result in results:
+        task_id = str(result.get("task_id") or "")
+        if result.get("run_id") != initialized_run_id:
+            errors.append(f"task {task_id or '<missing>'} result run_id does not match initialized run")
+        if result.get("initialized_contract_hash") != initialized["contract_hash"]:
+            errors.append(f"task {task_id or '<missing>'} result contract hash does not match initialized contract")
+        result_claims = result.get("claims")
+        result_sources = result.get("source_observation_ids")
+        reused_sources = result.get("reused_observation_ids")
+        limitations = result.get("limitations")
+        if not isinstance(result_claims, list):
+            errors.append(f"task {task_id or '<missing>'} requires a claims list")
+            result_claims = []
+        if not isinstance(result_sources, list) or any(not isinstance(item, str) or not item for item in result_sources):
+            errors.append(f"task {task_id or '<missing>'} requires a source_observation_ids string list")
+            result_sources = []
+        if not isinstance(reused_sources, list) or any(not isinstance(item, str) or not item for item in reused_sources):
+            errors.append(f"task {task_id or '<missing>'} requires a reused_observation_ids string list")
+            reused_sources = []
+        elif not set(reused_sources).issubset(set(result_sources)):
+            errors.append(f"task {task_id or '<missing>'} reused_observation_ids must be a subset of source_observation_ids")
+        declared_reused_observation_ids.update(reused_sources)
+        if not isinstance(limitations, list) or any(not isinstance(item, str) for item in limitations):
+            errors.append(f"task {task_id or '<missing>'} requires a limitations string list")
+        for claim in result_claims:
+            if not isinstance(claim, dict):
+                errors.append(f"task {task_id or '<missing>'} returned a non-object claim")
+                continue
+            claim_id = str(claim.get("claim_id") or "")
+            if not claim_id:
+                errors.append(f"task {result.get('task_id')} returned a claim without claim_id")
+                continue
+            if not isinstance(claim.get("statement"), str) or not claim["statement"].strip():
+                errors.append(f"claim {claim_id} requires a non-empty atomic statement")
+            if claim.get("claim_kind") not in {"factual", "quantitative", "opinion", "interpretation"}:
+                errors.append(f"claim {claim_id} has an unsupported claim_kind")
+            if claim_id in claims:
+                errors.append(f"duplicate claim_id {claim_id}")
+            claims[claim_id] = claim
+            evidence_ids = claim.get("evidence_observation_ids")
+            if not isinstance(evidence_ids, list) or not evidence_ids or any(not isinstance(item, str) or not item for item in evidence_ids):
+                errors.append(f"claim {claim_id} has no evidence observations")
+            else:
+                missing_from_packet = sorted(set(evidence_ids) - set(result_sources))
+                if missing_from_packet:
+                    errors.append(f"claim {claim_id} evidence is absent from task source_observation_ids: {missing_from_packet}")
+                for observation_id in evidence_ids:
+                    observation = conn.execute(
+                        "SELECT run_id, status, content_hash, locator, metadata_json FROM source_observations WHERE observation_id=?",
+                        (observation_id,),
+                    ).fetchone()
+                    if not observation:
+                        errors.append(f"claim {claim_id} references unknown observation {observation_id}")
+                        continue
+                    if observation["status"] in {"incomplete", "legacy-provenance-unknown"} or not observation["content_hash"]:
+                        errors.append(f"claim {claim_id} references incomplete evidence observation {observation_id}")
+                    if observation["run_id"] != initialized_run_id and observation_id not in reused_sources:
+                        errors.append(f"claim {claim_id} cross-run evidence must be declared in reused_observation_ids: {observation_id}")
+                    metadata = json.loads(observation["metadata_json"] or "{}")
+                    if not observation["locator"] and not metadata.get("locator_unknown_reason"):
+                        errors.append(f"claim {claim_id} evidence lacks locator or locator_unknown_reason: {observation_id}")
+            if claim.get("claim_kind") == "quantitative":
+                receipt_id = claim.get("calculation_receipt_id")
+                receipt = conn.execute(
+                    "SELECT status, run_id, claim_id FROM calculation_receipts WHERE receipt_id=?", (receipt_id,)
+                ).fetchone() if receipt_id else None
+                if not receipt or receipt["status"] != "passed":
+                    errors.append(f"quantitative claim {claim_id} lacks a passed calculation receipt")
+                elif receipt["run_id"] != contract.get("run_id") or receipt["claim_id"] != claim_id:
+                    errors.append(f"quantitative claim {claim_id} receipt does not match this run and claim")
+    contradiction_pairs: set[tuple[str, str]] = set()
+    for claim in claims.values():
+        claim_id = str(claim["claim_id"])
+        targets = claim.get("contradicts") or []
+        if not isinstance(targets, list) or any(not isinstance(item, str) or not item for item in targets):
+            errors.append(f"claim {claim_id} contradicts must be a string list")
+            continue
+        for other in targets:
+            if other == claim_id:
+                errors.append(f"claim {claim_id} cannot contradict itself")
+            elif other not in claims:
+                errors.append(f"claim {claim_id} contradicts unknown claim {other}")
+            elif claim_id not in (claims[other].get("contradicts") or []):
+                errors.append(f"contradiction must be symmetric: {claim_id} vs {other}")
+            else:
+                contradiction_pairs.add(tuple(sorted((claim_id, other))))
+    reconciled_pairs = {
+        tuple(sorted((str(item.get("left_claim_id")), str(item.get("right_claim_id")))))
+        for item in reconciliation_items
+        if item.get("status") in {"preserved", "resolved", "basis_aligned"}
+    }
+    reconciliation_by_pair = {
+        tuple(sorted((str(item.get("left_claim_id")), str(item.get("right_claim_id"))))): item
+        for item in reconciliation_items
+        if item.get("left_claim_id") and item.get("right_claim_id")
+    }
+    for pair in sorted(contradiction_pairs - reconciled_pairs):
+        errors.append(f"unreconciled contradiction: {pair[0]} vs {pair[1]}")
+    conn.close()
+    merged: dict[str, Any] = {
+        "run_id": contract.get("run_id"),
+        "status": "valid" if not errors else "invalid",
+        "errors": errors,
+        "claims": [claims[key] for key in sorted(claims)],
+        "limitations": [item for result in results for item in result.get("limitations") or []],
+    }
+    run_id = str(contract.get("run_id") or _new_id("run"))
+    attempts_dir = index_path("runs", run_id, "merge-attempts")
+    attempts_dir.mkdir(parents=True, exist_ok=True)
+    attempt_dir = attempts_dir / f"{datetime.now().astimezone().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
+    input_dir = attempt_dir / "inputs"
+    input_dir.mkdir(parents=True, exist_ok=False)
+    result_input_records: list[dict[str, Any]] = []
+    for index, (source_path, raw_bytes, result) in enumerate(result_input_blobs, start=1):
+        content_hash = "sha256:" + hashlib.sha256(raw_bytes).hexdigest()
+        task_id = str(result.get("task_id") or "missing")
+        snapshot_path = input_dir / f"result-{index:02d}-{task_id}-{content_hash[7:19]}.json"
+        snapshot_path.write_bytes(raw_bytes)
+        result_input_records.append({
+            "task_id": task_id,
+            "claim_ids": sorted(str(claim.get("claim_id")) for claim in result.get("claims") or [] if isinstance(claim, dict)),
+            "source_observation_ids": result.get("source_observation_ids") or [],
+            "original_path": str(source_path),
+            "snapshot_path": str(snapshot_path),
+            "content_hash": content_hash,
+            "bytes": len(raw_bytes),
+        })
+    reconciliation_input_record: dict[str, Any] | None = None
+    if reconciliation_input_blob:
+        source_path, raw_bytes, reconciliation_manifest = reconciliation_input_blob
+        content_hash = "sha256:" + hashlib.sha256(raw_bytes).hexdigest()
+        snapshot_path = input_dir / f"reconciliation-{content_hash[7:19]}.json"
+        snapshot_path.write_bytes(raw_bytes)
+        reconciliation_input_record = {
+            "original_path": str(source_path),
+            "snapshot_path": str(snapshot_path),
+            "content_hash": content_hash,
+            "bytes": len(raw_bytes),
+            "pairs": [
+                [item.get("left_claim_id"), item.get("right_claim_id")]
+                for item in reconciliation_manifest.get("reconciliations") or []
+                if isinstance(item, dict)
+            ],
+        }
+    merged["input_provenance"] = {
+        "contract_hash": initialized["contract_hash"],
+        "results": result_input_records,
+        "reconciliation": reconciliation_input_record,
+    }
+    attempt_path = attempt_dir / "attempt.json"
+    attempt_path.write_text(json.dumps(merged, indent=2, ensure_ascii=False) + "\n")
+    if args.output:
+        Path(args.output).expanduser().resolve().write_text(json.dumps(merged, indent=2, ensure_ascii=False) + "\n")
+    actor = _actor_from_args(args)
+    conn = db_connect()
+    try:
+        with conn:
+            _ensure_run(
+                conn,
+                run_id,
+                actor,
+                objective=str(contract.get("objective") or "research merge"),
+                intent=str(contract.get("intent") or ""),
+                outcome=str(contract.get("outcome") or ""),
+                contract=contract,
+            )
+            if not errors:
+                run_entity = _graph_entity(conn, kind="run", canonical_key=run_id, label=run_id)
+                for claim_id, claim in claims.items():
+                    claim_entity = _graph_entity(
+                        conn,
+                        kind="claim",
+                        canonical_key=f"{run_id}:{claim_id}",
+                        label=str(claim.get("statement") or claim_id),
+                        properties={"claim_kind": claim.get("claim_kind")},
+                    )
+                    for observation_id in claim.get("evidence_observation_ids") or []:
+                        observation_entity = _graph_entity(
+                            conn, kind="observation", canonical_key=str(observation_id), label=str(observation_id)
+                        )
+                        _graph_edge(
+                            conn,
+                            subject_id=claim_entity,
+                            predicate="wasDerivedFrom",
+                            object_id=observation_entity,
+                            run_id=run_id,
+                            evidence_observation_id=str(observation_id),
+                        )
+                        if observation_id in declared_reused_observation_ids:
+                            _graph_edge(
+                                conn,
+                                subject_id=run_entity,
+                                predicate="reusedObservation",
+                                object_id=observation_entity,
+                                run_id=run_id,
+                                evidence_observation_id=str(observation_id),
+                            )
+                for left_id, right_id in contradiction_pairs:
+                    left_entity = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{left_id}", label=left_id)
+                    right_entity = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{right_id}", label=right_id)
+                    _graph_edge(
+                        conn,
+                        subject_id=left_entity,
+                        predicate="contradicts",
+                        object_id=right_entity,
+                        run_id=run_id,
+                        status="preserved",
+                    )
+                    reconciliation = reconciliation_by_pair.get((left_id, right_id), {})
+                    discrepancy_id = "disc-" + _sha256_text(f"{run_id}:{left_id}:{right_id}")[:32]
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO discrepancies
+                          (discrepancy_id, left_claim_id, right_claim_id, discrepancy_type,
+                           first_seen_at, last_seen_at, status, resolution_claim_id,
+                           run_id, metadata_json)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            discrepancy_id, left_id, right_id,
+                            str(reconciliation.get("type") or "contradiction"),
+                            now_iso(), now_iso(), str(reconciliation.get("status") or "preserved"),
+                            reconciliation.get("resolution_claim_id"), run_id,
+                            _canonical_json(reconciliation),
+                        ),
+                    )
+            conn.execute(
+                "UPDATE research_runs SET status=? WHERE run_id=?",
+                ("merged" if not errors else "merge_rejected", run_id),
+            )
+            _append_event(
+                conn,
+                event_type="run.merge_validated" if not errors else "run.merge_rejected",
+                run_id=run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload={
+                    "attempt_path": str(attempt_path),
+                    "attempt_hash": "sha256:" + _file_sha256(attempt_path),
+                    "result_input_hashes": [item["content_hash"] for item in result_input_records],
+                    "reconciliation_input_hash": reconciliation_input_record["content_hash"] if reconciliation_input_record else None,
+                    "task_claim_map": {item["task_id"]: item["claim_ids"] for item in result_input_records},
+                    "status": merged["status"],
+                    "claim_ids": sorted(claims),
+                    "errors": errors,
+                },
+                actor_snapshot=actor,
+            )
+    except (ValueError, sqlite3.Error) as exc:
+        print(f"ERROR: could not persist merge audit: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(json.dumps(merged, indent=2, ensure_ascii=False))
+    return 0 if not errors else 2
+
+
 # ---------- review ----------
 
 def _months_since(d_str: str | None) -> float:
@@ -3091,7 +5555,7 @@ def cmd_review(args: argparse.Namespace) -> int:
 
 def cmd_compress(args: argparse.Namespace) -> int:
     """Archive current Raw section for later reversal. Notes/TL;DR regeneration
-    is left to Claude to perform via subsequent edit; this subcommand handles the
+    is left to the host agent via a subsequent edit; this subcommand handles the
     reversible archival mechanic."""
     ensure_db()
     conn = db_connect()
@@ -3135,10 +5599,10 @@ def cmd_compress(args: argparse.Namespace) -> int:
         "archived_to": str(archive_raw),
     }, indent=2))
 
-    # Trim Raw to a placeholder — Claude will rewrite with per-source summaries
+    # Trim Raw to a placeholder for host-agent per-source summaries.
     new_raw = (
         f"> Raw compressed {today_iso()}. Originals: [[archive/raw/{args.slug}]]\n\n"
-        f"[Claude: regenerate per-source 2–3 sentence summaries here, preserving URLs and "
+        f"[Host agent: regenerate per-source 2–3 sentence summaries here, preserving URLs and "
         f"capture dates from the archived Raw.]\n"
     )
     new_body = re.sub(
@@ -3156,7 +5620,7 @@ def cmd_compress(args: argparse.Namespace) -> int:
     _reingest(entry_path)
     print(f"Compressed {args.slug}")
     print(f"  Original Raw archived to: {archive_raw}")
-    print(f"  Now have Claude edit the entry to regenerate per-source summaries.")
+    print(f"  Now have the host agent edit the entry to regenerate per-source summaries.")
     return 0
 
 
@@ -3164,8 +5628,8 @@ def cmd_compress(args: argparse.Namespace) -> int:
 #
 # Single backend: @tyroneross/omniparse CLI (Node.js, user-authored, MIT).
 # Handles PDF, Excel, PPTX, Python, and directories. HTML URLs and plain
-# text formats (.md/.txt/.json/.yaml) are routed to Claude's built-in tools
-# (WebFetch, Read) with a clear message — no extraction needed.
+# text formats (.md/.txt/.json/.yaml) are routed to host-native fetch/read tools
+# with a clear message — no extraction needed.
 #
 # All successful extracts flow through a SHA-256 content-hash cache at
 # <index-root>/.extract-cache/<hash>-<flags>.md so re-reads are instant.
@@ -3181,7 +5645,7 @@ OMNIPARSE_EXTS = {
     ".py",
 }
 
-# Read-native formats — caller should use Claude's Read tool directly.
+# Read-native formats — caller should use the host's read tool directly.
 READ_NATIVE_EXTS = {".md", ".markdown", ".txt", ".json", ".yaml", ".yml"}
 
 # Vendored Omniparse CLI — self-contained build lives alongside this script.
@@ -3328,7 +5792,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
     ext = path.suffix.lower()
 
-    # Route HTML and plain-text formats back to Claude's built-in tools.
+    # Route HTML and plain-text formats back to host-native tools.
     if ext in (".html", ".htm"):
         print(
             "Local HTML file. Use WebFetch for URLs, or Read for a local HTML "
@@ -3338,7 +5802,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
         return 2
     if ext in READ_NATIVE_EXTS:
         print(
-            f"'{ext}' files are best handled by Claude's Read tool directly "
+            f"'{ext}' files are best handled by the host's read tool directly "
             f"(no extraction needed).",
             file=sys.stderr,
         )
@@ -3347,7 +5811,7 @@ def cmd_extract(args: argparse.Namespace) -> int:
         supported = ", ".join(sorted(OMNIPARSE_EXTS))
         print(
             f"Extension '{ext}' is not supported by Omniparse. Supported: "
-            f"{supported}. For .md/.txt/.json/.yaml use Claude's Read tool.",
+            f"{supported}. For .md/.txt/.json/.yaml use the host's read tool.",
             file=sys.stderr,
         )
         return 2
@@ -3647,6 +6111,12 @@ def main() -> int:
         action="store_true",
         help="Opt-in: also regenerate <project>/RossLabs-Research.md (writes into the project dir)",
     )
+    sp.add_argument("--run-id", help="Research run identifier; generated when omitted")
+    sp.add_argument("--actor-type", help="Actor class, such as human, host-agent, or script")
+    sp.add_argument("--actor-id", help="Stable actor identifier; defaults to unknown")
+    sp.add_argument("--host", help="Host runtime name; defaults to unknown")
+    sp.add_argument("--session-id", help="Host session identifier; defaults to unknown")
+    sp.add_argument("--tool-version", help="Plugin/runtime version; defaults to unknown")
     sp.set_defaults(func=cmd_save)
 
     sp = sub.add_parser("search", help="Full-text search (FTS5 + BM25)")
@@ -3739,13 +6209,95 @@ def main() -> int:
     sp.add_argument("--allow-modified-script", action="store_true", help="Run even if analysis.py differs from the plan hash")
     sp.set_defaults(func=cmd_analyze_run)
 
+    sp = sub.add_parser("source-record", help="Append one source capture manifest to the audit ledger")
+    sp.add_argument("--manifest", required=True, help="JSON capture manifest produced by a host browser or local extractor")
+    sp.add_argument("--run-id", help="Research run identifier")
+    sp.add_argument("--entry-slug", help="Entry that uses this capture")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_source_record)
+
+    sp = sub.add_parser("source-index", help="Rebuild the overall source ledger and central project indexes")
+    sp.set_defaults(func=cmd_source_index)
+
+    sp = sub.add_parser("legacy-source-import", help="Normalize past entry source lists with provenance explicitly unknown")
+    sp.add_argument("--apply", action="store_true", help="Write normalized observations; default is a dry-run count")
+    sp.set_defaults(func=cmd_legacy_source_import)
+
+    sp = sub.add_parser("trust-record", help="Append dated, topic-scoped trust observations")
+    sp.add_argument("--manifest", required=True)
+    sp.add_argument("--run-id")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_trust_record)
+
+    sp = sub.add_parser("graph-export", help="Export the research dependency graph as Mermaid or JSON")
+    sp.add_argument("--run-id", help="Restrict edges to one research run")
+    sp.add_argument("--format", choices=["mermaid", "json"], default="mermaid")
+    sp.add_argument("--output")
+    sp.set_defaults(func=cmd_graph_export)
+
+    sp = sub.add_parser("traversal-record", help="Apply run limits and append accepted/rejected deep-link frontier records")
+    sp.add_argument("--manifest", required=True)
+    sp.add_argument("--run-id")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_traversal_record)
+
+    sp = sub.add_parser("doctor", help="Audit event integrity, index parity, provenance, and malformed entries")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_doctor)
+
+    sp = sub.add_parser("calculate", help="Execute a deterministic quantitative claim spec and append a receipt")
+    sp.add_argument("--spec", required=True, help="JSON calculation specification")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_calculate)
+
+    sp = sub.add_parser("run-init", help="Validate a vendor-neutral research contract and emit task packets")
+    sp.add_argument("--contract", required=True, help="JSON research run contract")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_run_init)
+
+    sp = sub.add_parser("run-validate", help="Validate a vendor-neutral research run contract")
+    sp.add_argument("--contract", required=True)
+    sp.set_defaults(func=cmd_run_validate)
+
+    sp = sub.add_parser("run-merge", help="Validate and deterministically order worker research results")
+    sp.add_argument("--contract", required=True)
+    sp.add_argument("--result", action="append", required=True, help="Worker result JSON; repeat for each task")
+    sp.add_argument("--reconciliation", help="Append-only reconciliation manifest bound to run_id and initialized contract hash")
+    sp.add_argument("--output", help="Optional merged JSON output path")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_run_merge)
+
     sp = sub.add_parser("review", help="Surface stale entries")
     sp.add_argument("-n", type=int, default=20)
     sp.add_argument("--topic")
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_review)
 
-    sp = sub.add_parser("compress", help="Archive Raw, prep for Claude rewrite")
+    sp = sub.add_parser("compress", help="Archive Raw, prepare for a host-agent rewrite")
     sp.add_argument("slug")
     sp.set_defaults(func=cmd_compress)
 

@@ -703,7 +703,15 @@ def render_recommended_flow(audit: dict[str, Any]) -> str:
     steps = "".join(f'''<li><h3>{esc(step["title"])}</h3><span class="approach approach-{esc(step["approach"])}">{esc(step["approach"].title())}</span><p>{esc(step["what"])}</p><p class="flow-source"><strong>From:</strong> {esc(step["source"])}</p><p class="muted"><strong>Why:</strong> {esc(step["why"])}</p></li>''' for step in recommendation.get("flow", []))
     references = ""
     if recommendation.get("references"):
-        cards = "".join(f'<li><h4>{esc(ref["name"])}</h4><p>{esc(ref["flow"])}</p><p class="borrow"><strong>Borrow:</strong> {esc(ref["borrow"])}</p>{f'<p class="muted"><a href="{esc(ref["url"])}" rel="noopener">Source</a></p>' if ref.get("url") else ""}</li>' for ref in recommendation["references"])
+        cards = "".join(
+            '<li><h4>{}</h4><p>{}</p><p class="borrow"><strong>Borrow:</strong> {}</p>{}</li>'.format(
+                esc(ref["name"]),
+                esc(ref["flow"]),
+                esc(ref["borrow"]),
+                f'<p class="muted"><a href="{esc(ref["url"])}" rel="noopener">Source</a></p>' if ref.get("url") else "",
+            )
+            for ref in recommendation["references"]
+        )
         references = f'<h3 class="sub-heading">Reference pipelines to borrow from</h3><ul class="reference-grid">{cards}</ul>'
     return f'''<section class="area" id="overview" aria-labelledby="overview-heading"><header class="page-header"><p class="eyebrow">{esc(audit["source"]["label"])} · {esc(audit["generatedAt"])} </p><h1>{esc(audit["title"])}</h1><p class="subtitle">{esc(audit["subtitle"])}</p></header><div class="section-heading"><h2 id="overview-heading">Recommended flow</h2><p>{esc(recommendation["bottomLine"])}</p><p class="spine"><strong>Spine:</strong> {esc(recommendation["spine"])}</p></div><ol class="flow-stepper">{steps}</ol>{references}<h3 class="sub-heading">Next actions</h3><ol class="next-actions">{''.join(f'<li>{esc(item)}</li>' for item in recommendation["nextActions"])}</ol></section>'''
 

@@ -9,10 +9,12 @@ How research gets saved into the central knowledge base at `~/dev/research/`.
   .db.sqlite3                   # FTS5 index, domain scores, verifier log
   README.md                     # auto-bootstrapped
   index.md                      # AUTO: chronological list of all entries
-  by-topic.md                   # AUTO: grouped by tag
+  by-topic.md                   # AUTO: grouped by topic
+  by-tag.md                     # AUTO: grouped by tag
   by-project.md                 # AUTO: grouped by project
   review-due.md                 # AUTO: staleness-ranked
   PORTFOLIO.md                  # AUTO (v0.3): master corpus index, by project + cross-cutting
+  SOURCE-LEDGER.md              # AUTO: sources across entries and runs
   topics/
     <top-level>/
       <slug>.md                 # canonical entries
@@ -22,6 +24,10 @@ How research gets saved into the central knowledge base at `~/dev/research/`.
     <slug>.md                   # moved, never deleted
     raw/<slug>.md               # pre-compress Raw excerpts
   verifier-log/<slug>/<atom>.json   # per-claim verification artifacts (v0.2+)
+  calculation-receipts/<id>.json    # append-only deterministic math receipts
+  graphs/research-graph.md          # generated dependency graph; not mixed with topic MOCs
+  runs/<run-id>/                    # run contract + task packets, outside plugin git
+  telemetry/hook-events.jsonl       # bounded local hook status metadata
   inbox/                        # unrefined fleeting notes; populated by /research:ingest --inbox
 ```
 
@@ -30,10 +36,29 @@ Plugin-managed projects (entries saved with `projects: [foo]` frontmatter) get a
 ```
 ~/dev/research/projects/
   <project-name>/
+    INDEX.md                    # generated central project index
     <slug>.md                   # symlink -> ~/dev/research/topics/<top>/<slug>.md
 ```
 
 No files are written into the project directory by default. Pass `--with-project-index` to `/research:save` if you also want `<project>/RossLabs-Research.md` written (opt-in).
+
+The plugin repository stores runtime code and synthetic fixtures only. Canonical entries, captures, indexes, run packets, receipts, and telemetry use `RESEARCH_CONTENT_DIR` and `RESEARCH_INDEX_DIR`, which default to `~/dev/research/`.
+
+## Historical source migration
+
+Existing entries may have a `sources:` list but no normalized source observation because they predate the audit schema. Preview migration first:
+
+```bash
+python3 "$RESEARCH_PLUGIN_ROOT/research.py" legacy-source-import
+```
+
+After reviewing the counts, apply it explicitly:
+
+```bash
+python3 "$RESEARCH_PLUGIN_ROOT/research.py" legacy-source-import --apply
+```
+
+The import never invents dates or hashes. It writes stable append-only records with explicit unknown-reason metadata and an earliest ordering sentinel for an unknown capture date. `doctor` continues to report these incomplete observations until a real recapture supplies a content hash and date; that is evidence debt, not an import failure.
 
 Linked external directories (registered via `/research:link-project <name> <path>`) are tracked in a registry:
 
@@ -162,7 +187,7 @@ Each raw source block should start with a compact provenance header when availab
 ```markdown
 ### /path/to/source.pdf (captured 2026-07-08)
 - source_id: S1
-- content_hash: sha256:...
+- content_hash: `sha256:<64 lowercase hex>`
 - parser: omniparse
 - parser_flags: -f markdown
 - extraction_status: success

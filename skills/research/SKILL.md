@@ -19,6 +19,7 @@ Route to the appropriate workflow based on user language:
 | "optimize this prompt/question", "make this research-ready", vague or multi-part request, voice transcript | **Query Optimization** | `references/query-optimization.md` · `/research:optimize` |
 | "margin", "cost of sales", "COGS", "gross/operating margin", "EBITDA", "working capital", "unit economics", "cost bucket", "P&L", "financial model input", "comparable companies", "filings", "10-K", "earnings call" | **Financial Research** | `financial-research` skill |
 | "section contracts", "query ledger", "source register", "claim register", "reconcile sources", multi-section deep run | **Deep Research Orchestration** | `references/deep-orchestration.md` |
+| "parallel research agents", "follow links two or three levels", "audit trail", "dependency graph", "verify every calculation" | **Research Orchestrator** | Load the sibling `research-orchestrator` skill |
 | "extract", "collect", "what does this say", "pull data from", "analyze this document", "key claims" | **Collection** | `references/collection.md` |
 | "index credible sources", "source intake", "parser routing", "deep research architecture", "mixed files", "parse quality", "search/fetch evidence" | **Deep Research Architecture Overlay** | `references/deep-research-architecture.md` |
 | "ingest into project wiki", "active project wiki", "project memory ingestion", "preserve chronology", "evolving themes", "contradictions over time" | **Active Project Ingestion Overlay** | `references/active-project-ingestion.md` |
@@ -209,6 +210,8 @@ Before searching, create a **coverage map**:
 ### Phase 3: Execute Research
 
 Run searches and fetches in parallel where independent. Minimize sequential round-trips.
+
+For a multi-agent run, bounded second-/third-level traversal, append-only run/source history, or strict quantitative receipts, load the sibling `research-orchestrator` skill. Keep its JSON contract and deterministic merge checks around this research flow; do not replace the evidence, credibility, synthesis, or persistence phases.
 
 **Host tool routing:**
 - Start technical and codebase research with the coding agent's local file, shell, and repository tools. Do not send local source code through a web connector.

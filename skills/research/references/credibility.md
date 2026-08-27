@@ -4,7 +4,7 @@ Every research finding requires assessment on **two independent dimensions**: so
 
 ## Dimension 1: Source Quality
 
-Source tiers from CLAUDE.md. Every tier assignment requires a **brief rationale**.
+Source tiers from the plugin policy. Every tier assignment requires a **brief rationale**.
 
 | Tier | Sources | Trust | Rationale Example |
 |------|---------|-------|-------------------|

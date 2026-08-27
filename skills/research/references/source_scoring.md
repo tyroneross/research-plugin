@@ -29,7 +29,7 @@ For a URL `https://<domain>/<path>`:
    - `github.com/<any-org>` → T2 (active repo) or T3 (stale) — check via API or default T2.
    - `reddit.com`, `stackoverflow.com`, `medium.com`, `dev.to`, `substack.com`, `news.ycombinator.com` → T3 (community) or T4 (per-topic judgment).
    - Anything else → **T4 provisional**, flagged for LLM review.
-4. For the residue: Claude judges using `credibility.md` rationale, writes back to `domain_scores` with `set_by='llm'`. Same domain on next encounter hits the cache.
+4. For the residue: the host agent judges using `credibility.md` rationale, writes back to `domain_scores` with `set_by='llm'`. Same domain on next encounter hits the cache.
 
 ## `domain_scores` table
 

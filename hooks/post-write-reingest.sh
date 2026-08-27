@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Silent PostToolUse hook: if the Write/Edit touched the configured content
-# root's topics/*.md tree, re-ingest that entry into the SQLite index and
-# rebuild markdown indexes.
-# Never blocks Claude on failure.
+# PostToolUse hook: if Write/Edit touched the configured content root's
+# topics/*.md tree, re-ingest that entry and append bounded local telemetry.
+# Never blocks the host on failure.
 
 set -e
 
@@ -36,10 +35,31 @@ if [ -z "$plugin_root" ]; then
   plugin_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fi
 
+host_kind="unknown"
+if [ -n "${CODEX_PLUGIN_ROOT:-}" ]; then
+  host_kind="codex"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  host_kind="claude"
+fi
+
+index_root="${RESEARCH_INDEX_DIR:-${RESEARCH_BASE_DIR:-$HOME/dev/research}}"
+case "$index_root" in
+  "~"/*) index_root="$HOME/${index_root#~/}" ;;
+esac
+
 # Only fire for research entries under <content-root>/topics/**.md
 case "$file_path" in
   "$content_root"/topics/*/*.md)
-    python3 "$plugin_root/research.py" save --file "$file_path" --skip-symlink >/dev/null 2>&1 || true
+    hook_status=0
+    python3 "$plugin_root/research.py" save --file "$file_path" --skip-symlink \
+      --actor-type host-hook --actor-id post-write-reingest --host "$host_kind" \
+      --tool-version "${RESEARCH_TOOL_VERSION:-unknown}" >/dev/null 2>&1 || hook_status=$?
+    mkdir -p "$index_root/telemetry" 2>/dev/null || true
+    python3 -c 'import json,sys,datetime
+p,source,status,host=sys.argv[1:]
+event={"timestamp":datetime.datetime.now().astimezone().isoformat(),"event":"post_write_reingest","source_path":source,"status":"passed" if status=="0" else "failed","exit_code":int(status),"host":host}
+with open(p,"a",encoding="utf-8") as f: f.write(json.dumps(event,separators=(",",":"))+"\n")' \
+      "$index_root/telemetry/hook-events.jsonl" "$file_path" "$hook_status" "$host_kind" 2>/dev/null || true
     ;;
   *)
     ;;

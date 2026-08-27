@@ -57,7 +57,8 @@ Content root:
 
 - `<content-root>/topics/<topic-tree>/<slug>.md` — canonical entries
 - `<content-root>/indices/<topic>.md` — auto-generated Maps of Content
-- `<content-root>/index.md`, `by-topic.md`, `by-project.md`, `review-due.md`, `PORTFOLIO.md` — auto-generated dashboards
+- `<content-root>/index.md`, `by-topic.md`, `by-tag.md`, `by-project.md`, `review-due.md`, `PORTFOLIO.md` — auto-generated dashboards
+- `<content-root>/SOURCE-LEDGER.md` — source history across entries and runs
 - `<content-root>/archive/` — archived entries (never deleted, redirect stubs left behind)
 - `<content-root>/inbox/` — fleeting notes / files queued via `/research:ingest --inbox`
 - `<content-root>/projects/` — project symlink views
@@ -67,6 +68,9 @@ Index root:
 - `<index-root>/.db.sqlite3` — FTS5 index, domain scores, verifier state
 - `<index-root>/.linked-projects.json` — linked external project registry
 - `<index-root>/verifier-log/` — verification artifacts
+- `<index-root>/calculation-receipts/` — append-only deterministic quantitative receipts
+- `<index-root>/runs/` — vendor-neutral run contracts and worker packets
+- `<index-root>/telemetry/hook-events.jsonl` — bounded local hook status records
 - `<index-root>/.extract-cache/` — Omniparse extract cache
 
 ## Per-project research
@@ -99,6 +103,16 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:archive <slug>` | Move to archive, leave redirect stub |
 | `/research:score <url>` | Inspect or set source tier for a domain |
 | `/research:verify <slug>` | Run claim verification on an entry |
+| `/research:calculate --spec <path>` | Execute a deterministic formula with source-linked inputs and append a quantitative receipt |
+| `/research:doctor` | Audit event-chain integrity, index parity, provenance coverage, malformed entries, and duplicate slugs |
+| `/research:source-record --manifest <path>` | Append one host-fetched or locally extracted source representation |
+| `/research:source-index` | Rebuild the overall source ledger and central per-project indexes |
+| `/research:legacy-source-import [--apply]` | Dry-run, then normalize past entry source lists while preserving unknown provenance |
+| `/research:trust-record --manifest <path>` | Append dated, topic-scoped trust observations with evidence links |
+| `/research:graph-export` | Export source, observation, run, entry, claim, and calculation dependencies as Mermaid or JSON |
+| `/research:traversal-record --manifest <path>` | Enforce a run's bounded deep-link policy and append accepted/rejected frontier decisions |
+| `/research:run-init --contract <path>` | Validate a vendor-neutral run contract and emit disjoint worker packets |
+| `/research:run-merge --contract <path> --result <path>... [--reconciliation <path>]` | Validate evidence coverage, calculation receipts, and append-only contradiction reconciliation before synthesis |
 | `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
 | `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
 | `/research:analyze-plan --input <path> --question "..."` | Generate a self-contained stdlib Python analysis plan/script |
@@ -139,7 +153,9 @@ A user-installed `omniparse` on `PATH` will be preferred over the vendored copy 
 
 - **Non-LLM parsers first, LLM for judgment** — the host agent's WebFetch/Read tools and vendored parsers extract content; scripts compute what can be computed.
 - **Parse first, reason second** — mixed files become normalized evidence with provenance and extraction confidence before synthesis.
-- **Code does the math** — quantitative/database claims should go through profile → analysis plan → generated stdlib Python script → results/audit with High/Medium/Low certainty.
+- **Code does the math** — a quantitative fact requires a passed local receipt with formula/query, units, denominator, grain, assumptions, source observations, hashes, runtime, result, and checks. Ambiguity is inconclusive.
+- **Host-neutral orchestration** — skills describe roles and task contracts; Codex, Claude Code, or another host supplies agents and browser capabilities without becoming a runtime dependency.
+- **Research stays outside plugin git** — code, skills, schemas, and synthetic fixtures live here; entries, captures, task packets, receipts, indexes, and local telemetry use the configured research roots.
 - **Deterministic over clever** — same URL always scores the same tier; same claim always routes to the same verifier.
 - **Never delete** — archive + redirect stubs preserve all inbound links.
 - **Three layers** — TL;DR (≤150 words, extractive), Notes (bolded key passages + citations), Raw (verbatim source excerpts for future verification).
@@ -151,6 +167,6 @@ The repository root is the package root for both hosts.
 - Claude Code manifest: `.claude-plugin/plugin.json`
 - Codex manifest: `.codex-plugin/plugin.json`
 - Slash commands: `commands/*.md`
-- Skill: `skills/research/SKILL.md`
+- Skills: `skills/research/SKILL.md`, `skills/research-orchestrator/SKILL.md`
 - Advisory hook: `hooks/hooks.json`
 - Runtime: `research.py`
