@@ -187,7 +187,7 @@ def check_cli_invocation(path: str) -> None:
 
 def main() -> int:
     check_frontmatter(SKILL, {"name": "financial-research", "description": None,
-                              "user-invocable": True})
+                              "user-invocable": False})
     check_trigger_phrases(SKILL)
     check_line_budget(SKILL)
 

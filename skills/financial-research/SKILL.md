@@ -1,7 +1,7 @@
 ---
 name: financial-research
 description: "Use when the user asks about margin, cost of sales, COGS, gross margin, operating margin, EBITDA, working capital, unit economics, cost bucket, P&L, financial model input, comparable companies, filings, 10-K, or earnings call — any financial or operating-model research where terms, periods, denominators, scopes, and attribution confidence must stay explicit."
-user-invocable: true
+user-invocable: false
 ---
 
 # Financial Research

@@ -1,6 +1,7 @@
 ---
 name: audit-dashboard
 description: Render an evidence-led capability audit as a self-contained HTML dashboard. Use when the user asks for a dashboard, capability matrix, render the audit, audit dashboard, or compare repos/tools visually. Not for producing the audit's findings from scratch; use `research` to generate the audit content first, then render here.
+user-invocable: false
 ---
 
 # Audit Dashboard

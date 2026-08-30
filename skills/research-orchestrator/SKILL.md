@@ -2,6 +2,7 @@
 name: research-orchestrator
 description: Plan and coordinate source-backed research with parallel evidence tasks, bounded second- or third-level link traversal, deterministic quantitative receipts, contradiction-preserving merge, and append-only provenance. Use for requests such as "research this deeply", "use parallel research agents", "follow links two levels", "audit the sources", or "verify the math".
 compatibility: Requires Python 3 and the research plugin CLI. Optional Apple Vision OCR adapter requires macOS.
+user-invocable: false
 ---
 
 # Research Orchestrator
