@@ -20,6 +20,7 @@ import argparse
 import ast
 import csv
 import hashlib
+import importlib
 import ipaddress
 import json
 import os
@@ -2839,7 +2840,7 @@ def _fts_retrieve(slug: str, query: str, k: int = 5) -> list[str]:
     return [c for _, c in scored[:k]]
 
 
-def _verify_numeric(atom: dict, slug: str) -> dict:
+def _verify_numeric(atom: dict[str, Any], slug: str) -> dict[str, Any]:
     """Check if claim's numbers appear in retrieved Raw chunks (± tolerance)."""
     chunks = _fts_retrieve(slug, atom["claim"], k=5)
     claim_nums = _parse_number_with_unit(atom["claim"])
@@ -2872,9 +2873,9 @@ def _verify_numeric(atom: dict, slug: str) -> dict:
     return {"verdict": "failed", "evidence": f"no numeric match in {len(chunks)} chunks", "confidence": "❌"}
 
 
-def _verify_symbolic(atom: dict) -> dict:
+def _verify_symbolic(atom: dict[str, Any], _slug: str) -> dict[str, Any]:
     try:
-        import sympy
+        sympy = importlib.import_module("sympy")
     except ImportError:
         return {"verdict": "inconclusive", "evidence": "sympy not installed", "confidence": "❓"}
     # Expect claim of form "lhs == rhs" or parseable equation
@@ -2893,7 +2894,7 @@ def _verify_symbolic(atom: dict) -> dict:
         return {"verdict": "inconclusive", "evidence": f"sympy error: {e}", "confidence": "❓"}
 
 
-def _verify_citation(atom: dict) -> dict:
+def _verify_citation(atom: dict[str, Any], _slug: str) -> dict[str, Any]:
     """Check a citation via arXiv (for arxiv DOIs) or OpenAlex.
     Requires returned title to overlap with expected title if provided (guards
     against API false-positives like OpenAlex sometimes returning unrelated works)."""
@@ -2922,7 +2923,7 @@ def _verify_citation(atom: dict) -> dict:
     }
 
 
-def _verify_code(atom: dict) -> dict:
+def _verify_code(atom: dict[str, Any], _slug: str) -> dict[str, Any]:
     """Run code sandbox-ish. v0.3: Docker if available, else subprocess with limits."""
     code = atom.get("code") or ""
     if not code:
@@ -2992,10 +2993,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
             result = {"verdict": "inconclusive", "evidence": f"unknown type: {atom.get('type')}", "confidence": "❓"}
         elif args.dry_run:
             result = {"verdict": "dry-run", "evidence": "skipped"}
-        elif atom["type"] == "numeric":
-            result = verifier(atom, args.slug)
         else:
-            result = verifier(atom)
+            result = verifier(atom, args.slug)
         entry = {
             "atom_id": atom["atom_id"],
             "type": atom.get("type"),
@@ -3179,9 +3178,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
     if not args.no_index:
         # Reuse the full index flow so indexes, managed symlinks, and linked projects refresh.
-        class _IndexArgs:
-            pass
-        cmd_index(_IndexArgs())  # type: ignore[arg-type]
+        cmd_index(argparse.Namespace())
 
     print(f"Synced topic entries: {len(set(seen))}")
     if redirects:
@@ -5134,6 +5131,10 @@ def cmd_run_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 2
 
 
+def _ordered_pair(left: str, right: str) -> tuple[str, str]:
+    return (left, right) if left <= right else (right, left)
+
+
 def cmd_run_merge(args: argparse.Namespace) -> int:
     ensure_db()
     try:
@@ -5181,6 +5182,8 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
             audit_conn.close()
         print(json.dumps({"run_id": initialized_run_id or None, "status": "invalid", "errors": errors, "claims": [], "limitations": []}, indent=2))
         return 2
+    assert initialized is not None
+    initialized_contract_hash = str(initialized["contract_hash"])
     reconciliation_items: list[dict[str, Any]] = []
     reconciliation_input_blob: tuple[Path, bytes, dict[str, Any]] | None = None
     if args.reconciliation:
@@ -5196,7 +5199,7 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
         else:
             if reconciliation_manifest.get("run_id") != initialized_run_id:
                 errors.append("reconciliation manifest run_id does not match the contract")
-            if reconciliation_manifest.get("initialized_contract_hash") != initialized["contract_hash"]:
+            if reconciliation_manifest.get("initialized_contract_hash") != initialized_contract_hash:
                 errors.append("reconciliation manifest contract hash does not match the initialized contract")
             items = reconciliation_manifest.get("reconciliations")
             if not isinstance(items, list):
@@ -5220,7 +5223,7 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
         task_id = str(result.get("task_id") or "")
         if result.get("run_id") != initialized_run_id:
             errors.append(f"task {task_id or '<missing>'} result run_id does not match initialized run")
-        if result.get("initialized_contract_hash") != initialized["contract_hash"]:
+        if result.get("initialized_contract_hash") != initialized_contract_hash:
             errors.append(f"task {task_id or '<missing>'} result contract hash does not match initialized contract")
         result_claims = result.get("claims")
         result_sources = result.get("source_observation_ids")
@@ -5301,14 +5304,14 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
             elif claim_id not in (claims[other].get("contradicts") or []):
                 errors.append(f"contradiction must be symmetric: {claim_id} vs {other}")
             else:
-                contradiction_pairs.add(tuple(sorted((claim_id, other))))
+                contradiction_pairs.add(_ordered_pair(claim_id, str(other)))
     reconciled_pairs = {
-        tuple(sorted((str(item.get("left_claim_id")), str(item.get("right_claim_id")))))
+        _ordered_pair(str(item.get("left_claim_id")), str(item.get("right_claim_id")))
         for item in reconciliation_items
         if item.get("status") in {"preserved", "resolved", "basis_aligned"}
     }
     reconciliation_by_pair = {
-        tuple(sorted((str(item.get("left_claim_id")), str(item.get("right_claim_id"))))): item
+        _ordered_pair(str(item.get("left_claim_id")), str(item.get("right_claim_id"))): item
         for item in reconciliation_items
         if item.get("left_claim_id") and item.get("right_claim_id")
     }
@@ -5361,7 +5364,7 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
             ],
         }
     merged["input_provenance"] = {
-        "contract_hash": initialized["contract_hash"],
+        "contract_hash": initialized_contract_hash,
         "results": result_input_records,
         "reconciliation": reconciliation_input_record,
     }
@@ -5490,7 +5493,7 @@ def _velocity_weight(v: str | None) -> float:
     return {"high": 2.0, "medium": 1.0, "low": 0.4}.get(v or "medium", 1.0)
 
 
-def _compute_staleness(r: dict) -> tuple[float, dict]:
+def _compute_staleness(r: dict[str, Any]) -> tuple[float, dict[str, Any]]:
     months = _months_since(r.get("reviewed"))
     vw = _velocity_weight(r.get("topic_velocity"))
     inbound = json.loads(r.get("inbound") or "[]")
@@ -5517,13 +5520,13 @@ def cmd_review(args: argparse.Namespace) -> int:
         "FROM entries WHERE status != 'archived'"
     ).fetchall()]
     conn.close()
-    scored = []
+    scored: list[dict[str, Any]] = []
     for r in rows:
         s, breakdown = _compute_staleness(r)
         if args.topic and args.topic not in json.loads(r.get("topics") or "[]"):
             continue
         scored.append({**r, "staleness": round(s, 3), "breakdown": breakdown})
-    scored.sort(key=lambda x: x["staleness"], reverse=True)
+    scored.sort(key=lambda row: float(row["staleness"]), reverse=True)
     top = scored[: args.n]
 
     if args.json:
@@ -5542,10 +5545,12 @@ def cmd_review(args: argparse.Namespace) -> int:
              "| Staleness | Slug | Title | Reviewed | Velocity | Orphan |\n",
              "|---|---|---|---|---|---|\n"]
     for r in top:
+        breakdown = r.get("breakdown")
+        orphan = breakdown.get("orphan") if isinstance(breakdown, dict) else 0
         lines.append(
             f"| {r['staleness']} | [`{r['slug']}`]({r['path']}) | {r['title']} | "
             f"{r['reviewed']} | {r.get('topic_velocity') or 'medium'} | "
-            f"{'yes' if r['breakdown']['orphan'] else 'no'} |\n"
+            f"{'yes' if orphan else 'no'} |\n"
         )
     content_path("review-due.md").write_text("".join(lines))
     return 0
@@ -6074,15 +6079,14 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             tmp = content_path("inbox", f".ingest-{fm['slug']}.md")
             tmp.parent.mkdir(parents=True, exist_ok=True)
             tmp.write_text(dump_frontmatter(fm, d["body"]))
-            # Reuse cmd_save by faking args
-            class _A:
-                file = str(tmp)
-                move_source = True
-                skip_symlink = False
-                skip_index = False
-                no_index = False
-                with_project_index = False
-            cmd_save(_A())  # type: ignore[arg-type]
+            cmd_save(argparse.Namespace(
+                file=str(tmp),
+                move_source=True,
+                skip_symlink=False,
+                skip_index=False,
+                no_index=False,
+                with_project_index=False,
+            ))
             saved += 1
         print(f"\nSaved {saved} draft(s).")
     else:
