@@ -998,7 +998,7 @@ def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> 
     report = json.loads(run_cli(tmp_path, "run-metrics", "--run-id", "run-timed").stdout)
     assert report["status"] == "complete"
     assert report["span_count"] == 3
-    assert report["worker_critical_path_seconds"] > 0
+    assert report["worker_stage_wall_seconds"] > 0
     assert report["worker_parallelism_ratio"] > 1
     assert report["max_concurrent_worker_spans"] == 2
     assert report["merge_wall_seconds"] > 0
@@ -1114,6 +1114,19 @@ def test_run_stage_serializes_duplicate_span_starts(tmp_path: Path) -> None:
 
     assert sorted(result[2] for result in results) == [0, 2]
     assert any("already exists" in result[1] for result in results)
+
+
+def test_run_stage_rejects_worker_on_ad_hoc_run_without_contract(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    record_source(tmp_path, run_id="run-adhoc")
+
+    result = run_cli(
+        tmp_path, "run-stage", "--run-id", "run-adhoc", "--span-id", "worker-adhoc",
+        "--stage", "worker", "--action", "start", "--worker-id", "worker-a", "--task-id", "made-up",
+        expected=2,
+    )
+
+    assert "initialized from a task contract" in result.stderr
 
 
 def test_doctor_plan_is_deterministic_and_does_not_apply_repairs(tmp_path: Path) -> None:

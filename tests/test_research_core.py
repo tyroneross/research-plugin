@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import shutil
 from pathlib import Path
 
 import research
@@ -41,13 +42,29 @@ def test_orchestration_timing_does_not_call_staggered_workers_idle() -> None:
 
     timing = research._orchestration_timing(spans)
 
-    assert timing["worker_critical_path_seconds"] == 900.0
+    assert timing["worker_stage_wall_seconds"] == 900.0
     assert timing["longest_worker_span_seconds"] == 600.0
     assert timing["worker_dispatch_spread_seconds"] == 300.0
     assert timing["max_concurrent_worker_spans"] == 2
     assert timing["worker_internal_gap_seconds"] == 0.0
     assert timing["worker_to_merge_gap_seconds"] == 0.0
     assert timing["handoff_and_idle_gap_seconds"] == 0.0
+
+
+def test_orchestration_timing_reports_all_pipeline_idle() -> None:
+    spans = [
+        {"span_id": "w1", "stage": "worker", "started_at": "2026-01-01T00:00:00+00:00", "finished_at": "2026-01-01T00:05:00+00:00", "duration_seconds": 300.0},
+        {"span_id": "w2", "stage": "worker", "started_at": "2026-01-01T00:10:00+00:00", "finished_at": "2026-01-01T00:15:00+00:00", "duration_seconds": 300.0},
+        {"span_id": "merge", "stage": "merge", "started_at": "2026-01-01T00:25:00+00:00", "finished_at": "2026-01-01T00:30:00+00:00", "duration_seconds": 300.0},
+    ]
+
+    timing = research._orchestration_timing(spans)
+
+    assert timing["worker_internal_gap_seconds"] == 300.0
+    assert timing["worker_to_merge_gap_seconds"] == 600.0
+    assert timing["handoff_and_idle_gap_seconds"] == 900.0
+    assert timing["pipeline_internal_gap_seconds"] == 900.0
+    assert timing["concurrency_evidence"] == "artifact_bound_no_declared_overlap"
 
 
 def test_eval_check_validates_external_fixture(capsys) -> None:
@@ -134,3 +151,46 @@ def test_eval_check_rejects_symlinked_control_file_escape(tmp_path, capsys) -> N
     report = json.loads(capsys.readouterr().out)
     assert status == 2
     assert any("may not be a symlink" in error for error in report["errors"])
+
+
+def test_eval_check_rejects_empty_root(tmp_path, capsys) -> None:
+    root = tmp_path / "empty-evaluation"
+    root.mkdir()
+
+    status = research.cmd_eval_check(argparse.Namespace(
+        root=str(root), require_query=[], min_independent_audits=0,
+    ))
+
+    report = json.loads(capsys.readouterr().out)
+    assert status == 2
+    assert any("no MANIFEST.sha256" in error for error in report["errors"])
+    assert any("no trial.json" in error for error in report["errors"])
+
+
+def test_eval_check_rejects_binding_mismatch_and_duplicate_audit_body(tmp_path, capsys) -> None:
+    source = Path(__file__).parent / "fixtures" / "research-eval"
+    root = tmp_path / "evaluation"
+    shutil.copytree(source, root)
+    audit_a_path = root / "audits" / "auditor-a.json"
+    audit_b_path = root / "audits" / "auditor-b.json"
+    audit_b = json.loads(audit_b_path.read_text())
+    audit_b["query_id"] = "Q-wrong"
+    audit_b_path.write_text(json.dumps(audit_b))
+
+    mismatch_status = research.cmd_eval_check(argparse.Namespace(
+        root=str(root), require_query=[], min_independent_audits=2,
+    ))
+    mismatch_report = json.loads(capsys.readouterr().out)
+    assert mismatch_status == 2
+    assert any("binding is not declared" in error for error in mismatch_report["errors"])
+
+    duplicate_body = json.loads(audit_a_path.read_text())
+    duplicate_body["audit_id"] = "audit-b-distinct-id"
+    audit_b_path.write_text(json.dumps(duplicate_body))
+    duplicate_status = research.cmd_eval_check(argparse.Namespace(
+        root=str(root), require_query=[], min_independent_audits=2,
+    ))
+    duplicate_report = json.loads(capsys.readouterr().out)
+    assert duplicate_status == 2
+    assert any("duplicate audit body hash" in error for error in duplicate_report["errors"])
+    assert any("distinct independent auditor count 1" in error for error in duplicate_report["errors"])

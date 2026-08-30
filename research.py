@@ -5673,7 +5673,9 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
         if args.stage == "worker":
             contract = json.loads(run["contract_json"] or "{}")
             declared_tasks = {str(item.get("task_id")) for item in contract.get("tasks", []) if isinstance(item, dict)}
-            if declared_tasks and args.task_id not in declared_tasks:
+            if not declared_tasks:
+                raise ValueError("worker stages require a run initialized from a task contract")
+            if args.task_id not in declared_tasks:
                 raise ValueError(f"worker task is not declared by the run contract: {args.task_id}")
         existing = _span_events(conn, args.run_id, args.span_id)
         event_types = {row["event_type"] for row in existing}
@@ -5805,7 +5807,7 @@ def _orchestration_timing(completed: list[dict[str, Any]]) -> dict[str, Any]:
     total_worker_seconds = sum(span["duration_seconds"] for span in worker_spans)
     pipeline_union = _interval_union_seconds([*worker_spans, *merge_spans])
     return {
-        "worker_critical_path_seconds": round(worker_window, 6),
+        "worker_stage_wall_seconds": round(worker_window, 6),
         "worker_fanout_window_seconds": round(worker_window, 6),
         "worker_interval_union_seconds": round(worker_union, 6),
         "worker_internal_gap_seconds": round(worker_internal_gap, 6),
@@ -5818,13 +5820,16 @@ def _orchestration_timing(completed: list[dict[str, Any]]) -> dict[str, Any]:
         "merge_interval_union_seconds": round(merge_union, 6),
         "merge_internal_gap_seconds": round(merge_internal_gap, 6),
         "merge_total_span_seconds": round(sum(span["duration_seconds"] for span in merge_spans), 6),
-        "active_compute_path_seconds": round(pipeline_union, 6),
         "pipeline_interval_union_seconds": round(pipeline_union, 6),
         "fanout_merge_window_seconds": round(pipeline_window, 6),
         "worker_to_merge_gap_seconds": round(handoff_gap, 6),
-        "handoff_and_idle_gap_seconds": round(handoff_gap, 6),
+        "handoff_and_idle_gap_seconds": round(max(0.0, pipeline_window - pipeline_union), 6),
         "pipeline_internal_gap_seconds": round(max(0.0, pipeline_window - pipeline_union), 6),
-        "concurrency_evidence": "artifact_bound_declared_span_overlap" if worker_spans else "no_worker_spans",
+        "concurrency_evidence": (
+            "artifact_bound_declared_span_overlap"
+            if _max_interval_concurrency(worker_spans) > 1
+            else "artifact_bound_no_declared_overlap" if worker_spans else "no_worker_spans"
+        ),
     }
 
 
@@ -6736,7 +6741,7 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
             for item in mapping_entries:
                 if isinstance(item, dict) and not item.get("blind_output_id"):
                     continue
-                if not isinstance(item, dict) or not item.get("blind_output_id"):
+                if not isinstance(item, dict):
                     raise ValueError("arm mapping entry lacks blind_output_id")
                 output_id = str(item["blind_output_id"])
                 queries_for_output = {
@@ -6756,7 +6761,8 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
     errors.extend(discovery_errors)
     valid_audits = 0
     audit_ids: set[str] = set()
-    audit_hashes: set[str] = set()
+    audit_file_hashes: set[str] = set()
+    audit_body_hashes: set[str] = set()
     auditor_ids: set[str] = set()
     auditors_by_output: dict[str, set[str]] = {}
     for audit_path in audit_files:
@@ -6783,11 +6789,15 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
                 raise ValueError(f"duplicate audit_id: {audit_id}")
             if binding not in output_bindings.get(output_id, set()):
                 raise ValueError(f"audit output/query/repetition binding is not declared by a package manifest: {output_id}")
-            content_hash = "sha256:" + _file_sha256(audit_path)
-            if content_hash in audit_hashes:
-                raise ValueError(f"duplicate audit content hash: {content_hash}")
+            file_hash = "sha256:" + _file_sha256(audit_path)
+            audit_body = dict(payload)
+            audit_body.pop("audit_id", None)
+            body_hash = "sha256:" + _sha256_text(_canonical_json(audit_body))
+            if body_hash in audit_body_hashes:
+                raise ValueError(f"duplicate audit body hash: {body_hash}")
             audit_ids.add(audit_id)
-            audit_hashes.add(content_hash)
+            audit_file_hashes.add(file_hash)
+            audit_body_hashes.add(body_hash)
             auditor_ids.add(auditor_id)
             auditors_by_output.setdefault(output_id, set()).add(auditor_id)
             valid_audits += 1
@@ -6797,6 +6807,10 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
     for required_query in args.require_query or []:
         if required_query not in queries:
             errors.append(f"required query is absent from trial manifests: {required_query}")
+    if not manifest_files:
+        errors.append("evaluation contains no MANIFEST.sha256 control files")
+    if not trial_files:
+        errors.append("evaluation contains no trial.json control files")
     if args.min_independent_audits and valid_audits < args.min_independent_audits:
         errors.append(
             f"independent audit count {valid_audits} is below required {args.min_independent_audits}"
@@ -6826,7 +6840,7 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
         "arms": sorted(arms),
         "independent_audit_json_files": valid_audits,
         "distinct_independent_auditors": len(auditor_ids),
-        "independent_audit_set_hash": "sha256:" + _sha256_text(_canonical_json(sorted(audit_hashes))),
+        "independent_audit_set_hash": "sha256:" + _sha256_text(_canonical_json(sorted(audit_file_hashes))),
         "errors": errors,
     }
     print(json.dumps(report, indent=2, ensure_ascii=False))

@@ -10,7 +10,7 @@
 - Added a frozen-evaluation verifier for external historical trials and independent audit artifacts; repository fixtures remain synthetic.
 - Added append-only orchestration stage telemetry with deterministic overlap, maximum concurrency, critical-path, merge, handoff/idle, and reported-counter calculations.
 - Added a hashed, plan-only doctor remediation command that groups corpus defects and keeps every apply action review-gated.
-- Normalized verifier and CLI argument contracts so static analysis reports no errors without requiring optional SymPy at import time.
+- Normalized verifier and CLI argument contracts so `research.py` static analysis reports no errors without requiring optional SymPy at import time.
 
 All notable changes to the research plugin.
 

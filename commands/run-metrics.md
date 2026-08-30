@@ -1,6 +1,7 @@
 ---
 description: Deterministically calculate research fan-out timing, critical path, merge overhead, idle gap, and reported counters.
 argument-hint: --run-id <id>
+allowed-tools: Bash
 ---
 
 Run `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" run-metrics $ARGUMENTS`.
