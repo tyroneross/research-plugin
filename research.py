@@ -6094,6 +6094,145 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- evaluation audit ----------
+
+def _normalized_sha256(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return text.removeprefix("sha256:")
+
+
+def _evaluation_file(root: Path, base: Path, raw_path: object) -> Path:
+    relative = Path(str(raw_path or ""))
+    if not str(relative) or relative.is_absolute():
+        raise ValueError(f"evaluation artifact path must be relative: {raw_path!r}")
+    target = (base / relative).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError(f"evaluation artifact escapes root: {raw_path!r}")
+    return target
+
+
+def _artifact_references(value: object) -> list[dict[str, Any]]:
+    found: list[dict[str, Any]] = []
+    if isinstance(value, dict):
+        if value.get("path") and value.get("sha256"):
+            found.append(value)
+        for child in value.values():
+            found.extend(_artifact_references(child))
+    elif isinstance(value, list):
+        for child in value:
+            found.extend(_artifact_references(child))
+    return found
+
+
+def _check_sha_manifest(root: Path, manifest: Path) -> tuple[int, list[str]]:
+    checked = 0
+    errors: list[str] = []
+    for line_number, raw_line in enumerate(manifest.read_text(encoding="utf-8").splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2 or len(_normalized_sha256(parts[0])) != 64:
+            errors.append(f"{manifest}:{line_number}: malformed SHA-256 row")
+            continue
+        relative = parts[1].lstrip("* ")
+        try:
+            target = _evaluation_file(root, manifest.parent, relative)
+        except ValueError as exc:
+            errors.append(f"{manifest}:{line_number}: {exc}")
+            continue
+        checked += 1
+        if not target.is_file():
+            errors.append(f"{manifest}:{line_number}: missing {relative}")
+        elif _file_sha256(target) != _normalized_sha256(parts[0]):
+            errors.append(f"{manifest}:{line_number}: hash mismatch {relative}")
+    return checked, errors
+
+
+def cmd_eval_check(args: argparse.Namespace) -> int:
+    root = Path(args.root).expanduser().resolve()
+    if not root.is_dir():
+        print(json.dumps({"status": "invalid", "errors": [f"evaluation root is not a directory: {root}"]}, indent=2))
+        return 2
+
+    errors: list[str] = []
+    manifest_files = sorted(root.rglob("MANIFEST.sha256"))
+    manifest_artifacts = 0
+    for manifest in manifest_files:
+        try:
+            checked, manifest_errors = _check_sha_manifest(root, manifest)
+        except OSError as exc:
+            checked, manifest_errors = 0, [f"{manifest}: {exc}"]
+        manifest_artifacts += checked
+        errors.extend(manifest_errors)
+
+    trial_files = sorted(root.rglob("trial.json"))
+    trial_artifacts = 0
+    queries: set[str] = set()
+    arms: set[str] = set()
+    for trial_path in trial_files:
+        try:
+            trial = json.loads(trial_path.read_text(encoding="utf-8"))
+            if not isinstance(trial, dict):
+                raise ValueError("trial must be a JSON object")
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{trial_path}: {exc}")
+            continue
+        if trial.get("query_id"):
+            queries.add(str(trial["query_id"]))
+        if trial.get("arm_id"):
+            arms.add(str(trial["arm_id"]))
+        for reference in _artifact_references(trial.get("artifacts")):
+            trial_artifacts += 1
+            try:
+                target = _evaluation_file(root, trial_path.parent, reference["path"])
+            except ValueError as exc:
+                errors.append(f"{trial_path}: {exc}")
+                continue
+            expected = _normalized_sha256(reference["sha256"])
+            if len(expected) != 64:
+                errors.append(f"{trial_path}: malformed artifact hash for {reference['path']}")
+            elif not target.is_file():
+                errors.append(f"{trial_path}: missing artifact {reference['path']}")
+            elif _file_sha256(target) != expected:
+                errors.append(f"{trial_path}: hash mismatch {reference['path']}")
+
+    audit_files = sorted((root / "audits").rglob("*.json")) if (root / "audits").is_dir() else []
+    valid_audits = 0
+    for audit_path in audit_files:
+        try:
+            payload = json.loads(audit_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, (dict, list)):
+                raise ValueError("audit JSON must be an object or list")
+            valid_audits += 1
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{audit_path}: {exc}")
+
+    for required_query in args.require_query or []:
+        if required_query not in queries:
+            errors.append(f"required query is absent from trial manifests: {required_query}")
+    if args.min_independent_audits and valid_audits < args.min_independent_audits:
+        errors.append(
+            f"independent audit count {valid_audits} is below required {args.min_independent_audits}"
+        )
+
+    report = {
+        "schema_version": "research-eval-check.v1",
+        "status": "pass" if not errors else "fail",
+        "root": str(root),
+        "manifest_files": len(manifest_files),
+        "manifest_artifacts_checked": manifest_artifacts,
+        "trial_files": len(trial_files),
+        "trial_artifacts_checked": trial_artifacts,
+        "queries": sorted(queries),
+        "arms": sorted(arms),
+        "independent_audit_json_files": valid_audits,
+        "errors": errors,
+    }
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if not errors else 2
+
+
 # ---------- main / argparse ----------
 
 def main() -> int:
@@ -6294,6 +6433,12 @@ def main() -> int:
     sp.add_argument("--session-id")
     sp.add_argument("--tool-version")
     sp.set_defaults(func=cmd_run_merge)
+
+    sp = sub.add_parser("eval-check", help="Verify frozen external evaluation artifacts and independent audit records")
+    sp.add_argument("--root", required=True, help="External evaluation root; no files are written")
+    sp.add_argument("--require-query", action="append", help="Query id that must appear; repeat as needed")
+    sp.add_argument("--min-independent-audits", type=int, default=0)
+    sp.set_defaults(func=cmd_eval_check)
 
     sp = sub.add_parser("review", help="Surface stale entries")
     sp.add_argument("-n", type=int, default=20)

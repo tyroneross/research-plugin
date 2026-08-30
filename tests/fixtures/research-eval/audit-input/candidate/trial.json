@@ -1,0 +1,16 @@
+{
+  "schema_version": "audit-trial.v1",
+  "trial_id": "candidate--query-one--r1",
+  "query_id": "query-one",
+  "arm_id": "candidate",
+  "artifacts": {
+    "answer": {
+      "path": "raw/answer.md",
+      "sha256": "13663f2e17cf3bb015f56e76fdfd492b569a2e370479999758d10feb345f64b3"
+    },
+    "frozen_prompt": {
+      "path": "raw/prompt.txt",
+      "sha256": "e19bcee2b9ed89f36d245aa568505e1b79814366a6c70c75dbae9f5cb11b4f6c"
+    }
+  }
+}
