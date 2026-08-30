@@ -1035,3 +1035,31 @@ def test_run_stage_rejects_unpaired_or_mismatched_finish(tmp_path: Path) -> None
         expected=2,
     )
     assert "does not match" in mismatch.stderr
+
+
+def test_doctor_plan_is_deterministic_and_does_not_apply_repairs(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    empty_plan = json.loads(run_cli(tmp_path, "doctor-plan").stdout)
+    assert empty_plan["action_count"] == 0
+    assert empty_plan["writes_performed"] is False
+
+    malformed = tmp_path / "content" / "topics" / "legacy" / "missing-slug.md"
+    malformed.parent.mkdir(parents=True)
+    original = "---\ntitle: Missing slug\n---\nEvidence stays unchanged.\n"
+    malformed.write_text(original)
+    first = json.loads(run_cli(tmp_path, "doctor-plan", "--sample-limit", "1", expected=1).stdout)
+    second = json.loads(run_cli(tmp_path, "doctor-plan", "--sample-limit", "1", expected=1).stdout)
+
+    assert first == second
+    assert first["mode"] == "plan-only"
+    assert first["plan_hash"].startswith("sha256:")
+    categories = {action["category"] for action in first["actions"]}
+    assert "frontmatter" in categories
+    assert all(action["review_required"] for action in first["actions"])
+    assert malformed.read_text() == original
+
+
+def test_doctor_plan_rejects_negative_sample_limit(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    result = run_cli(tmp_path, "doctor-plan", "--sample-limit", "-1", expected=2)
+    assert "zero or greater" in result.stderr

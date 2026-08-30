@@ -4521,6 +4521,19 @@ def _doctor_report() -> dict[str, Any]:
         field: sum(1 for row in provenance_rows if not row[field] or row[field] == "unknown")
         for field in ("actor_type", "actor_id", "host", "session_id", "tool_version")
     }
+    runs_with_unknown_provenance = [
+        {
+            "run_id": row["run_id"],
+            "fields": [
+                field for field in ("actor_type", "actor_id", "host", "session_id", "tool_version")
+                if not row[field] or row[field] == "unknown"
+            ],
+        }
+        for row in conn.execute(
+            "SELECT run_id, actor_type, actor_id, host, session_id, tool_version FROM research_runs ORDER BY run_id"
+        )
+    ]
+    runs_with_unknown_provenance = [item for item in runs_with_unknown_provenance if item["fields"]]
     provenance_snapshots = {
         row["run_id"]: row
         for row in conn.execute(
@@ -4630,6 +4643,7 @@ def _doctor_report() -> dict[str, Any]:
             "passed": (not provenance_rows or all(count == 0 for count in provenance_unknown.values())) and not provenance_snapshot_errors,
             "total": len(provenance_rows),
             "unknown_by_field": provenance_unknown,
+            "runs_with_unknown": runs_with_unknown_provenance,
             "snapshot_errors": provenance_snapshot_errors,
         },
         "source_history": {
@@ -4659,6 +4673,148 @@ def cmd_doctor(args: argparse.Namespace) -> int:
             print(f"  {'PASS' if check['passed'] else 'FINDING'} {name}")
         print("  " + " ".join(f"{key}={value}" for key, value in report["counts"].items()))
     return 0 if report["status"] == "passed" else 1
+
+
+def _remediation_action(
+    *,
+    priority: str,
+    category: str,
+    outcome: str,
+    reason: Any,
+    targets: list[Any],
+    sample_limit: int,
+    review_required: bool,
+    dry_run_command: list[str] | None = None,
+    apply_command: list[str] | None = None,
+) -> dict[str, Any]:
+    ordered_targets = sorted(targets, key=lambda item: _canonical_json(item))
+    target_digest = "sha256:" + _sha256_text(_canonical_json(ordered_targets))
+    identity = {"category": category, "target_digest": target_digest}
+    return {
+        "action_id": "rem-" + _sha256_text(_canonical_json(identity))[:16],
+        "priority": priority,
+        "category": category,
+        "outcome": outcome,
+        "reason": reason,
+        "target_count": len(ordered_targets),
+        "target_digest": target_digest,
+        "sample_targets": ordered_targets[:sample_limit],
+        "omitted_target_count": max(0, len(ordered_targets) - sample_limit),
+        "review_required": review_required,
+        "dry_run_command": dry_run_command,
+        "apply_command": apply_command,
+    }
+
+
+def _doctor_remediation_plan(report: dict[str, Any], sample_limit: int) -> dict[str, Any]:
+    if sample_limit < 0:
+        raise ValueError("--sample-limit must be zero or greater")
+    checks = report["checks"]
+    actions: list[dict[str, Any]] = []
+
+    def add(**kwargs: Any) -> None:
+        actions.append(_remediation_action(sample_limit=sample_limit, **kwargs))
+
+    if not checks["event_chain"]["passed"]:
+        add(
+            priority="P0", category="event-chain-integrity",
+            outcome="Stop corpus mutation until the append-only audit chain is reconciled.",
+            reason=checks["event_chain"]["errors"], targets=checks["event_chain"]["errors"],
+            review_required=True,
+        )
+    if not checks["calculation_receipt_integrity"]["passed"]:
+        errors = checks["calculation_receipt_integrity"]["errors"]
+        add(
+            priority="P0", category="calculation-receipt-integrity",
+            outcome="Reconcile receipt files and index rows without overwriting preserved evidence.",
+            reason="Calculation receipts failed hash, path, or index integrity checks.", targets=errors,
+            review_required=True,
+        )
+    if not checks["merge_attempt_integrity"]["passed"]:
+        errors = checks["merge_attempt_integrity"]["errors"]
+        add(
+            priority="P0", category="merge-attempt-integrity",
+            outcome="Restore or explicitly supersede missing or changed merge evidence.",
+            reason="One or more preserved merge attempts or input snapshots failed integrity checks.", targets=errors,
+            review_required=True,
+        )
+    if not checks["frontmatter"]["passed"]:
+        malformed = checks["frontmatter"]["malformed"]
+        add(
+            priority="P1", category="frontmatter",
+            outcome="Assign validated slugs and repair malformed frontmatter before reindexing.",
+            reason="Topic files cannot be mapped reliably to canonical entries.", targets=malformed,
+            review_required=True,
+        )
+    if not checks["duplicate_slugs"]["passed"]:
+        duplicates = checks["duplicate_slugs"]["slugs"]
+        add(
+            priority="P1", category="duplicate-slugs",
+            outcome="Choose one canonical entry per slug and archive or rename the alternatives.",
+            reason="Duplicate slugs make dependency and source links ambiguous.", targets=duplicates,
+            review_required=True,
+        )
+    if not checks["disk_index_parity"]["passed"]:
+        add(
+            priority="P1", category="disk-index-parity",
+            outcome="Review topic identity findings, then rebuild indexes from the accepted corpus.",
+            reason=checks["disk_index_parity"], targets=[checks["disk_index_parity"]],
+            review_required=True,
+            dry_run_command=["python3", "research.py", "doctor", "--json"],
+            apply_command=["python3", "research.py", "index"],
+        )
+    if not checks["run_provenance"]["passed"]:
+        provenance_targets = [
+            *checks["run_provenance"].get("runs_with_unknown", []),
+            *checks["run_provenance"].get("snapshot_errors", []),
+        ]
+        add(
+            priority="P1", category="run-provenance",
+            outcome="Enrich only provenance supported by retained session evidence; leave unavailable fields unknown.",
+            reason=checks["run_provenance"]["unknown_by_field"], targets=provenance_targets,
+            review_required=True,
+        )
+    source_history = checks["source_history"]
+    missing_history = source_history["entries_missing_normalized_history"]
+    if missing_history:
+        add(
+            priority="P1", category="legacy-source-normalization",
+            outcome="Create append-only legacy observations while preserving unknown capture facts as unknown.",
+            reason="Entry source lists exist without normalized observation history.", targets=missing_history,
+            review_required=True,
+            dry_run_command=["python3", "research.py", "legacy-source-import"],
+            apply_command=["python3", "research.py", "legacy-source-import", "--apply"],
+        )
+    incomplete = source_history["incomplete_observations"]
+    if incomplete:
+        add(
+            priority="P2", category="incomplete-source-observations",
+            outcome="Recapture sources when possible or retain explicit unknown reasons without inventing metadata.",
+            reason="Source observations are incomplete or lack content hashes.", targets=incomplete,
+            review_required=True,
+        )
+
+    priority_order = {"P0": 0, "P1": 1, "P2": 2}
+    actions.sort(key=lambda item: (priority_order[item["priority"]], item["category"], item["action_id"]))
+    plan_body = {
+        "schema_version": "research-doctor-remediation.v1",
+        "source_status": report["status"],
+        "mode": "plan-only",
+        "writes_performed": False,
+        "action_count": len(actions),
+        "actions": actions,
+    }
+    return {**plan_body, "plan_hash": "sha256:" + _sha256_text(_canonical_json(plan_body))}
+
+
+def cmd_doctor_plan(args: argparse.Namespace) -> int:
+    try:
+        plan = _doctor_remediation_plan(_doctor_report(), args.sample_limit)
+    except (OSError, sqlite3.Error, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(plan, indent=2, ensure_ascii=False))
+    return 0 if not plan["actions"] else 1
 
 
 def _decimal_value(value: Any) -> Decimal:
@@ -6610,6 +6766,10 @@ def main() -> int:
     sp = sub.add_parser("doctor", help="Audit event integrity, index parity, provenance, and malformed entries")
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_doctor)
+
+    sp = sub.add_parser("doctor-plan", help="Create a deterministic, read-only remediation plan from doctor findings")
+    sp.add_argument("--sample-limit", type=int, default=10, help="Maximum sample targets per grouped action")
+    sp.set_defaults(func=cmd_doctor_plan)
 
     sp = sub.add_parser("calculate", help="Execute a deterministic quantitative claim spec and append a receipt")
     sp.add_argument("--spec", required=True, help="JSON calculation specification")
