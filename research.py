@@ -543,7 +543,7 @@ def today_iso() -> str:
 
 
 def now_iso() -> str:
-    return datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+    return datetime.now().astimezone().isoformat(timespec="microseconds")
 
 
 def ensure_layout() -> None:
@@ -4019,7 +4019,7 @@ def cmd_legacy_source_import(args: argparse.Namespace) -> int:
                         skipped_sources += 1
                         skipped_reasons.append({"entry_slug": row["slug"], "reason": "source is not a string or object"})
                         continue
-                    source = {"url": raw} if isinstance(raw, str) else dict(raw)
+                    source: dict[str, Any] = {"url": raw} if isinstance(raw, str) else dict(raw)
                     if not (source.get("url") or source.get("source_url")):
                         continue
                     raw_url = str(source.get("url") or source.get("source_url"))
@@ -5476,6 +5476,217 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
     return 0 if not errors else 2
 
 
+def _span_events(conn: sqlite3.Connection, run_id: str, span_id: str) -> list[sqlite3.Row]:
+    matching: list[sqlite3.Row] = []
+    for row in conn.execute(
+        "SELECT * FROM audit_events WHERE run_id=? AND event_type IN ('run.stage_started', 'run.stage_finished') ORDER BY seq",
+        (run_id,),
+    ):
+        payload = json.loads(row["payload_json"] or "{}")
+        if payload.get("span_id") == span_id:
+            matching.append(row)
+    return matching
+
+
+def cmd_run_stage(args: argparse.Namespace) -> int:
+    ensure_db()
+    actor = _actor_from_args(args)
+    conn = db_connect()
+    try:
+        if not args.span_id.strip() or not args.stage.strip():
+            raise ValueError("--span-id and --stage must be non-empty")
+        run = conn.execute("SELECT run_id FROM research_runs WHERE run_id=?", (args.run_id,)).fetchone()
+        if not run:
+            raise ValueError(f"research run is not initialized: {args.run_id}")
+        existing = _span_events(conn, args.run_id, args.span_id)
+        event_types = {row["event_type"] for row in existing}
+        if args.action == "start" and event_types:
+            raise ValueError(f"stage span already exists: {args.span_id}")
+        if args.action == "finish" and "run.stage_started" not in event_types:
+            raise ValueError(f"stage span has no start event: {args.span_id}")
+        if args.action == "finish" and "run.stage_finished" in event_types:
+            raise ValueError(f"stage span is already finished: {args.span_id}")
+        if args.action == "finish":
+            start_row = next(row for row in existing if row["event_type"] == "run.stage_started")
+            start_payload = json.loads(start_row["payload_json"] or "{}")
+            if start_payload.get("stage") != args.stage:
+                raise ValueError(f"stage finish does not match its start: {args.span_id}")
+            for field in ("worker_id", "task_id"):
+                if start_payload.get(field) and getattr(args, field) != start_payload[field]:
+                    raise ValueError(f"stage finish {field} does not match its start: {args.span_id}")
+        metadata = json.loads(args.metadata or "{}")
+        metrics = json.loads(args.metrics or "{}")
+        if not isinstance(metadata, dict) or not isinstance(metrics, dict):
+            raise ValueError("--metadata and --metrics must decode to JSON objects")
+        payload = {
+            "span_id": args.span_id,
+            "stage": args.stage,
+            "worker_id": args.worker_id,
+            "task_id": args.task_id,
+            "model": args.model,
+            "status": args.status if args.action == "finish" else "started",
+            "metadata": metadata,
+            "metrics": metrics if args.action == "finish" else {},
+        }
+        with conn:
+            event = _append_event(
+                conn,
+                event_type=f"run.stage_{'started' if args.action == 'start' else 'finished'}",
+                run_id=args.run_id,
+                actor_type=actor["actor_type"],
+                actor_id=actor["actor_id"],
+                payload=payload,
+                actor_snapshot=actor,
+            )
+    except (json.JSONDecodeError, sqlite3.Error, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+    print(json.dumps(event, indent=2, ensure_ascii=False))
+    return 0
+
+
+def _event_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("stage event timestamp lacks timezone")
+    return parsed
+
+
+def _max_interval_concurrency(spans: list[dict[str, Any]]) -> int:
+    endpoints: list[tuple[datetime, int]] = []
+    for span in spans:
+        endpoints.append((_event_datetime(span["started_at"]), 1))
+        endpoints.append((_event_datetime(span["finished_at"]), -1))
+    active = 0
+    maximum = 0
+    for _, delta in sorted(endpoints, key=lambda item: (item[0], item[1])):
+        active += delta
+        maximum = max(maximum, active)
+    return maximum
+
+
+def cmd_run_metrics(args: argparse.Namespace) -> int:
+    ensure_db()
+    conn = db_connect()
+    try:
+        if not conn.execute("SELECT 1 FROM research_runs WHERE run_id=?", (args.run_id,)).fetchone():
+            raise ValueError(f"research run is not initialized: {args.run_id}")
+        starts: dict[str, dict[str, Any]] = {}
+        completed: list[dict[str, Any]] = []
+        errors: list[str] = []
+        for row in conn.execute(
+            "SELECT * FROM audit_events WHERE run_id=? AND event_type IN ('run.stage_started', 'run.stage_finished') ORDER BY seq",
+            (args.run_id,),
+        ):
+            payload = json.loads(row["payload_json"] or "{}")
+            span_id = str(payload.get("span_id") or "")
+            if not span_id:
+                errors.append(f"event {row['event_id']} lacks span_id")
+                continue
+            if row["event_type"] == "run.stage_started":
+                starts[span_id] = {"row": row, "payload": payload}
+                continue
+            start = starts.get(span_id)
+            if not start:
+                errors.append(f"stage finish lacks start: {span_id}")
+                continue
+            started_at = _event_datetime(start["row"]["occurred_at"])
+            finished_at = _event_datetime(row["occurred_at"])
+            duration = (finished_at - started_at).total_seconds()
+            if duration < 0:
+                errors.append(f"stage finish predates start: {span_id}")
+                continue
+            completed.append({
+                "span_id": span_id,
+                "stage": str(payload.get("stage") or start["payload"].get("stage") or "unknown"),
+                "worker_id": payload.get("worker_id") or start["payload"].get("worker_id"),
+                "task_id": payload.get("task_id") or start["payload"].get("task_id"),
+                "model": payload.get("model") or start["payload"].get("model"),
+                "status": payload.get("status"),
+                "started_at": start["row"]["occurred_at"],
+                "finished_at": row["occurred_at"],
+                "duration_seconds": round(duration, 6),
+                "metrics": payload.get("metrics") if isinstance(payload.get("metrics"), dict) else {},
+            })
+        finished_ids = {span["span_id"] for span in completed}
+        incomplete = sorted(span_id for span_id in starts if span_id not in finished_ids)
+    except (json.JSONDecodeError, sqlite3.Error, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        conn.close()
+
+    stages: dict[str, dict[str, Any]] = {}
+    metric_totals: dict[str, Decimal] = {}
+    for span in completed:
+        aggregate = stages.setdefault(span["stage"], {"spans": 0, "total_seconds": 0.0, "max_seconds": 0.0})
+        aggregate["spans"] += 1
+        aggregate["total_seconds"] += span["duration_seconds"]
+        aggregate["max_seconds"] = max(aggregate["max_seconds"], span["duration_seconds"])
+        for name, value in span["metrics"].items():
+            try:
+                numeric = Decimal(str(value))
+            except InvalidOperation:
+                continue
+            if not numeric.is_finite():
+                continue
+            metric_totals[name] = metric_totals.get(name, Decimal("0")) + numeric
+    for aggregate in stages.values():
+        aggregate["total_seconds"] = round(aggregate["total_seconds"], 6)
+
+    observed_wall = 0.0
+    if completed:
+        observed_wall = (
+            max(_event_datetime(span["finished_at"]) for span in completed)
+            - min(_event_datetime(span["started_at"]) for span in completed)
+        ).total_seconds()
+    worker_spans = [span for span in completed if span.get("worker_id")]
+    worker_critical = max((span["duration_seconds"] for span in worker_spans), default=0.0)
+    fanout_window = 0.0
+    if worker_spans:
+        fanout_window = (
+            max(_event_datetime(span["finished_at"]) for span in worker_spans)
+            - min(_event_datetime(span["started_at"]) for span in worker_spans)
+        ).total_seconds()
+    merge_spans = [span for span in completed if span["stage"] == "merge"]
+    merge_seconds = sum(span["duration_seconds"] for span in merge_spans)
+    active_path = worker_critical + merge_seconds
+    pipeline_window = fanout_window
+    if worker_spans and merge_spans:
+        pipeline_window = (
+            max(_event_datetime(span["finished_at"]) for span in merge_spans)
+            - min(_event_datetime(span["started_at"]) for span in worker_spans)
+        ).total_seconds()
+    longest_stage = max(stages, key=lambda name: stages[name]["total_seconds"]) if stages else None
+    report = {
+        "schema_version": "research-run-metrics.v1",
+        "status": "complete" if not errors and not incomplete else "incomplete",
+        "run_id": args.run_id,
+        "span_count": len(completed),
+        "incomplete_span_ids": incomplete,
+        "errors": errors,
+        "observed_wall_seconds": round(observed_wall, 6),
+        "worker_critical_path_seconds": round(worker_critical, 6),
+        "worker_fanout_window_seconds": round(fanout_window, 6),
+        "max_concurrent_workers": _max_interval_concurrency(worker_spans),
+        "worker_parallelism_ratio": round(
+            sum(span["duration_seconds"] for span in worker_spans) / fanout_window, 6
+        ) if fanout_window > 0 else None,
+        "merge_seconds": round(merge_seconds, 6),
+        "active_compute_path_seconds": round(active_path, 6),
+        "fanout_merge_window_seconds": round(pipeline_window, 6),
+        "handoff_and_idle_gap_seconds": round(max(0.0, pipeline_window - active_path), 6),
+        "longest_stage_by_total": longest_stage,
+        "stages": stages,
+        "reported_metric_totals": {name: str(value) for name, value in sorted(metric_totals.items())},
+        "spans": completed,
+    }
+    print(json.dumps(report, indent=2, ensure_ascii=False))
+    return 0 if report["status"] == "complete" else 1
+
+
 # ---------- review ----------
 
 def _months_since(d_str: str | None) -> float:
@@ -6433,6 +6644,28 @@ def main() -> int:
     sp.add_argument("--session-id")
     sp.add_argument("--tool-version")
     sp.set_defaults(func=cmd_run_merge)
+
+    sp = sub.add_parser("run-stage", help="Append a timed orchestration stage start or finish event")
+    sp.add_argument("--run-id", required=True)
+    sp.add_argument("--span-id", required=True, help="Stable unique id shared by the start and finish events")
+    sp.add_argument("--stage", required=True, help="Stage name such as plan, source, worker, merge, or audit")
+    sp.add_argument("--action", choices=["start", "finish"], required=True)
+    sp.add_argument("--worker-id")
+    sp.add_argument("--task-id")
+    sp.add_argument("--model")
+    sp.add_argument("--status", default="passed")
+    sp.add_argument("--metadata", default="{}", help="JSON object with vendor-neutral stage context")
+    sp.add_argument("--metrics", default="{}", help="JSON object with reported tokens, tools, cost, or other counters")
+    sp.add_argument("--actor-type")
+    sp.add_argument("--actor-id")
+    sp.add_argument("--host")
+    sp.add_argument("--session-id")
+    sp.add_argument("--tool-version")
+    sp.set_defaults(func=cmd_run_stage)
+
+    sp = sub.add_parser("run-metrics", help="Calculate stage timing, fan-out critical path, merge overhead, and reported counters")
+    sp.add_argument("--run-id", required=True)
+    sp.set_defaults(func=cmd_run_metrics)
 
     sp = sub.add_parser("eval-check", help="Verify frozen external evaluation artifacts and independent audit records")
     sp.add_argument("--root", required=True, help="External evaluation root; no files are written")

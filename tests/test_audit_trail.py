@@ -930,3 +930,108 @@ def test_skill_is_vendor_neutral_and_local_ocr_is_optional() -> None:
     assert "claude's read" not in runtime
     assert "have claude" not in runtime
     assert "[claude:" not in runtime
+
+
+def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    contract_path = tmp_path / "timed.contract.json"
+    contract_path.write_text(json.dumps(one_task_contract("run-timed")))
+    run_cli(tmp_path, "run-init", "--contract", str(contract_path))
+
+    for span_id, worker_id in (("worker-1", "luna-1"), ("worker-2", "terra-1")):
+        run_cli(
+            tmp_path,
+            "run-stage",
+            "--run-id", "run-timed",
+            "--span-id", span_id,
+            "--stage", "worker",
+            "--action", "start",
+            "--worker-id", worker_id,
+            "--task-id", span_id,
+        )
+    for span_id, worker_id, input_tokens in (
+        ("worker-1", "luna-1", 10),
+        ("worker-2", "terra-1", 20),
+    ):
+        run_cli(
+            tmp_path,
+            "run-stage",
+            "--run-id", "run-timed",
+            "--span-id", span_id,
+            "--stage", "worker",
+            "--action", "finish",
+            "--worker-id", worker_id,
+            "--task-id", span_id,
+            "--metrics", json.dumps({"input_tokens": input_tokens}),
+        )
+    run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "merge-1",
+        "--stage", "merge",
+        "--action", "start",
+    )
+    run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "merge-1",
+        "--stage", "merge",
+        "--action", "finish",
+        "--metrics", json.dumps({"output_tokens": 5, "tool_calls": 2}),
+    )
+
+    report = json.loads(run_cli(tmp_path, "run-metrics", "--run-id", "run-timed").stdout)
+    assert report["status"] == "complete"
+    assert report["span_count"] == 3
+    assert report["worker_critical_path_seconds"] > 0
+    assert report["worker_parallelism_ratio"] > 1
+    assert report["max_concurrent_workers"] == 2
+    assert report["merge_seconds"] > 0
+    assert report["fanout_merge_window_seconds"] >= report["active_compute_path_seconds"]
+    assert report["reported_metric_totals"] == {
+        "input_tokens": "30",
+        "output_tokens": "5",
+        "tool_calls": "2",
+    }
+    assert report["longest_stage_by_total"] == "worker"
+
+
+def test_run_stage_rejects_unpaired_or_mismatched_finish(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    contract_path = tmp_path / "timed.contract.json"
+    contract_path.write_text(json.dumps(one_task_contract("run-timed")))
+    run_cli(tmp_path, "run-init", "--contract", str(contract_path))
+
+    missing = run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "missing",
+        "--stage", "worker",
+        "--action", "finish",
+        expected=2,
+    )
+    assert "no start event" in missing.stderr
+
+    run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "worker-1",
+        "--stage", "worker",
+        "--action", "start",
+        "--worker-id", "luna-1",
+    )
+    mismatch = run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "worker-1",
+        "--stage", "merge",
+        "--action", "finish",
+        "--worker-id", "luna-1",
+        expected=2,
+    )
+    assert "does not match" in mismatch.stderr
