@@ -87,46 +87,60 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 
 ## Subcommands
 
+A 2026-08 surface reduction removed 27 thin slash-command wrappers. Every one of the underlying `research.py` subcommands is unchanged and still fully callable directly — the `research` skill itself already calls `research.py <subcommand>` via Bash rather than going through a slash command, so no capability was lost.
+
+### Slash commands (13)
+
 | Command | Purpose |
 |---|---|
-| `/research:init` | Bootstrap the configured content and index roots |
-| `/research:save <file>` | Persist an entry (Phase 6 entry point); writes canonical + project symlink, regenerates portfolio. `--with-project-index` to also write `<project>/RossLabs-Research.md` |
-| `/research:ingest <path>` | Bulk-ingest existing markdown files; `--inbox` to park, `--save` to persist drafts |
-| `/research:search <query>` | FTS5-ranked plain-text search across canonical entries and linked external project files. Use `--fts-query` for raw FTS5 syntax or `--entries-only` to exclude linked files |
-| `/research:depth <query>` | Classify a request as light, standard, or deep before sourcing |
-| `/research:list [N]` | Recent entries |
-| `/research:link <slug>` | Retroactive project symlink for a saved entry |
-| `/research:link-project <name> <path>` | Register an existing external research directory (plugin does not modify it) |
-| `/research:sync` | Rebuild SQLite from canonical topic markdown; use `--prune-missing` after moves or migrations |
-| `/research:index` | Rebuild central indexes, refresh plugin-managed symlinks, re-scan linked external projects, and rewrite `PORTFOLIO.md` |
-| `/research:recategorize` | Suggest splits for top-level topics that have grown too large (read-only) |
-| `/research:archive <slug>` | Move to archive, leave redirect stub |
-| `/research:score <url>` | Inspect or set source tier for a domain |
-| `/research:verify <slug>` | Run claim verification on an entry |
-| `/research:calculate --spec <path>` | Execute a deterministic formula with source-linked inputs and append a quantitative receipt |
-| `/research:doctor` | Audit event-chain integrity, index parity, provenance coverage, malformed entries, and duplicate slugs |
-| `/research:doctor-plan` | Produce a hashed, plan-only remediation sequence from doctor findings without applying corpus changes |
-| `/research:source-record --manifest <path>` | Append one host-fetched or locally extracted source representation |
-| `/research:source-index` | Rebuild the overall source ledger and central per-project indexes |
-| `/research:legacy-source-import [--apply]` | Dry-run, then normalize past entry source lists while preserving unknown provenance |
-| `/research:trust-record --manifest <path>` | Append dated, topic-scoped trust observations with evidence links |
-| `/research:graph-export` | Export source, observation, run, entry, claim, and calculation dependencies as Mermaid or JSON |
-| `/research:traversal-record --manifest <path>` | Enforce a run's bounded deep-link policy and append accepted/rejected frontier decisions |
-| `/research:run-init --contract <path>` | Validate a vendor-neutral run contract and emit disjoint worker packets |
-| `/research:run-validate --contract <path>` | Validate a run contract without initializing it |
-| `/research:run-merge --contract <path> --result <path>... [--reconciliation <path>]` | Validate evidence coverage, calculation receipts, and append-only contradiction reconciliation before synthesis |
-| `/research:run-stage --run-id <id> --span-id <id> --stage <name> --action start\|finish` | Append vendor-neutral stage timing, measured counters, and artifact-bound worker receipts |
-| `/research:run-metrics --run-id <id>` | Calculate declared-span overlap, interval unions, launch spread, worker-to-merge gap, total pipeline idle, and merge time without treating staggered dispatch as handoff delay |
-| `/research:eval-check --root <path>` | Verify bounded control files, hashes, artifact references, query coverage, and independently attested audits in an external frozen evaluation corpus |
-| `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
-| `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
+| `/research:research <topic>` | Router — run the full research flow: frame, source, execute, synthesize, deliver, persist |
+| `/research:optimize <request>` | Turn a raw request into a claim-safe research contract: decision card, meta-questions, MECE sub-question groups, section contracts, 0-24 readiness score |
+| `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse and capture source-intake metadata |
 | `/research:analyze-plan --input <path> --question "..."` | Generate a self-contained stdlib Python analysis plan/script |
 | `/research:analyze-run --plan <analysis-plan.yaml>` | Run the generated analysis script and write results/audit artifacts |
-| `/research:review` | Surface stale / review-due entries |
-| `/research:compress <slug>` | Compact an entry's TL;DR and Raw sections |
-| `/research:extract <path>` | Route PDF/Excel/PPTX/Python/dir through vendored Omniparse and capture source-intake metadata |
-| `/research:optimize <request>` | Turn a raw request into a claim-safe research contract: decision card, meta-questions, MECE sub-question groups, section contracts, 0-24 readiness score |
-| `/research:dashboard <audit.json> --out <file.html>` | Render a capability audit (subjects × dimensions with evidence, pipelines, recommended flow) into one self-contained HTML dashboard; `--validate-only` checks the payload. Skill: `skills/audit-dashboard/` |
+| `/research:save <file>` | Persist an entry (Phase 6 entry point); writes canonical + project symlink, regenerates portfolio. `--with-project-index` to also write `<project>/RossLabs-Research.md` |
+| `/research:link-project <name> <path>` | Register an existing external research directory (plugin does not modify it) |
+| `/research:index` | Rebuild central indexes, refresh plugin-managed symlinks, re-scan linked external projects, and rewrite `PORTFOLIO.md` |
+| `/research:search <query>` | FTS5-ranked plain-text search across canonical entries and linked external project files. Use `--fts-query` for raw FTS5 syntax or `--entries-only` to exclude linked files |
+| `/research:ingest <path>` | Bulk-ingest existing markdown files; `--inbox` to park, `--save` to persist drafts |
+| `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
+| `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
+| `/research:feedback` | Report a bug or send feedback — files a GitHub issue on `tyroneross/research-plugin` |
+
+### Direct `research.py` subcommands (no slash wrapper)
+
+Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" <subcommand>`, or load the `research` skill and let it invoke these via Bash.
+
+| Subcommand | Purpose |
+|---|---|
+| `init` | Bootstrap the configured content and index roots |
+| `depth <query>` | Classify a request as light, standard, or deep before sourcing — this is what `/research:research` calls in its first step |
+| `list [N]` | Recent entries |
+| `link <slug>` | Retroactive project symlink for a saved entry |
+| `sync` | Rebuild SQLite from canonical topic markdown; use `--prune-missing` after moves or migrations |
+| `recategorize` | Suggest splits for top-level topics that have grown too large (read-only) |
+| `archive <slug>` | Move to archive, leave redirect stub |
+| `score <url>` | Inspect or set source tier for a domain |
+| `verify <slug>` | Run claim verification on an entry |
+| `calculate --spec <path>` | Execute a deterministic formula with source-linked inputs and append a quantitative receipt |
+| `doctor` | Audit event-chain integrity, index parity, provenance coverage, malformed entries, and duplicate slugs |
+| `doctor-plan` | Produce a hashed, plan-only remediation sequence from doctor findings without applying corpus changes |
+| `source-record --manifest <path>` | Append one host-fetched or locally extracted source representation |
+| `source-index` | Rebuild the overall source ledger and central per-project indexes |
+| `legacy-source-import [--apply]` | Dry-run, then normalize past entry source lists while preserving unknown provenance |
+| `trust-record --manifest <path>` | Append dated, topic-scoped trust observations with evidence links |
+| `graph-export` | Export source, observation, run, entry, claim, and calculation dependencies as Mermaid or JSON |
+| `traversal-record --manifest <path>` | Enforce a run's bounded deep-link policy and append accepted/rejected frontier decisions |
+| `run-init --contract <path>` | Validate a vendor-neutral run contract and emit disjoint worker packets |
+| `run-validate --contract <path>` | Validate a run contract without initializing it |
+| `run-merge --contract <path> --result <path>... [--reconciliation <path>]` | Validate evidence coverage, calculation receipts, and append-only contradiction reconciliation before synthesis |
+| `run-stage --run-id <id> --span-id <id> --stage <name> --action start\|finish` | Append vendor-neutral stage timing, measured counters, and artifact-bound worker receipts |
+| `run-metrics --run-id <id>` | Calculate declared-span overlap, interval unions, launch spread, worker-to-merge gap, total pipeline idle, and merge time without treating staggered dispatch as handoff delay |
+| `eval-check --root <path>` | Verify bounded control files, hashes, artifact references, query coverage, and independently attested audits in an external frozen evaluation corpus |
+| `review` | Surface stale / review-due entries |
+| `compress <slug>` | Compact an entry's TL;DR and Raw sections |
+
+`/research:dashboard` had no `research.py` equivalent even before removal — its capability lives entirely in the `audit-dashboard` skill. Load that skill, or run directly: `python3 skills/audit-dashboard/scripts/render_dashboard.py <audit.json> --out <file.html>` (`--validate-only` checks the payload without rendering).
 
 ## Search
 
@@ -134,7 +148,7 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 
 ## Research depth
 
-`/research:depth` is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, coverage requirements, workflow, web requirement, persistence guidance, and rationale.
+`research.py depth` (no slash wrapper — called directly by `/research:research` and the `research` skill) is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, coverage requirements, workflow, web requirement, persistence guidance, and rationale.
 
 - `light` — quick answer, usually 0-2 sources, skip persistence unless reusable.
 - `standard` — bounded research, usually 3-8 sources with a target of 5, persist when the answer becomes report-sized.
