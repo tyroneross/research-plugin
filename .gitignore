@@ -24,6 +24,7 @@ __pycache__/
 .bookmark/
 .archive/
 .build-loop/
+.procedural/
 .claude/
 .codex/
 .claude-code-debugger/
