@@ -41,6 +41,6 @@ python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/re
 
 **Active project wiki ingestion**
 
-If the user asks to ingest research into an active project wiki, preserve chronology, track evolving themes, flag contradictions, or produce wiki update recommendations, do not treat this as routine bulk import. Run `research.py active-ingest` per `skills/research/references/active-project-ingestion.md`, then persist durable outputs through `/research:save` as separate collection or synthesis entries when useful.
+If the user asks to ingest research into an active project wiki, preserve chronology, track evolving themes, flag contradictions, or produce wiki update recommendations, do not treat this as routine bulk import. Follow the active-project-ingestion overlay in `skills/research/references/active-project-ingestion.md` — it is LLM-driven methodology with no CLI subcommand behind it — then persist durable outputs through `/research:save` as separate collection or synthesis entries when useful.
 
 For a fully automated dump (e.g. importing 50 old notes that you trust as-is), pass `--save` directly. Drafts are marked `confidence: inferred` and `status: fleeting` so the next `research.py review` pass surfaces them for proper synthesis.
