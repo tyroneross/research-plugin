@@ -1,1 +1,1 @@
-{"auditor": "independent-a", "verdict": "pass", "score": 94}
+{"audit_id":"audit-a","auditor_id":"independent-a","auditor_independence_attestation":{"attested":true,"statement":"I did not author the evaluated output."},"blind_output_id":"B-fixture","query_id":"Q-fixture","repetition_id":"R-fixture","verdict":"pass","score":94}

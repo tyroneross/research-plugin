@@ -935,10 +935,20 @@ def test_skill_is_vendor_neutral_and_local_ocr_is_optional() -> None:
 def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> None:
     run_cli(tmp_path, "init")
     contract_path = tmp_path / "timed.contract.json"
-    contract_path.write_text(json.dumps(one_task_contract("run-timed")))
+    contract = one_task_contract("run-timed")
+    contract["tasks"] = [
+        {"task_id": "t1", "section": "evidence-a", "question": "What supports A?", "depends_on": []},
+        {"task_id": "t2", "section": "evidence-b", "question": "What supports B?", "depends_on": []},
+    ]
+    contract["section_contracts"] = [
+        {"section": "evidence-a", "completion_criteria": ["One complete observation"]},
+        {"section": "evidence-b", "completion_criteria": ["One complete observation"]},
+    ]
+    contract_path.write_text(json.dumps(contract))
     run_cli(tmp_path, "run-init", "--contract", str(contract_path))
 
-    for span_id, worker_id in (("worker-1", "luna-1"), ("worker-2", "terra-1")):
+    workers = (("worker-1", "luna-1", "t1"), ("worker-2", "terra-1", "t2"))
+    for span_id, worker_id, task_id in workers:
         run_cli(
             tmp_path,
             "run-stage",
@@ -947,12 +957,14 @@ def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> 
             "--stage", "worker",
             "--action", "start",
             "--worker-id", worker_id,
-            "--task-id", span_id,
+            "--task-id", task_id,
         )
-    for span_id, worker_id, input_tokens in (
-        ("worker-1", "luna-1", 10),
-        ("worker-2", "terra-1", 20),
+    for span_id, worker_id, task_id, input_tokens in (
+        ("worker-1", "luna-1", "t1", 10),
+        ("worker-2", "terra-1", "t2", 20),
     ):
+        receipt = tmp_path / f"{span_id}.json"
+        receipt.write_text(json.dumps({"span_id": span_id, "result": "complete"}))
         run_cli(
             tmp_path,
             "run-stage",
@@ -961,7 +973,8 @@ def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> 
             "--stage", "worker",
             "--action", "finish",
             "--worker-id", worker_id,
-            "--task-id", span_id,
+            "--task-id", task_id,
+            "--receipt-path", str(receipt),
             "--metrics", json.dumps({"input_tokens": input_tokens}),
         )
     run_cli(
@@ -987,9 +1000,10 @@ def test_run_stage_metrics_capture_fanout_and_merge_overhead(tmp_path: Path) -> 
     assert report["span_count"] == 3
     assert report["worker_critical_path_seconds"] > 0
     assert report["worker_parallelism_ratio"] > 1
-    assert report["max_concurrent_workers"] == 2
-    assert report["merge_seconds"] > 0
-    assert report["fanout_merge_window_seconds"] >= report["active_compute_path_seconds"]
+    assert report["max_concurrent_worker_spans"] == 2
+    assert report["merge_wall_seconds"] > 0
+    assert report["worker_to_merge_gap_seconds"] >= 0
+    assert report["concurrency_evidence"] == "artifact_bound_declared_span_overlap"
     assert report["reported_metric_totals"] == {
         "input_tokens": "30",
         "output_tokens": "5",
@@ -1003,6 +1017,8 @@ def test_run_stage_rejects_unpaired_or_mismatched_finish(tmp_path: Path) -> None
     contract_path = tmp_path / "timed.contract.json"
     contract_path.write_text(json.dumps(one_task_contract("run-timed")))
     run_cli(tmp_path, "run-init", "--contract", str(contract_path))
+    receipt = tmp_path / "worker.json"
+    receipt.write_text('{"result":"complete"}')
 
     missing = run_cli(
         tmp_path,
@@ -1011,6 +1027,9 @@ def test_run_stage_rejects_unpaired_or_mismatched_finish(tmp_path: Path) -> None
         "--span-id", "missing",
         "--stage", "worker",
         "--action", "finish",
+        "--worker-id", "luna-1",
+        "--task-id", "t1",
+        "--receipt-path", str(receipt),
         expected=2,
     )
     assert "no start event" in missing.stderr
@@ -1023,18 +1042,78 @@ def test_run_stage_rejects_unpaired_or_mismatched_finish(tmp_path: Path) -> None
         "--stage", "worker",
         "--action", "start",
         "--worker-id", "luna-1",
+        "--task-id", "t1",
     )
     mismatch = run_cli(
         tmp_path,
         "run-stage",
         "--run-id", "run-timed",
         "--span-id", "worker-1",
-        "--stage", "merge",
+        "--stage", "worker",
         "--action", "finish",
-        "--worker-id", "luna-1",
+        "--worker-id", "terra-1",
+        "--task-id", "t1",
+        "--receipt-path", str(receipt),
         expected=2,
     )
     assert "does not match" in mismatch.stderr
+
+    no_receipt = run_cli(
+        tmp_path,
+        "run-stage",
+        "--run-id", "run-timed",
+        "--span-id", "worker-1",
+        "--stage", "worker",
+        "--action", "finish",
+        "--worker-id", "luna-1",
+        "--task-id", "t1",
+        expected=2,
+    )
+    assert "requires --receipt-path" in no_receipt.stderr
+
+    run_cli(
+        tmp_path, "run-stage", "--run-id", "run-timed", "--span-id", "merge-identity",
+        "--stage", "merge", "--action", "start",
+    )
+    retroactive_worker = run_cli(
+        tmp_path, "run-stage", "--run-id", "run-timed", "--span-id", "merge-identity",
+        "--stage", "merge", "--action", "finish", "--worker-id", "retroactive-worker",
+        expected=2,
+    )
+    assert "valid only" in retroactive_worker.stderr
+
+    undeclared = run_cli(
+        tmp_path, "run-stage", "--run-id", "run-timed", "--span-id", "undeclared-task",
+        "--stage", "worker", "--action", "start", "--worker-id", "luna-2", "--task-id", "missing",
+        expected=2,
+    )
+    assert "not declared" in undeclared.stderr
+
+
+def test_run_stage_serializes_duplicate_span_starts(tmp_path: Path) -> None:
+    run_cli(tmp_path, "init")
+    contract_path = tmp_path / "timed.contract.json"
+    contract_path.write_text(json.dumps(one_task_contract("run-timed")))
+    run_cli(tmp_path, "run-init", "--contract", str(contract_path))
+    env = os.environ.copy()
+    env.update({
+        "RESEARCH_BASE_DIR": str(tmp_path / "content"),
+        "RESEARCH_CONTENT_DIR": str(tmp_path / "content"),
+        "RESEARCH_INDEX_DIR": str(tmp_path / "index"),
+    })
+    command = [
+        sys.executable, str(SCRIPT), "run-stage", "--run-id", "run-timed",
+        "--span-id", "same-span", "--stage", "worker", "--action", "start",
+        "--worker-id", "worker-a", "--task-id", "t1",
+    ]
+    processes = [
+        subprocess.Popen(command, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for _ in range(2)
+    ]
+    results = [process.communicate(timeout=30) + (process.returncode,) for process in processes]
+
+    assert sorted(result[2] for result in results) == [0, 2]
+    assert any("already exists" in result[1] for result in results)
 
 
 def test_doctor_plan_is_deterministic_and_does_not_apply_repairs(tmp_path: Path) -> None:
@@ -1063,3 +1142,10 @@ def test_doctor_plan_rejects_negative_sample_limit(tmp_path: Path) -> None:
     run_cli(tmp_path, "init")
     result = run_cli(tmp_path, "doctor-plan", "--sample-limit", "-1", expected=2)
     assert "zero or greater" in result.stderr
+
+
+def test_doctor_plan_refuses_uninitialized_corpus_without_writing(tmp_path: Path) -> None:
+    result = run_cli(tmp_path, "doctor-plan", expected=2)
+    assert "not initialized" in result.stderr
+    assert not (tmp_path / "content").exists()
+    assert not (tmp_path / "index").exists()

@@ -4484,10 +4484,17 @@ def cmd_traversal_record(args: argparse.Namespace) -> int:
     return 0
 
 
-def _doctor_report() -> dict[str, Any]:
-    ensure_layout()
-    ensure_db()
-    conn = db_connect()
+def _doctor_report(*, read_only: bool = False) -> dict[str, Any]:
+    if read_only:
+        if not CONTENT_DIR.is_dir() or not INDEX_DIR.is_dir() or not DB_PATH.is_file():
+            raise ValueError("research corpus is not initialized; run init before doctor-plan")
+        conn = sqlite3.connect(DB_PATH.resolve().as_uri() + "?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only=ON;")
+    else:
+        ensure_layout()
+        ensure_db()
+        conn = db_connect()
     chain_ok, chain_errors = _verify_event_chain(conn)
     disk_files = list(content_path("topics").glob("**/*.md"))
     malformed: list[dict[str, str]] = []
@@ -4809,7 +4816,7 @@ def _doctor_remediation_plan(report: dict[str, Any], sample_limit: int) -> dict[
 
 def cmd_doctor_plan(args: argparse.Namespace) -> int:
     try:
-        plan = _doctor_remediation_plan(_doctor_report(), args.sample_limit)
+        plan = _doctor_remediation_plan(_doctor_report(read_only=True), args.sample_limit)
     except (OSError, sqlite3.Error, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -5649,11 +5656,25 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
     actor = _actor_from_args(args)
     conn = db_connect()
     try:
+        conn.execute("BEGIN IMMEDIATE")
         if not args.span_id.strip() or not args.stage.strip():
             raise ValueError("--span-id and --stage must be non-empty")
-        run = conn.execute("SELECT run_id FROM research_runs WHERE run_id=?", (args.run_id,)).fetchone()
+        if args.stage == "worker" and not args.worker_id:
+            raise ValueError("worker stages require --worker-id")
+        if args.stage != "worker" and args.worker_id:
+            raise ValueError("--worker-id is valid only when --stage worker")
+        if args.stage == "worker" and not args.task_id:
+            raise ValueError("worker stages require --task-id")
+        if args.receipt_path and not (args.action == "finish" and args.stage == "worker"):
+            raise ValueError("--receipt-path is valid only when finishing a worker stage")
+        run = conn.execute("SELECT run_id, contract_json FROM research_runs WHERE run_id=?", (args.run_id,)).fetchone()
         if not run:
             raise ValueError(f"research run is not initialized: {args.run_id}")
+        if args.stage == "worker":
+            contract = json.loads(run["contract_json"] or "{}")
+            declared_tasks = {str(item.get("task_id")) for item in contract.get("tasks", []) if isinstance(item, dict)}
+            if declared_tasks and args.task_id not in declared_tasks:
+                raise ValueError(f"worker task is not declared by the run contract: {args.task_id}")
         existing = _span_events(conn, args.run_id, args.span_id)
         event_types = {row["event_type"] for row in existing}
         if args.action == "start" and event_types:
@@ -5665,15 +5686,21 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
         if args.action == "finish":
             start_row = next(row for row in existing if row["event_type"] == "run.stage_started")
             start_payload = json.loads(start_row["payload_json"] or "{}")
-            if start_payload.get("stage") != args.stage:
-                raise ValueError(f"stage finish does not match its start: {args.span_id}")
-            for field in ("worker_id", "task_id"):
-                if start_payload.get(field) and getattr(args, field) != start_payload[field]:
+            for field in ("stage", "worker_id", "task_id", "model"):
+                if start_payload.get(field) != getattr(args, field):
                     raise ValueError(f"stage finish {field} does not match its start: {args.span_id}")
         metadata = json.loads(args.metadata or "{}")
         metrics = json.loads(args.metrics or "{}")
         if not isinstance(metadata, dict) or not isinstance(metrics, dict):
             raise ValueError("--metadata and --metrics must decode to JSON objects")
+        receipt = None
+        if args.action == "finish" and args.stage == "worker":
+            if not args.receipt_path:
+                raise ValueError("worker stage finish requires --receipt-path")
+            receipt_path = Path(args.receipt_path).expanduser().resolve()
+            if not receipt_path.is_file():
+                raise ValueError(f"worker receipt is not a file: {receipt_path}")
+            receipt = {"path": str(receipt_path), "sha256": "sha256:" + _file_sha256(receipt_path)}
         payload = {
             "span_id": args.span_id,
             "stage": args.stage,
@@ -5683,18 +5710,20 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
             "status": args.status if args.action == "finish" else "started",
             "metadata": metadata,
             "metrics": metrics if args.action == "finish" else {},
+            "execution_receipt": receipt,
         }
-        with conn:
-            event = _append_event(
-                conn,
-                event_type=f"run.stage_{'started' if args.action == 'start' else 'finished'}",
-                run_id=args.run_id,
-                actor_type=actor["actor_type"],
-                actor_id=actor["actor_id"],
-                payload=payload,
-                actor_snapshot=actor,
-            )
+        event = _append_event(
+            conn,
+            event_type=f"run.stage_{'started' if args.action == 'start' else 'finished'}",
+            run_id=args.run_id,
+            actor_type=actor["actor_type"],
+            actor_id=actor["actor_id"],
+            payload=payload,
+            actor_snapshot=actor,
+        )
+        conn.commit()
     except (json.JSONDecodeError, sqlite3.Error, ValueError) as exc:
+        conn.rollback()
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     finally:
@@ -5723,6 +5752,82 @@ def _max_interval_concurrency(spans: list[dict[str, Any]]) -> int:
     return maximum
 
 
+def _interval_union_seconds(spans: list[dict[str, Any]]) -> float:
+    intervals = sorted(
+        (_event_datetime(span["started_at"]), _event_datetime(span["finished_at"]))
+        for span in spans
+    )
+    if not intervals:
+        return 0.0
+    total = 0.0
+    current_start, current_end = intervals[0]
+    for start, end in intervals[1:]:
+        if start <= current_end:
+            current_end = max(current_end, end)
+        else:
+            total += (current_end - current_start).total_seconds()
+            current_start, current_end = start, end
+    return total + (current_end - current_start).total_seconds()
+
+
+def _orchestration_timing(completed: list[dict[str, Any]]) -> dict[str, Any]:
+    worker_spans = [span for span in completed if span["stage"] == "worker"]
+    merge_spans = [span for span in completed if span["stage"] == "merge"]
+    worker_window = 0.0
+    worker_dispatch_spread = 0.0
+    worker_finish_spread = 0.0
+    if worker_spans:
+        starts = [_event_datetime(span["started_at"]) for span in worker_spans]
+        finishes = [_event_datetime(span["finished_at"]) for span in worker_spans]
+        worker_window = (max(finishes) - min(starts)).total_seconds()
+        worker_dispatch_spread = (max(starts) - min(starts)).total_seconds()
+        worker_finish_spread = (max(finishes) - min(finishes)).total_seconds()
+    worker_union = _interval_union_seconds(worker_spans)
+    worker_internal_gap = max(0.0, worker_window - worker_union)
+    merge_window = 0.0
+    if merge_spans:
+        merge_window = (
+            max(_event_datetime(span["finished_at"]) for span in merge_spans)
+            - min(_event_datetime(span["started_at"]) for span in merge_spans)
+        ).total_seconds()
+    merge_union = _interval_union_seconds(merge_spans)
+    merge_internal_gap = max(0.0, merge_window - merge_union)
+    handoff_gap = 0.0
+    pipeline_window = worker_window or merge_window
+    if worker_spans and merge_spans:
+        latest_worker_finish = max(_event_datetime(span["finished_at"]) for span in worker_spans)
+        earliest_merge_start = min(_event_datetime(span["started_at"]) for span in merge_spans)
+        handoff_gap = max(0.0, (earliest_merge_start - latest_worker_finish).total_seconds())
+        pipeline_window = (
+            max(_event_datetime(span["finished_at"]) for span in merge_spans)
+            - min(_event_datetime(span["started_at"]) for span in worker_spans)
+        ).total_seconds()
+    total_worker_seconds = sum(span["duration_seconds"] for span in worker_spans)
+    pipeline_union = _interval_union_seconds([*worker_spans, *merge_spans])
+    return {
+        "worker_critical_path_seconds": round(worker_window, 6),
+        "worker_fanout_window_seconds": round(worker_window, 6),
+        "worker_interval_union_seconds": round(worker_union, 6),
+        "worker_internal_gap_seconds": round(worker_internal_gap, 6),
+        "worker_dispatch_spread_seconds": round(worker_dispatch_spread, 6),
+        "worker_finish_spread_seconds": round(worker_finish_spread, 6),
+        "longest_worker_span_seconds": round(max((span["duration_seconds"] for span in worker_spans), default=0.0), 6),
+        "max_concurrent_worker_spans": _max_interval_concurrency(worker_spans),
+        "worker_parallelism_ratio": round(total_worker_seconds / worker_window, 6) if worker_window > 0 else None,
+        "merge_wall_seconds": round(merge_window, 6),
+        "merge_interval_union_seconds": round(merge_union, 6),
+        "merge_internal_gap_seconds": round(merge_internal_gap, 6),
+        "merge_total_span_seconds": round(sum(span["duration_seconds"] for span in merge_spans), 6),
+        "active_compute_path_seconds": round(pipeline_union, 6),
+        "pipeline_interval_union_seconds": round(pipeline_union, 6),
+        "fanout_merge_window_seconds": round(pipeline_window, 6),
+        "worker_to_merge_gap_seconds": round(handoff_gap, 6),
+        "handoff_and_idle_gap_seconds": round(handoff_gap, 6),
+        "pipeline_internal_gap_seconds": round(max(0.0, pipeline_window - pipeline_union), 6),
+        "concurrency_evidence": "artifact_bound_declared_span_overlap" if worker_spans else "no_worker_spans",
+    }
+
+
 def cmd_run_metrics(args: argparse.Namespace) -> int:
     ensure_db()
     conn = db_connect()
@@ -5730,6 +5835,7 @@ def cmd_run_metrics(args: argparse.Namespace) -> int:
         if not conn.execute("SELECT 1 FROM research_runs WHERE run_id=?", (args.run_id,)).fetchone():
             raise ValueError(f"research run is not initialized: {args.run_id}")
         starts: dict[str, dict[str, Any]] = {}
+        seen_finishes: set[str] = set()
         completed: list[dict[str, Any]] = []
         errors: list[str] = []
         for row in conn.execute(
@@ -5742,11 +5848,25 @@ def cmd_run_metrics(args: argparse.Namespace) -> int:
                 errors.append(f"event {row['event_id']} lacks span_id")
                 continue
             if row["event_type"] == "run.stage_started":
+                if span_id in starts:
+                    errors.append(f"duplicate stage start: {span_id}")
+                    continue
                 starts[span_id] = {"row": row, "payload": payload}
                 continue
             start = starts.get(span_id)
             if not start:
                 errors.append(f"stage finish lacks start: {span_id}")
+                continue
+            if span_id in seen_finishes:
+                errors.append(f"duplicate stage finish: {span_id}")
+                continue
+            seen_finishes.add(span_id)
+            mismatched = [
+                field for field in ("stage", "worker_id", "task_id", "model")
+                if payload.get(field) != start["payload"].get(field)
+            ]
+            if mismatched:
+                errors.append(f"stage identity mismatch {span_id}: {','.join(mismatched)}")
                 continue
             started_at = _event_datetime(start["row"]["occurred_at"])
             finished_at = _event_datetime(row["occurred_at"])
@@ -5765,6 +5885,7 @@ def cmd_run_metrics(args: argparse.Namespace) -> int:
                 "finished_at": row["occurred_at"],
                 "duration_seconds": round(duration, 6),
                 "metrics": payload.get("metrics") if isinstance(payload.get("metrics"), dict) else {},
+                "execution_receipt": payload.get("execution_receipt"),
             })
         finished_ids = {span["span_id"] for span in completed}
         incomplete = sorted(span_id for span_id in starts if span_id not in finished_ids)
@@ -5798,23 +5919,12 @@ def cmd_run_metrics(args: argparse.Namespace) -> int:
             max(_event_datetime(span["finished_at"]) for span in completed)
             - min(_event_datetime(span["started_at"]) for span in completed)
         ).total_seconds()
-    worker_spans = [span for span in completed if span.get("worker_id")]
-    worker_critical = max((span["duration_seconds"] for span in worker_spans), default=0.0)
-    fanout_window = 0.0
-    if worker_spans:
-        fanout_window = (
-            max(_event_datetime(span["finished_at"]) for span in worker_spans)
-            - min(_event_datetime(span["started_at"]) for span in worker_spans)
-        ).total_seconds()
-    merge_spans = [span for span in completed if span["stage"] == "merge"]
-    merge_seconds = sum(span["duration_seconds"] for span in merge_spans)
-    active_path = worker_critical + merge_seconds
-    pipeline_window = fanout_window
-    if worker_spans and merge_spans:
-        pipeline_window = (
-            max(_event_datetime(span["finished_at"]) for span in merge_spans)
-            - min(_event_datetime(span["started_at"]) for span in worker_spans)
-        ).total_seconds()
+    worker_spans = [span for span in completed if span["stage"] == "worker"]
+    for span in worker_spans:
+        receipt = span.get("execution_receipt")
+        if not isinstance(receipt, dict) or not SHA256_REF_RE.fullmatch(str(receipt.get("sha256") or "")):
+            errors.append(f"worker span lacks an artifact-bound execution receipt: {span['span_id']}")
+    timing = _orchestration_timing(completed)
     longest_stage = max(stages, key=lambda name: stages[name]["total_seconds"]) if stages else None
     report = {
         "schema_version": "research-run-metrics.v1",
@@ -5824,16 +5934,7 @@ def cmd_run_metrics(args: argparse.Namespace) -> int:
         "incomplete_span_ids": incomplete,
         "errors": errors,
         "observed_wall_seconds": round(observed_wall, 6),
-        "worker_critical_path_seconds": round(worker_critical, 6),
-        "worker_fanout_window_seconds": round(fanout_window, 6),
-        "max_concurrent_workers": _max_interval_concurrency(worker_spans),
-        "worker_parallelism_ratio": round(
-            sum(span["duration_seconds"] for span in worker_spans) / fanout_window, 6
-        ) if fanout_window > 0 else None,
-        "merge_seconds": round(merge_seconds, 6),
-        "active_compute_path_seconds": round(active_path, 6),
-        "fanout_merge_window_seconds": round(pipeline_window, 6),
-        "handoff_and_idle_gap_seconds": round(max(0.0, pipeline_window - active_path), 6),
+        **timing,
         "longest_stage_by_total": longest_stage,
         "stages": stages,
         "reported_metric_totals": {name: str(value) for name, value in sorted(metric_totals.items())},
@@ -6481,7 +6582,7 @@ def _evaluation_file(root: Path, base: Path, raw_path: object) -> Path:
 def _artifact_references(value: object) -> list[dict[str, Any]]:
     found: list[dict[str, Any]] = []
     if isinstance(value, dict):
-        if value.get("path") and value.get("sha256"):
+        if "path" in value or "sha256" in value:
             found.append(value)
         for child in value.values():
             found.extend(_artifact_references(child))
@@ -6489,6 +6590,33 @@ def _artifact_references(value: object) -> list[dict[str, Any]]:
         for child in value:
             found.extend(_artifact_references(child))
     return found
+
+
+def _bounded_control_files(root: Path, search_root: Path, pattern: str) -> tuple[list[Path], list[str]]:
+    files: list[Path] = []
+    errors: list[str] = []
+    if not search_root.exists():
+        return files, errors
+    resolved_search = search_root.resolve()
+    if not resolved_search.is_relative_to(root):
+        return files, [f"control-file search root escapes evaluation root: {search_root}"]
+    for candidate in sorted(search_root.rglob(pattern)):
+        if candidate.is_symlink():
+            errors.append(f"control file may not be a symlink: {candidate}")
+            continue
+        try:
+            relative = candidate.relative_to(search_root)
+            resolved = _evaluation_file(root, resolved_search, relative)
+        except ValueError as exc:
+            errors.append(f"{candidate}: {exc}")
+            continue
+        if not resolved.is_relative_to(resolved_search):
+            errors.append(f"control file escapes its search root: {candidate}")
+        elif not resolved.is_file():
+            errors.append(f"control file is not a regular file: {candidate}")
+        else:
+            files.append(resolved)
+    return sorted(set(files)), errors
 
 
 def _check_sha_manifest(root: Path, manifest: Path) -> tuple[int, list[str]]:
@@ -6499,7 +6627,7 @@ def _check_sha_manifest(root: Path, manifest: Path) -> tuple[int, list[str]]:
         if not line:
             continue
         parts = line.split(maxsplit=1)
-        if len(parts) != 2 or len(_normalized_sha256(parts[0])) != 64:
+        if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{64}", _normalized_sha256(parts[0])):
             errors.append(f"{manifest}:{line_number}: malformed SHA-256 row")
             continue
         relative = parts[1].lstrip("* ")
@@ -6523,7 +6651,8 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
         return 2
 
     errors: list[str] = []
-    manifest_files = sorted(root.rglob("MANIFEST.sha256"))
+    manifest_files, discovery_errors = _bounded_control_files(root, root, "MANIFEST.sha256")
+    errors.extend(discovery_errors)
     manifest_artifacts = 0
     for manifest in manifest_files:
         try:
@@ -6533,7 +6662,8 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
         manifest_artifacts += checked
         errors.extend(manifest_errors)
 
-    trial_files = sorted(root.rglob("trial.json"))
+    trial_files, discovery_errors = _bounded_control_files(root, root, "trial.json")
+    errors.extend(discovery_errors)
     trial_artifacts = 0
     queries: set[str] = set()
     arms: set[str] = set()
@@ -6547,30 +6677,119 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
             continue
         if trial.get("query_id"):
             queries.add(str(trial["query_id"]))
+        else:
+            errors.append(f"{trial_path}: trial lacks query_id")
         if trial.get("arm_id"):
             arms.add(str(trial["arm_id"]))
         for reference in _artifact_references(trial.get("artifacts")):
             trial_artifacts += 1
+            if not reference.get("path"):
+                errors.append(f"{trial_path}: artifact reference lacks path")
+                continue
+            if not reference.get("sha256"):
+                errors.append(f"{trial_path}: artifact reference lacks SHA-256 for {reference['path']}")
+                continue
             try:
                 target = _evaluation_file(root, trial_path.parent, reference["path"])
             except ValueError as exc:
                 errors.append(f"{trial_path}: {exc}")
                 continue
             expected = _normalized_sha256(reference["sha256"])
-            if len(expected) != 64:
+            if not re.fullmatch(r"[0-9a-f]{64}", expected):
                 errors.append(f"{trial_path}: malformed artifact hash for {reference['path']}")
             elif not target.is_file():
                 errors.append(f"{trial_path}: missing artifact {reference['path']}")
             elif _file_sha256(target) != expected:
                 errors.append(f"{trial_path}: hash mismatch {reference['path']}")
 
-    audit_files = sorted((root / "audits").rglob("*.json")) if (root / "audits").is_dir() else []
+    package_files, discovery_errors = _bounded_control_files(root, root, "package_manifest.json")
+    errors.extend(discovery_errors)
+    output_bindings: dict[str, set[tuple[str, str]]] = {}
+    for package_path in package_files:
+        try:
+            package = json.loads(package_path.read_text(encoding="utf-8"))
+            if not isinstance(package, dict):
+                raise ValueError("package manifest must be a JSON object")
+            output_id = str(package.get("blind_output_id") or "")
+            query_id = str(package.get("blind_query_id") or "")
+            repetition_id = str(package.get("blind_repetition_id") or "")
+            if not output_id or not query_id or not repetition_id:
+                raise ValueError("package manifest lacks blind output/query/repetition binding")
+            output_bindings.setdefault(output_id, set()).add((query_id, repetition_id))
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{package_path}: {exc}")
+
+    mapping_files, discovery_errors = _bounded_control_files(root, root, "arm_mapping.json")
+    errors.extend(discovery_errors)
+    for mapping_path in mapping_files:
+        try:
+            mapping_payload = json.loads(mapping_path.read_text(encoding="utf-8"))
+            if not isinstance(mapping_payload, dict):
+                raise ValueError("arm mapping must be a JSON object")
+            raw_mapping = mapping_payload.get("mapping")
+            if isinstance(raw_mapping, list):
+                mapping_entries = raw_mapping
+            elif isinstance(raw_mapping, dict):
+                mapping_entries = list(raw_mapping.values())
+            else:
+                raise ValueError("arm mapping must contain a mapping list or object")
+            for item in mapping_entries:
+                if isinstance(item, dict) and not item.get("blind_output_id"):
+                    continue
+                if not isinstance(item, dict) or not item.get("blind_output_id"):
+                    raise ValueError("arm mapping entry lacks blind_output_id")
+                output_id = str(item["blind_output_id"])
+                queries_for_output = {
+                    str(value) for value in (item.get("blind_query_id"), item.get("query_id")) if value
+                }
+                repetitions_for_output = {
+                    str(value) for value in (item.get("blind_repetition_id"), item.get("repetition_id")) if value
+                }
+                for query_id in queries_for_output:
+                    for repetition_id in repetitions_for_output:
+                        output_bindings.setdefault(output_id, set()).add((query_id, repetition_id))
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(f"{mapping_path}: {exc}")
+
+    audits_root = root / "audits"
+    audit_files, discovery_errors = _bounded_control_files(root, audits_root, "*.json")
+    errors.extend(discovery_errors)
     valid_audits = 0
+    audit_ids: set[str] = set()
+    audit_hashes: set[str] = set()
+    auditor_ids: set[str] = set()
+    auditors_by_output: dict[str, set[str]] = {}
     for audit_path in audit_files:
         try:
             payload = json.loads(audit_path.read_text(encoding="utf-8"))
-            if not isinstance(payload, (dict, list)):
-                raise ValueError("audit JSON must be an object or list")
+            if not isinstance(payload, dict):
+                raise ValueError("audit JSON must be an object")
+            required = ("audit_id", "auditor_id", "blind_output_id", "query_id", "repetition_id")
+            missing = [field for field in required if not str(payload.get(field) or "").strip()]
+            if missing:
+                raise ValueError(f"audit lacks required fields: {','.join(missing)}")
+            audit_id = str(payload["audit_id"])
+            auditor_id = str(payload["auditor_id"])
+            output_id = str(payload["blind_output_id"])
+            binding = (str(payload["query_id"]), str(payload["repetition_id"]))
+            attestation = payload.get("auditor_independence_attestation")
+            attested = attestation is True or (isinstance(attestation, dict) and attestation.get("attested") is True)
+            statement = (
+                attestation.get("statement") if isinstance(attestation, dict) else None
+            ) or payload.get("independence_attestation_text") or payload.get("independence_attestation")
+            if not attested or not str(statement or "").strip():
+                raise ValueError("audit lacks a positive, explained independence attestation")
+            if audit_id in audit_ids:
+                raise ValueError(f"duplicate audit_id: {audit_id}")
+            if binding not in output_bindings.get(output_id, set()):
+                raise ValueError(f"audit output/query/repetition binding is not declared by a package manifest: {output_id}")
+            content_hash = "sha256:" + _file_sha256(audit_path)
+            if content_hash in audit_hashes:
+                raise ValueError(f"duplicate audit content hash: {content_hash}")
+            audit_ids.add(audit_id)
+            audit_hashes.add(content_hash)
+            auditor_ids.add(auditor_id)
+            auditors_by_output.setdefault(output_id, set()).add(auditor_id)
             valid_audits += 1
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             errors.append(f"{audit_path}: {exc}")
@@ -6582,6 +6801,16 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
         errors.append(
             f"independent audit count {valid_audits} is below required {args.min_independent_audits}"
         )
+    if args.min_independent_audits and len(auditor_ids) < args.min_independent_audits:
+        errors.append(
+            f"distinct independent auditor count {len(auditor_ids)} is below required {args.min_independent_audits}"
+        )
+    for output_id, output_auditors in sorted(auditors_by_output.items()):
+        if args.min_independent_audits and len(output_auditors) < args.min_independent_audits:
+            errors.append(
+                f"blind output {output_id} has {len(output_auditors)} distinct auditors; "
+                f"required {args.min_independent_audits}"
+            )
 
     report = {
         "schema_version": "research-eval-check.v1",
@@ -6591,9 +6820,13 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
         "manifest_artifacts_checked": manifest_artifacts,
         "trial_files": len(trial_files),
         "trial_artifacts_checked": trial_artifacts,
+        "package_manifests": len(package_files),
+        "arm_mapping_files": len(mapping_files),
         "queries": sorted(queries),
         "arms": sorted(arms),
         "independent_audit_json_files": valid_audits,
+        "distinct_independent_auditors": len(auditor_ids),
+        "independent_audit_set_hash": "sha256:" + _sha256_text(_canonical_json(sorted(audit_hashes))),
         "errors": errors,
     }
     print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -6813,6 +7046,7 @@ def main() -> int:
     sp.add_argument("--worker-id")
     sp.add_argument("--task-id")
     sp.add_argument("--model")
+    sp.add_argument("--receipt-path", help="Required worker-finish artifact; its SHA-256 binds the declared span to output evidence")
     sp.add_argument("--status", default="passed")
     sp.add_argument("--metadata", default="{}", help="JSON object with vendor-neutral stage context")
     sp.add_argument("--metrics", default="{}", help="JSON object with reported tokens, tools, cost, or other counters")
@@ -6823,7 +7057,7 @@ def main() -> int:
     sp.add_argument("--tool-version")
     sp.set_defaults(func=cmd_run_stage)
 
-    sp = sub.add_parser("run-metrics", help="Calculate stage timing, fan-out critical path, merge overhead, and reported counters")
+    sp = sub.add_parser("run-metrics", help="Calculate interval-union fan-out timing, explicit merge handoff, and reported counters")
     sp.add_argument("--run-id", required=True)
     sp.set_defaults(func=cmd_run_metrics)
 

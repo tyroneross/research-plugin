@@ -115,9 +115,9 @@ Legacy v0.3.0 artifacts (`<project>/research/` file copies, `<project>/research/
 | `/research:run-init --contract <path>` | Validate a vendor-neutral run contract and emit disjoint worker packets |
 | `/research:run-validate --contract <path>` | Validate a run contract without initializing it |
 | `/research:run-merge --contract <path> --result <path>... [--reconciliation <path>]` | Validate evidence coverage, calculation receipts, and append-only contradiction reconciliation before synthesis |
-| `/research:run-stage --run-id <id> --span-id <id> --stage <name> --action start\|finish` | Append vendor-neutral stage timing and measured worker/model counters |
-| `/research:run-metrics --run-id <id>` | Calculate overlap, maximum concurrent workers, critical path, merge time, and handoff/idle gap from stage events |
-| `/research:eval-check --root <path>` | Verify hashes, artifact references, query coverage, and independent audits in an external frozen evaluation corpus |
+| `/research:run-stage --run-id <id> --span-id <id> --stage <name> --action start\|finish` | Append vendor-neutral stage timing, measured counters, and artifact-bound worker receipts |
+| `/research:run-metrics --run-id <id>` | Calculate declared-span overlap, interval unions, launch spread, worker-to-merge gap, and merge time without treating staggered dispatch as idle |
+| `/research:eval-check --root <path>` | Verify bounded control files, hashes, artifact references, query coverage, and independently attested audits in an external frozen evaluation corpus |
 | `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
 | `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
 | `/research:analyze-plan --input <path> --question "..."` | Generate a self-contained stdlib Python analysis plan/script |
