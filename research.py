@@ -565,7 +565,7 @@ def ensure_layout() -> None:
             f"- SQLite index root: `{INDEX_DIR}`\n"
             f"- SQLite DB: `{DB_PATH}`\n\n"
             "Subcommands: run `python <plugin>/research.py --help`.\n"
-            "Or use slash commands: `/research:search`, `/research:list`, `/research:review`, etc.\n\n"
+            "Or use the `/research` router, or `research.py <subcommand>` directly.\n\n"
             "## Searching\n\n"
             "```bash\n"
             "# Ranked full-text\n"
