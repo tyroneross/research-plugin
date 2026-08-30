@@ -8,20 +8,20 @@ Central, token-efficient research knowledge base. Persists findings to `~/dev/re
 - Data lives at `~/dev/research/` (separate from this plugin dir so the plugin can be replaced without touching knowledge).
 - One Python script (`research.py`) with subcommands handles all mutations.
 - SQLite FTS5 (stdlib `sqlite3`) is the index. No external search service.
-- Claude's built-in `WebFetch` and `Read` tools do source extraction — no Python extraction library needed.
+- The active host uses its native local coding/file tools first, its browser for public HTML, and a structured web connector as backup. No Python HTML extraction library is needed.
 
 ## Entry point
 
-- Slash commands: `/research:optimize`, `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`, `/research:dashboard`
+- Slash commands: `/research:optimize`, `/research:research`, `/research:depth`, `/research:init`, `/research:save`, `/research:search`, `/research:list`, `/research:link`, `/research:link-project`, `/research:sync`, `/research:index`, `/research:archive`, `/research:score`, `/research:verify`, `/research:calculate`, `/research:doctor`, `/research:doctor-plan`, `/research:source-record`, `/research:source-index`, `/research:legacy-source-import`, `/research:trust-record`, `/research:graph-export`, `/research:traversal-record`, `/research:run-init`, `/research:run-validate`, `/research:run-merge`, `/research:run-stage`, `/research:run-metrics`, `/research:eval-check`, `/research:table-profile`, `/research:db-profile`, `/research:analyze-plan`, `/research:analyze-run`, `/research:review`, `/research:compress`, `/research:extract`, `/research:ingest`, `/research:recategorize`, `/research:dashboard`
 - Direct: `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" <subcommand>`
 - Via skill: user language matching the `research` skill's description triggers the full-flow, which ends by persisting via Phase 6.
-- Skills: `research` (general flow; Phase 1 = query optimization) and `financial-research` (margin, COGS, cost buckets, filings, operating-model analysis).
+- Skills: `research` (general flow; Phase 1 = query optimization), `research-orchestrator` (vendor-neutral parallel evidence contracts, bounded deep-link traversal, deterministic merge), and `financial-research` (margin, COGS, cost buckets, filings, operating-model analysis).
 
 ## How research gets persisted
 
-1. User asks Claude to research something.
+1. User asks the active host agent to research something.
 2. `research` skill runs Phases 1-5 (optimize → source → execute → synthesize → deliver): Phase 1 produces a decision card, one or more meta-questions, MECE sub-question groups, and section contracts that Phase 2 executes and Phase 4/5 checks off as the coverage summary.
-3. **Phase 6**: Claude writes a three-layer markdown entry (TL;DR / Notes / Raw) with rich frontmatter, then invokes `research.py save` which:
+3. **Phase 6**: The host agent writes a three-layer markdown entry (TL;DR / Notes / Raw) with rich frontmatter, then invokes `research.py save` which:
    - upserts into SQLite,
    - writes the canonical entry to `~/dev/research/topics/<top>/<slug>.md`,
    - for each project in `projects:`, maintains a symlink at `~/dev/research/projects/<project-name>/<slug>.md` pointing to the canonical entry (link-only; no writes into the project directory),

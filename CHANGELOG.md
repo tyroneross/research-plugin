@@ -7,6 +7,10 @@
 - Added a vendor-neutral `research-orchestrator` skill for hypothesis/falsifier framing, bounded second-/third-level link traversal, host-native parallel task packets, and contradiction-preserving merge validation.
 - Added bounded local hook status logging and a `doctor` command for chain integrity, disk/index parity, provenance coverage, malformed entries, and duplicate slugs.
 - Added an optional macOS Apple Vision OCR adapter. The core runtime remains host- and vendor-neutral.
+- Added a frozen-evaluation verifier for external historical trials and independent audit artifacts; repository fixtures remain synthetic.
+- Added append-only orchestration stage telemetry with deterministic overlap, maximum concurrency, critical-path, merge, handoff/idle, and reported-counter calculations.
+- Added a hashed, plan-only doctor remediation command that groups corpus defects and keeps every apply action review-gated.
+- Normalized verifier and CLI argument contracts so static analysis reports no errors without requiring optional SymPy at import time.
 
 All notable changes to the research plugin.
 
