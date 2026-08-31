@@ -124,6 +124,21 @@ Current plugin persistence can store this in markdown frontmatter, `## Raw` head
 
 If extraction confidence is low, do not let synthesis treat the source as fully reliable. Either rerun with a better route, restrict claims to what the parser captured, or mark the source as partial.
 
+## Capture Sizing
+
+**Retain condensed notes with short quoted fragments, not a verbatim dump of the source.** The content hash covers whatever you keep, so a 200-word note carrying the load-bearing sentences is exactly as claim-eligible as a 5,000-word transcription, and is more useful to the next reader.
+
+| Rule | Why |
+|---|---|
+| Target roughly 100 to 500 words per capture | Enough to support several claims and to re-read later without refetching |
+| At most one or two direct quotes, each under about 25 words | The quote carries the claim; the surrounding note carries the context |
+| Never paste long verbatim passages of a copyrighted work | Reproduction at length serves no evidentiary purpose here, wastes worker context, and has been observed to trip model output filters mid-run, killing the worker before it registers anything |
+| Record what the excerpt does NOT cover in `parse_notes` | A capture is a sample; say so when tables, figures, or later sections were skipped |
+
+Register a capture with `scripts/register_source.py`, which hashes the file, writes a conforming manifest, calls `source-record`, and prints the `observation_id` to bind claims to. It warns above 500 words. Hand-authoring the manifest is where runs most often lose `content_hash`, `published_at`, or `locator` and fail the merge gate long after the fetch context is gone.
+
+**Register as you go, not at the end.** A worker that fetches everything and registers in one final pass loses all of it if the turn ends early. Registration is cheap and idempotent per capture file.
+
 ## Indexing Strategy
 
 The plugin's current stable index is SQLite FTS5 over markdown. Keep using it at personal scale, but index the right artifacts:
