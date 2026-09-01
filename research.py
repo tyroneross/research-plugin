@@ -586,7 +586,9 @@ def ensure_db() -> None:
         event_columns = {row["name"] for row in conn.execute("PRAGMA table_info(audit_events)")}
         for column in ("host", "session_id", "tool_version"):
             if column not in event_columns:
-                conn.execute(f"ALTER TABLE audit_events ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")
+                # Column names come from the hardcoded literal tuple above, never from input, and SQL
+                # cannot parameterize an identifier (ADD COLUMN ? is invalid syntax).
+                conn.execute(f"ALTER TABLE audit_events ADD COLUMN {column} TEXT NOT NULL DEFAULT 'unknown'")  # nosec: identifier from a literal allowlist, not input
         receipt_columns = {row["name"] for row in conn.execute("PRAGMA table_info(calculation_receipts)")}
         if "receipt_hash" not in receipt_columns:
             conn.execute("ALTER TABLE calculation_receipts ADD COLUMN receipt_hash TEXT NOT NULL DEFAULT ''")
