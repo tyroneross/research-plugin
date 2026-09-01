@@ -5,21 +5,29 @@
     "url": "https://github.com/tyroneross"
   },
   "metadata": {
-    "description": "Local marketplace for the research plugin — structured research with a central knowledge base, source scoring, and claim verification",
-    "version": "0.6.1"
+    "description": "Local marketplace for the research plugin \u2014 structured research with a central knowledge base, source scoring, and claim verification",
+    "version": "0.6.2"
   },
   "plugins": [
     {
       "name": "research",
       "source": "./",
-      "version": "0.6.1",
+      "version": "0.6.2",
       "description": "Structured research with central knowledge base, source scoring, and claim verification",
-      "author": { "name": "Tyrone Ross" },
+      "author": {
+        "name": "Tyrone Ross"
+      },
       "homepage": "https://github.com/tyroneross/research-plugin",
       "repository": "https://github.com/tyroneross/research-plugin",
       "license": "Apache-2.0",
       "category": "research",
-      "keywords": ["research", "knowledge-base", "source-scoring", "claim-verification", "fts5"]
+      "keywords": [
+        "research",
+        "knowledge-base",
+        "source-scoring",
+        "claim-verification",
+        "fts5"
+      ]
     }
   ]
 }
