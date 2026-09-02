@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "Local marketplace for the research plugin \u2014 structured research with a central knowledge base, source scoring, and claim verification",
-    "version": "0.6.2"
+    "version": "0.6.3"
   },
   "plugins": [
     {
       "name": "research",
       "source": "./",
-      "version": "0.6.2",
+      "version": "0.6.3",
       "description": "Structured research with central knowledge base, source scoring, and claim verification",
       "author": {
         "name": "Tyrone Ross"

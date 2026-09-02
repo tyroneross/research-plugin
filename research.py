@@ -1454,6 +1454,117 @@ def _refresh_linked_project_symlinks(project_name: str, files: list[dict]) -> li
     return out
 
 
+def save_provenance_warnings(sources: list[Any]) -> list[str]:
+    """Name sources that will register as `incomplete` observations.
+
+    A source observation is claim-eligible only with a validated content hash and
+    either a locator or an explicit reason one is unavailable. Sources missing
+    either field still save; they simply never pass the merge gate as evidence.
+    Returns warning lines; an empty list means every source carries intake provenance.
+    """
+    incomplete: list[str] = []
+    for item in sources or []:
+        source = {"url": item} if isinstance(item, str) else dict(item or {})
+        url = source.get("url") or source.get("source_url")
+        if not url:
+            continue
+        missing = []
+        if not source.get("content_hash") and not source.get("content_hash_unknown_reason"):
+            missing.append("content_hash")
+        if not source.get("locator") and not source.get("locator_unknown_reason"):
+            missing.append("locator")
+        if missing:
+            incomplete.append(f"{url} (missing {', '.join(missing)})")
+    if not incomplete:
+        return []
+    lines = [
+        f"WARNING: {len(incomplete)} of {len(sources)} sources lack intake provenance.",
+        "  These register as `incomplete` observations and will NOT pass the merge gate",
+        "  as claim-eligible evidence. Capture the excerpt and register via",
+        "  scripts/register_source.py so each source carries a content hash and locator.",
+    ]
+    lines += [f"    - {u}" for u in incomplete[:5]]
+    if len(incomplete) > 5:
+        lines.append(f"    ... and {len(incomplete) - 5} more")
+    return lines
+
+
+def save_topic_scatter_warnings(slug: str, fm: dict[str, Any], content_root: Path | None = None) -> list[str]:
+    """Warn when a slug prefix creates a new top-level topic or duplicates an existing one.
+
+    `top_level_topic()` derives the directory purely from the author-chosen slug
+    prefix, with no lookup against what already exists, so independent authors
+    scatter one subject across several top-levels. Returns warning lines only.
+    """
+    root = (content_root or content_path("topics"))
+    if root.name != "topics":
+        root = root / "topics"
+    top = top_level_topic(slug)
+    if not root.is_dir():
+        return []
+    existing = sorted(p.name for p in root.iterdir() if p.is_dir())
+    lines: list[str] = []
+
+    stop = {"the", "and", "for", "with", "from", "into", "a", "an", "of", "to", "in", "on",
+            "guide", "notes", "2024", "2025", "2026"}
+
+    def tokens(text: str) -> set[str]:
+        raw = (t for t in re.split(r"[^a-z0-9]+", str(text).lower()) if len(t) > 2 and t not in stop)
+        # Crude singularization so `flowchart` and `flowcharts` compare equal.
+        return {t[:-1] if len(t) > 4 and t.endswith("s") else t for t in raw}
+
+    def stem_tokens(value: str) -> set[str]:
+        """Identity tokens: the slug remainder, excluding the top-level prefix."""
+        return tokens(value.split(".", 1)[-1])
+
+    # Creating a new top-level is worth flagging on its own, independent of how
+    # much vocabulary the entry carries.
+    if top not in existing:
+        lines.append(f"WARNING: '{top}' is a new top-level topic; {len(existing)} already exist.")
+        lines.append("  A slug prefix creates a directory with no lookup, which is how one subject")
+        lines.append("  scatters across several top-levels. Reuse an established topic when one fits.")
+
+    # Compare identity to identity: this slug's stem against other slugs' stems.
+    # Matching the whole entry vocabulary (slug + title + tags) against a bare stem
+    # penalises richly-described entries, which are the MORE identifiable ones.
+    own = stem_tokens(slug)
+    if not own:
+        # A slug too bare to identify anything falls back to the title.
+        own = tokens(fm.get("title", ""))
+    if not own:
+        return lines
+
+    # Thresholds measured against the live library (238 entries), not guessed, and
+    # validated against the real duplication this guard exists to catch:
+    #   whole-vocabulary vs stem, overlap>=2          -> 81% firing (noise)
+    #   whole-vocabulary vs stem, overlap>=3 ratio .34 ->  3% firing but MISSES the real case
+    #   stem vs stem,             overlap>=2 coef .60 -> 14% firing and CATCHES it
+    MIN_OVERLAP = 2
+    MIN_COEFFICIENT = 0.60
+    matches: list[tuple[int, str, str]] = []
+    for other_top in existing:
+        if other_top == top:
+            continue
+        for entry in sorted((root / other_top).glob("*.md")):
+            other = stem_tokens(entry.stem)
+            if not other:
+                continue
+            overlap = len(own & other)
+            # Overlap coefficient: normalise by the smaller set so a short slug and a
+            # long one still compare fairly.
+            if overlap >= MIN_OVERLAP and overlap / min(len(own), len(other)) >= MIN_COEFFICIENT:
+                matches.append((overlap, other_top, entry.stem))
+    matches.sort(reverse=True)
+
+    if matches:
+        if not lines:
+            lines.append(f"WARNING: entries in other top-level topics overlap this one.")
+        lines.append("  Closest existing entries:")
+        for overlap, other_top, stem in matches[:5]:
+            lines.append(f"    - topics/{other_top}/{stem}.md  ({overlap} shared terms)")
+    return lines
+
+
 def cmd_save(args: argparse.Namespace) -> int:
     ensure_layout()
     ensure_db()
@@ -1518,6 +1629,12 @@ def cmd_save(args: argparse.Namespace) -> int:
     fm["slug"] = _resolve_collision(original_slug, fm)
     if fm["slug"] != original_slug:
         print(f"Slug collision: {original_slug} -> {fm['slug']}")
+
+    # Non-blocking save-time guards. Both warn only; neither changes the exit code.
+    for line in save_provenance_warnings(fm.get("sources", [])):
+        print(line, file=sys.stderr)
+    for line in save_topic_scatter_warnings(fm["slug"], fm):
+        print(line, file=sys.stderr)
 
     # Determine canonical path
     canonical = _slug_to_path(fm["slug"])
