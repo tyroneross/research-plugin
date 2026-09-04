@@ -15,7 +15,11 @@ permissions:
   id-token: write
 
 jobs:
+  verify-manifests:
+    uses: tyroneross/RossLabs-AI-Toolkit/.github/workflows/verify-plugin-manifests.yml@plugin-ci-v1
+
   publish:
+    needs: verify-manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
