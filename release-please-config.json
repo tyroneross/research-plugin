@@ -1,5 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "last-release-sha": "f62b62c1375ff6ba3197321fc1251d2b36aa3caa",
   "release-type": "node",
   "include-v-in-tag": true,
   "bump-minor-pre-major": true,
@@ -65,7 +66,6 @@
     ".": {
       "package-name": "@tyroneross/research-plugin",
       "changelog-path": "CHANGELOG.md",
-      "last-release-sha": "f62b62c1375ff6ba3197321fc1251d2b36aa3caa",
       "extra-files": [
         {
           "type": "json",
