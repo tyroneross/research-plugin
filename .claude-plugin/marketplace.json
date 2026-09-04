@@ -5,15 +5,14 @@
     "url": "https://github.com/tyroneross"
   },
   "metadata": {
-    "description": "Local marketplace for the research plugin \u2014 structured research with a central knowledge base, source scoring, and claim verification",
-    "version": "0.6.3"
+    "description": "Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.",
+    "version": "0.6.0"
   },
   "plugins": [
     {
       "name": "research",
       "source": "./",
-      "version": "0.6.3",
-      "description": "Structured research with central knowledge base, source scoring, and claim verification",
+      "description": "Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.",
       "author": {
         "name": "Tyrone Ross"
       },

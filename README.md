@@ -1,6 +1,12 @@
 # research
 
-Personal research plugin for Claude Code and Codex. Keeps a central, searchable, lifecycle-managed knowledge base of everything you research, with project-linked views so research stays visible alongside code.
+Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.
+
+## Start here
+
+Type **`/research:research <topic>`** and describe what you want to know. That one command runs the whole flow — frames the question, picks sources, executes, synthesizes, and persists the entry to `~/dev/research/`. Every other command below is an optional step you can call directly; you do not need any of them to start.
+
+To report a bug or request a feature: **`/research:submit-feedback`**.
 
 ## Install
 
@@ -105,7 +111,7 @@ A 2026-08 surface reduction removed 27 thin slash-command wrappers. Every one of
 | `/research:ingest <path>` | Bulk-ingest existing markdown files; `--inbox` to park, `--save` to persist drafts |
 | `/research:table-profile <path>` | Profile CSV/TSV/JSON data before quantitative analysis |
 | `/research:db-profile <path>` | Profile a SQLite database schema, row counts, indexes, and foreign keys |
-| `/research:feedback` | Report a bug or send feedback — files a GitHub issue on `tyroneross/research-plugin` |
+| `/research:submit-feedback` | Report a bug or request a feature — drafts a GitHub issue on `tyroneross/research-plugin`, files it only after you approve |
 
 ### Direct `research.py` subcommands (no slash wrapper)
 

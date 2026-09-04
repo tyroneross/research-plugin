@@ -1,7 +1,6 @@
 {
   "name": "research",
-  "version": "0.6.1",
-  "description": "Structured research with central persistence at ~/dev/research/, source scoring, claim verification, quantitative/database analysis, lifecycle management, bulk ingestion, sync-from-markdown, and project symlink views.",
+  "description": "Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.",
   "author": {
     "name": "Tyrone Ross",
     "url": "https://github.com/tyroneross"
@@ -20,8 +19,8 @@
   "skills": "./skills",
   "interface": {
     "displayName": "Research",
-    "shortDescription": "Structured research with central persistence at ~/dev/research/, source scoring, claim verification, quantitative/database analysis, lifecycle management, bulk ingestion, sync-from-markdown, and project symlink views.",
-    "longDescription": "Structured research with central persistence at ~/dev/research/, source scoring, claim verification, quantitative/database analysis, lifecycle management, bulk ingestion, sync-from-markdown, and project symlink views.",
+    "shortDescription": "Research done in chat disappears into scrollback and gets re-run. This plugin persists every finding to a central searchable corpus with source scoring and claim verification, so you never repeat a search or lose a citation.",
+    "longDescription": "Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.",
     "developerName": "Ross Labs",
     "category": "Research",
     "capabilities": [
