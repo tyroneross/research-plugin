@@ -1,6 +1,6 @@
 {
   "name": "@tyroneross/research-plugin",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Research done in chat disappears into scrollback and gets re-run. This plugin persists every finding to a central searchable corpus with source scoring and claim verification, so you never repeat a search or lose a citation.",
   "author": "Tyrone Ross, Jr <46267523+tyroneross@users.noreply.github.com>",
   "license": "Apache-2.0",
