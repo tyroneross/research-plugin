@@ -25,6 +25,31 @@
 
 All notable changes to the research plugin.
 
+## [0.6.1](https://github.com/tyroneross/research-plugin/compare/research-plugin-v0.6.0...research-plugin-v0.6.1) (2026-09-06)
+
+
+### Features
+
+* add auditable research orchestration ([deffb05](https://github.com/tyroneross/research-plugin/commit/deffb059281c4d77b79231dfb803e82b4ab00cd5))
+* **dashboard:** v2 — recommended flow first, pipelines today, stage-grouped comparison with pop-out evidence ([690aefc](https://github.com/tyroneross/research-plugin/commit/690aefcc6481a3896a45abab64d3456f6557877b))
+* **dashboard:** v2 payload + review fixes — coordinator framing, reference pipelines, per-stage optimal table ([7db776b](https://github.com/tyroneross/research-plugin/commit/7db776b1512fdf388ea0b46b5355b50411049314))
+* **doctor:** emit deterministic remediation plans ([27b1c0a](https://github.com/tyroneross/research-plugin/commit/27b1c0a131d3698557c90a8ff7bafc5e2b25e865))
+* **eval:** verify frozen external research trials ([f93a349](https://github.com/tyroneross/research-plugin/commit/f93a349f96fdc5c9243ca84656d2faeedc1cf3c9))
+* **intake:** add register_source helper and capture-sizing rule ([67c58cd](https://github.com/tyroneross/research-plugin/commit/67c58cdf622cefee0866fad7deff8188377e181e))
+* **plugin:** route feedback to GitHub Issues, drop the inbox ([ade65fa](https://github.com/tyroneross/research-plugin/commit/ade65fa8ced7110251d9db02deb593e9b325e5c0))
+* **runs:** measure fanout execution stages ([a8a20f3](https://github.com/tyroneross/research-plugin/commit/a8a20f3af589caf53745a7950e700e404ad15195))
+* **save:** add non-blocking provenance and topic-scatter guards ([4c7cc90](https://github.com/tyroneross/research-plugin/commit/4c7cc9030293759e3241530545c4a1637a889915))
+
+
+### Bug Fixes
+
+* **audit:** bind fanout and evaluation evidence ([d011006](https://github.com/tyroneross/research-plugin/commit/d0110065e53cd0e3c0b9730cef52cb4e7fe4f03f))
+* **audit:** fail closed on ambiguous evidence ([e1e6fb5](https://github.com/tyroneross/research-plugin/commit/e1e6fb56269fed00b7829feb8b53b04b4b32e042))
+* **ingest:** stop naming a research.py subcommand that does not exist ([6e5ff50](https://github.com/tyroneross/research-plugin/commit/6e5ff506cf798d40167f65a2a27678b108975b56))
+* read last-release-sha by putting it where release-please looks ([2a890e0](https://github.com/tyroneross/research-plugin/commit/2a890e05729919dc810c7db9a4cf64240d9ec2d7))
+* **skills:** front-load trigger and boundary in skill descriptions ([21a4a96](https://github.com/tyroneross/research-plugin/commit/21a4a960452782738c82f7c2a921ddaf9ddeb224))
+* stop printing slash commands removed in the surface reduction ([ab02296](https://github.com/tyroneross/research-plugin/commit/ab02296ea7ba005c1a89baea89b3d1336677fc64))
+
 ## [0.6.0] — 2026-08-15
 
 Ports three capabilities from the work-machine fork (shared release 0.5.3, canonical source on the work machine and **not present on this machine**). This is a **re-authoring from the fork's documented contract**, not a copy: the implementation was written against the fork's documented capability card, a private question-design guide, and real financial-research output exemplars (all read-only, none in this repo). Reconciliation against the actual fork source (audit suggestion #12) is **still open** — a line-level diff has not been performed, so behavioral parity with 0.5.3 is unverified.
