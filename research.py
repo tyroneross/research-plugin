@@ -4483,7 +4483,7 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
         params.append(args.run_id)
     rows = conn.execute(
         """
-        SELECT e.edge_id, e.predicate, e.run_id, e.observed_at, e.status,
+        SELECT e.edge_id, e.predicate, e.run_id, e.observed_at, e.status, e.evidence_observation_id, e.locator, e.confidence,
                s.entity_id AS subject_id, s.kind AS subject_kind, s.label AS subject_label,
                o.entity_id AS object_id, o.kind AS object_kind, o.label AS object_label
         FROM graph_edges e
@@ -4538,12 +4538,13 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
     calculations = []
     rows = [dict(row) for row in rows]
     numeric_labels = {}
+    quantity_entities = []
     for raw in calculation_rows:
         calc = dict(raw)
         for field in ("inputs", "assumptions", "checks"):
             calc[field] = json.loads(calc.pop(field + "_json"))
         calculations.append(calc)
-        calc_id = "ent_" + _sha256_text("calculation:" + calc["receipt_id"])[:32]
+        calc_id = "ent-" + _sha256_text("calculation:" + calc["receipt_id"])[:32]
         value = calc["result_text"] if calc["result_text"] is not None else "unavailable"
         numeric_labels[calc_id] = (
             f"calculation: {calc['claim_id']} = {value} {calc['unit']} [{calc['status']}]"
@@ -4555,6 +4556,7 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
             if item.get("unit"):
                 label += f" {item['unit']}"
             numeric_labels[input_id] = "input: " + label
+            quantity_entities.append({"entity_id": input_id, "kind": "quantity", "canonical_key": f"{calc['receipt_id']}:{index}", "label": label, "properties": item})
             common = {"run_id": calc["run_id"], "observed_at": calc["created_at"], "status": calc["status"]}
             rows.append({**common, "edge_id": input_id + "_used", "predicate": "usedValue",
                          "subject_id": calc_id, "subject_kind": "calculation", "subject_label": calc["receipt_id"],
@@ -4563,14 +4565,19 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
             if observation:
                 rows.append({**common, "edge_id": input_id + "_source", "predicate": "wasDerivedFrom",
                              "subject_id": input_id, "subject_kind": "quantity", "subject_label": label,
-                             "object_id": "ent_" + _sha256_text("observation:" + observation)[:32],
+                             "object_id": "ent-" + _sha256_text("observation:" + observation)[:32],
                              "object_kind": "observation", "object_label": observation})
         if calc["correction_of_receipt_id"]:
-            previous_id = "ent_" + _sha256_text("calculation:" + calc["correction_of_receipt_id"])[:32]
+            previous_id = "ent-" + _sha256_text("calculation:" + calc["correction_of_receipt_id"])[:32]
             rows.append({"edge_id": calc_id + "_correction", "predicate": "corrects",
                          "run_id": calc["run_id"], "observed_at": calc["created_at"], "status": calc["status"],
                          "subject_id": calc_id, "subject_kind": "calculation", "subject_label": calc["receipt_id"],
                          "object_id": previous_id, "object_kind": "calculation", "object_label": calc["correction_of_receipt_id"]})
+    referenced_ids = {row[side] for row in rows for side in ("subject_id", "object_id")}
+    entities = [dict(row) for row in conn.execute("SELECT * FROM graph_entities") if row["entity_id"] in referenced_ids]
+    for entity in entities:
+        entity["properties"] = json.loads(entity.pop("properties_json"))
+    entities.extend(quantity_entities)
     conn.close()
     output = Path(args.output).expanduser().resolve() if args.output else content_path("graphs", "research-graph.md")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -4581,6 +4588,7 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
                     "generated_at": now_iso(),
                     "run_id": args.run_id,
                     "edges": rows,
+                    "entities": entities,
                     "calculations": calculations,
                     "numeric_labels": numeric_labels,
                     "trust_observations": [dict(row) for row in trust_rows],
@@ -5764,6 +5772,36 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
                     errors.append(f"quantitative claim {claim_id} lacks a passed calculation receipt")
                 elif receipt["run_id"] != contract.get("run_id") or receipt["claim_id"] != claim_id:
                     errors.append(f"quantitative claim {claim_id} receipt does not match this run and claim")
+    for claim_id, claim in claims.items():
+        evidence_types = claim.get("evidence_types", [])
+        if not isinstance(evidence_types, list) or any(item not in ("financial", "quantitative", "qualitative") for item in evidence_types):
+            errors.append(f"claim {claim_id} evidence_types must contain financial, quantitative or qualitative")
+        connections = claim.get("connections", [])
+        if not isinstance(connections, list):
+            errors.append(f"claim {claim_id} connections must be a list")
+            continue
+        for link in connections:
+            if not isinstance(link, dict):
+                errors.append(f"claim {claim_id} connection must be an object")
+                continue
+            target = link.get("target_claim_id")
+            if not isinstance(target, str) or target not in claims or target == claim_id:
+                errors.append(f"claim {claim_id} connection requires another known target_claim_id")
+                continue
+            if link.get("relationship") not in ("supports", "contextualizes", "qualifies"):
+                errors.append(f"claim {claim_id} connection relationship must be supports, contextualizes or qualifies; use contradicts for conflicts")
+            if not isinstance(link.get("rationale"), str) or not link["rationale"].strip():
+                errors.append(f"claim {claim_id} connection requires a rationale")
+            basis = link.get("basis")
+            if not isinstance(basis, dict) or any(not isinstance(basis.get(key), str) or not basis[key].strip() for key in ("entity", "period", "population", "measure")):
+                errors.append(f"claim {claim_id} connection basis requires entity, period, population and measure; state unknowns explicitly")
+            if link.get("alignment") not in ("matched", "different", "unknown"):
+                errors.append(f"claim {claim_id} connection alignment must be matched, different or unknown")
+            evidence = link.get("evidence_observation_ids")
+            known_evidence = [item for candidate in (claim, claims[target])
+                              for item in (candidate.get("evidence_observation_ids") if isinstance(candidate.get("evidence_observation_ids"), list) else [])]
+            if not isinstance(evidence, list) or not evidence or any(not isinstance(item, str) or item not in known_evidence for item in evidence):
+                errors.append(f"claim {claim_id} connection requires evidence from its source or target claim")
     contradiction_pairs: set[tuple[str, str]] = set()
     for claim in claims.values():
         claim_id = str(claim["claim_id"])
@@ -5868,7 +5906,7 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
                         kind="claim",
                         canonical_key=f"{run_id}:{claim_id}",
                         label=str(claim.get("statement") or claim_id),
-                        properties={"claim_kind": claim.get("claim_kind")},
+                        properties={"claim_kind": claim.get("claim_kind"), "evidence_types": claim.get("evidence_types", [])},
                     )
                     for observation_id in claim.get("evidence_observation_ids") or []:
                         observation_entity = _graph_entity(
@@ -5891,6 +5929,25 @@ def cmd_run_merge(args: argparse.Namespace) -> int:
                                 run_id=run_id,
                                 evidence_observation_id=str(observation_id),
                             )
+                for claim_id, claim in claims.items():
+                    for link in claim.get("connections", []):
+                        target_id = link["target_claim_id"]
+                        properties = {**link, "source_claim_id": claim_id,
+                                      "source_statement": claim["statement"], "target_statement": claims[target_id]["statement"],
+                                      "source_evidence_types": claim.get("evidence_types", []),
+                                      "target_evidence_types": claims[target_id].get("evidence_types", []),
+                                      "status": "asserted"}
+                        connection = _graph_entity(conn, kind="evidence_connection",
+                            canonical_key=f"{run_id}:" + _sha256_text(_canonical_json(properties)),
+                            label=f"{'/'.join(claim.get('evidence_types', [])) or 'evidence'} → {'/'.join(claims[target_id].get('evidence_types', [])) or 'evidence'}: {link['relationship']} [asserted; basis {link['alignment']}]: {link['rationale']}", properties=properties)
+                        source = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{claim_id}")
+                        target = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{target_id}")
+                        _graph_edge(conn, subject_id=source, predicate="hasConnection", object_id=connection, run_id=run_id, status="asserted")
+                        _graph_edge(conn, subject_id=connection, predicate=link["relationship"], object_id=target, run_id=run_id, status="asserted")
+                        for observation in link["evidence_observation_ids"]:
+                            obs_entity = _graph_entity(conn, kind="observation", canonical_key=observation)
+                            _graph_edge(conn, subject_id=connection, predicate="wasDerivedFrom", object_id=obs_entity,
+                                        run_id=run_id, evidence_observation_id=observation, status="asserted")
                 for left_id, right_id in contradiction_pairs:
                     left_entity = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{left_id}", label=left_id)
                     right_entity = _graph_entity(conn, kind="claim", canonical_key=f"{run_id}:{right_id}", label=right_id)

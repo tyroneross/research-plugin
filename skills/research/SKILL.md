@@ -13,6 +13,8 @@ Phase 1 is **query optimization**: identify one or more meta-questions, decompos
 
 Before selecting a workflow, apply `references/method-routing.md`: classify the task shape and research method in the host, then validate the contract with `research.py route --request-file <request.json> --json`. Explicit user overrides win. The CLI's keyword hints are tentative; domain labels alone do not select a method. Preserve depth, verification, source policy, computation and persistence as independent controls.
 
+When findings combine financial, quantitative and qualitative evidence, use explicit source-backed claim connections from `../research-orchestrator/references/contracts.md`. Record relationship rationale and basis alignment; never infer causation from a graph link.
+
 Every derived number in any workflow must be computed through an existing tool or a reviewed Python script, executed and validated. Load `references/quantitative-analysis.md` even when the parent task is a comparison, synthesis or review. A script's successful exit is execution evidence, not proof that the method or inputs are valid.
 
 Use this language table as hints for selecting reference material:

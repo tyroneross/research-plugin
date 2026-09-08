@@ -84,3 +84,31 @@ Every task result uses this minimum shape:
 
 Use `claim_kind: quantitative` for computed numbers. That kind requires a passed `calculation_receipt_id`.
 Every result must echo the initialized run and contract hash. List intentional evidence reuse from another run in `reused_observation_ids`; undeclared cross-run observations fail merge and declared reuse becomes an explicit graph edge.
+
+## Connect financial, quantitative and qualitative evidence
+
+Keep `claim_kind` separate from evidence modality. A computed result still uses `claim_kind: quantitative` and requires a passed calculation receipt. A quotation or interpretation does not become a computed fact simply because its evidence is financial. Add optional `evidence_types` from `financial`, `quantitative`, `qualitative` to describe the material.
+
+A claim can carry explicit `connections` to another claim in the same merge:
+
+```json
+{
+  "target_claim_id": "financial-claim",
+  "relationship": "contextualizes",
+  "rationale": "Interview accounts provide context for costs; they do not identify the causal effect.",
+  "evidence_observation_ids": ["obs-interview"],
+  "basis": {
+    "entity": "Example company",
+    "period": "Interview period differs from filing period",
+    "population": "Interview sample versus whole company",
+    "measure": "Reported experience versus operating costs"
+  },
+  "alignment": "different"
+}
+```
+
+Allowed relationships are `supports`, `contextualizes`, and `qualifies`. Use the existing symmetric `contradicts` and reconciliation protocol for conflicts. Targets must exist in the merge; self-links are rejected. Connection evidence must belong to the source or target claim. Rationale, all four basis fields, and `alignment: matched|different|unknown` are required. State unknowns explicitly.
+
+The coordinator judges connections from source content; scripts validate structure and references. Every connection is recorded as an **asserted relationship**, not causal proof or a validated statistical association. Similar topics, matching company names or periods do not justify automatic links or pooling. Different/unknown basis remains visible. Source statements, modality labels, basis and rationale are preserved on append-only connection nodes. Repeated identical assertions deduplicate; changed assertions remain separate history.
+
+Export with `graph-export --run-id <run-id>`. The graph connects claims through these relationship nodes and keeps source observations, numbers, calculation receipts and corrections reachable. Use JSON for complete basis/properties and Mermaid for a readable map. No embedding service or vector database is required.

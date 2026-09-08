@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Connect mixed financial, quantitative and qualitative claims through evidence-backed assertions with explicit rationale and basis alignment.
+
 - Show numeric inputs, formulas, results, recorded validation and correction links in evidence graph exports; retain failed outcomes and existing receipts.
 - Revise README onboarding using the Persona Lab README checklist, with a verified CLI smoke check and graph examples.
 

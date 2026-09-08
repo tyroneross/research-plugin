@@ -224,9 +224,13 @@ Agents must use an existing calculation tool or write and execute a reviewed Pyt
 
 Reports distinguish source-quoted values, validated computations, unvalidated computations, estimates and inconclusive results. A successful process exit alone does not validate the assumptions or answer the question. No execution means no claim of a calculated result. See [quantitative analysis](skills/research/references/quantitative-analysis.md).
 
-## Connect numbers to evidence
+## Connect financial, quantitative and qualitative evidence
 
-After recording sources and running `calculate`, export a run's evidence graph:
+Use one evidence graph to connect financial metrics, calculated results and qualitative findings. Claims can `support`, `contextualize` or `qualify` other claims through explicit source-backed assertions. Each connection records its rationale and whether entity, period, population and measure align. Contradictions remain separate and visible.
+
+The agent proposes these connections; the CLI validates references and structure. A connection is not causal proof, and interview themes are not automatically converted into financial estimates. See the [mixed-evidence contract](skills/research-orchestrator/references/contracts.md#connect-financial-quantitative-and-qualitative-evidence).
+
+After recording sources, running `calculate` and merging claim connections with `run-merge`, export the run:
 
 ```bash
 python3 research.py graph-export --run-id example-run --output evidence.md
@@ -245,6 +249,9 @@ flowchart LR
   after --> calculation
   calculation --> result["Annual savings = 30 USD; check passed"]
   result --> claim["Reported savings claim"]
+  interview["Interview excerpt"] --> theme["Qualitative finding: workflow friction"]
+  theme -.-> context["Contextualizes; asserted; population differs"]
+  context -.-> claim
 ```
 
 The export follows dependency arrows from claims toward calculations and sources. A recorded `passed` check is not an independent audit; use `doctor` to verify stored receipt integrity. Failed and inconclusive calculations remain visible. This is an evidence graph, not a charting engine. See [quantitative analysis](skills/research/references/quantitative-analysis.md).

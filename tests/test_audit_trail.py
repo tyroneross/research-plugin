@@ -1189,6 +1189,8 @@ def test_graph_connects_values_formulas_sources_and_corrections(tmp_path: Path) 
     run_cli(tmp_path, 'graph-export', '--run-id', 'run-test', '--format', 'json', '--output', str(graph))
     data = json.loads(graph.read_text())
     assert len(data['calculations']) == 2
+    persisted_calc_ids = {e['entity_id'] for e in data['entities'] if e['kind'] == 'calculation'}
+    assert {e['subject_id'] for e in data['edges'] if e['predicate'] == 'usedValue'} <= persisted_calc_ids
     assert {c['status'] for c in data['calculations']} == {'passed', 'failed'}
     assert {'usedValue', 'wasDerivedFrom', 'corrects'} <= {e['predicate'] for e in data['edges']}
     assert any('40 USD [failed]' in label for label in data['numeric_labels'].values())
@@ -1204,3 +1206,48 @@ def test_graph_connects_values_formulas_sources_and_corrections(tmp_path: Path) 
     conn = sqlite3.connect(tmp_path / 'index/.db.sqlite3')
     assert conn.execute("SELECT count(*) FROM graph_entities WHERE kind='quantity'").fetchone()[0] == 0
     conn.close()
+
+
+def test_mixed_evidence_connections_preserve_basis_and_assertion(tmp_path: Path) -> None:
+    run_id = 'mixed-evidence'
+    contract = tmp_path / 'contract.json'
+    contract.write_text(json.dumps(one_task_contract(run_id)))
+    initialized = json.loads(run_cli(tmp_path, 'run-init', '--contract', str(contract)).stdout)
+    observation = record_source(tmp_path, run_id=run_id)
+    link = {
+        'target_claim_id': 'financial', 'relationship': 'contextualizes',
+        'rationale': 'Interview accounts provide context for the reported cost change, not causal proof.',
+        'evidence_observation_ids': [observation],
+        'basis': {'entity': 'Example company', 'period': 'different reporting periods',
+                  'population': 'interview sample versus whole company', 'measure': 'reported experience versus cost'},
+        'alignment': 'different',
+    }
+    packet = {'run_id': run_id, 'initialized_contract_hash': initialized['contract_hash'], 'task_id': 't1',
+              'source_observation_ids': [observation], 'reused_observation_ids': [], 'limitations': ['Synthetic fixture'],
+              'claims': [
+                  {'claim_id': 'qualitative', 'statement': 'Interviewees describe workflow friction',
+                   'claim_kind': 'interpretation', 'evidence_types': ['qualitative'],
+                   'evidence_observation_ids': [observation], 'connections': [link]},
+                  {'claim_id': 'financial', 'statement': 'The filing reports higher operating costs',
+                   'claim_kind': 'factual', 'evidence_types': ['financial', 'quantitative'],
+                   'evidence_observation_ids': [observation]},
+              ]}
+    result = tmp_path / 'result.json'
+    result.write_text(json.dumps(packet))
+    run_cli(tmp_path, 'run-merge', '--contract', str(contract), '--result', str(result))
+    graph = tmp_path / 'mixed.json'
+    run_cli(tmp_path, 'graph-export', '--run-id', run_id, '--format', 'json', '--output', str(graph))
+    data = json.loads(graph.read_text())
+    connections = [e for e in data['entities'] if e['kind'] == 'evidence_connection']
+    assert len(connections) == 1
+    props = connections[0]['properties']
+    assert props['alignment'] == 'different'
+    assert props['source_evidence_types'] == ['qualitative']
+    assert props['target_evidence_types'] == ['financial', 'quantitative']
+    assert props['status'] == 'asserted'
+    assert any(e['predicate'] == 'contextualizes' and e['status'] == 'asserted' for e in data['edges'])
+    link['target_claim_id'] = 'missing'
+    result.write_text(json.dumps(packet))
+    rejected = json.loads(run_cli(tmp_path, 'run-merge', '--contract', str(contract), '--result', str(result), expected=2).stdout)
+    assert rejected['status'] == 'invalid'
+    assert any('target_claim_id' in error for error in rejected['errors'])
