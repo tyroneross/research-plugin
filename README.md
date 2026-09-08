@@ -1,27 +1,43 @@
 # research
 
-Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists reusable entries to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.
+Turn a research question into cited findings, reproducible calculations and a searchable record. The host agent chooses the research method; local Python tools validate contracts, compute results and preserve evidence in SQLite and Markdown.
+
+Use this plugin when you need to compare options, investigate a claim, analyze supplied data or reuse previous research. You receive an answer with sources, calculation evidence where needed, and explicit gaps. Saving is optional.
 
 ## Start here
 
-Type **`/research:research <topic>`** and describe what you want to know. That one command runs the whole flow — frames the question, picks sources, executes, synthesizes, and saves reusable results to `~/dev/research/` unless you ask not to save. Every other command below is an optional step you can call directly; you do not need any of them to start.
+In a host with the plugin installed, ask:
+
+```text
+/research:research Compare these two plans using the supplied prices.
+Calculate the annual savings, show the formula and validation, and do not save.
+```
+
+The agent should return a comparison, source-linked inputs and a computed savings result. It should ask for missing prices rather than invent them. Research routing does not itself execute the calculation; the host runs the selected tools.
+
+For a coding agent working in this repository, use this handoff:
+
+> Use the canonical research-plugin repository. Follow the installation instructions below for my host, then run the local routing smoke check. Report the selected route, calculation requirement, persistence setting and whether host loading was actually verified. Keep test data outside my research corpus.
 
 To report a bug or request a feature: **`/research:submit-feedback`**.
 
 ## Install
+
+### Python prerequisite
+
+Use Python 3 with PyYAML in the environment that runs `research.py`:
+
+```bash
+python3 -m pip install pyyaml
+# Optional symbolic verification:
+python3 -m pip install sympy
+```
 
 ### Claude Code
 
 ```
 /plugin marketplace add tyroneross/research-plugin
 /plugin install research@research-plugin
-```
-
-Then install the Python dependency:
-
-```bash
-pip install pyyaml            # required
-pip install sympy             # optional (v0.2 symbolic verification)
 ```
 
 Restart Claude Code. The `/research:*` slash commands should autocomplete; the `research` skill activates on phrases like "research X", "investigate Y", "what's the current state of Z".
@@ -43,6 +59,16 @@ When persistence is enabled, a `/research ...` session writes its markdown corpu
 ```bash
 python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" init
 ```
+
+## Verify the local CLI
+
+From the repository root, after installing Python and PyYAML:
+
+```bash
+python3 research.py route --query "Calculate annual savings; do not save" --json
+```
+
+Expected: `computation` is `required`, `persist` is `false`, and `status` is `planned`. This command writes no research data. It checks the CLI only; it does not prove that the host loaded the plugin or executed research. If Python reports a missing `yaml` module, install PyYAML in the same Python environment and retry.
 
 ## Roots
 
@@ -138,7 +164,7 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 | `source-index` | Rebuild the overall source ledger and central per-project indexes |
 | `legacy-source-import [--apply]` | Dry-run, then normalize past entry source lists while preserving unknown provenance |
 | `trust-record --manifest <path>` | Append dated, topic-scoped trust observations with evidence links |
-| `graph-export` | Export source, observation, run, entry, claim, and calculation dependencies as Mermaid or JSON |
+| `graph-export` | Export evidence dependencies with input numbers, formulas, results, validation status and correction links as Mermaid or JSON |
 | `traversal-record --manifest <path>` | Enforce a run's bounded deep-link policy and append accepted/rejected frontier decisions |
 | `run-init --contract <path>` | Validate a vendor-neutral run contract and emit disjoint worker packets |
 | `run-validate --contract <path>` | Validate a run contract without initializing it |
@@ -197,6 +223,31 @@ Agents must use an existing calculation tool or write and execute a reviewed Pyt
 4. Preserve input provenance, units, formula/query, script/spec hash, executed results and validation checks. Complex work needs reference cases or an independent calculation, plus sensitivity or numerical checks where relevant.
 
 Reports distinguish source-quoted values, validated computations, unvalidated computations, estimates and inconclusive results. A successful process exit alone does not validate the assumptions or answer the question. No execution means no claim of a calculated result. See [quantitative analysis](skills/research/references/quantitative-analysis.md).
+
+## Connect numbers to evidence
+
+After recording sources and running `calculate`, export a run's evidence graph:
+
+```bash
+python3 research.py graph-export --run-id example-run --output evidence.md
+python3 research.py graph-export --run-id example-run --format json --output evidence.json
+```
+
+Replace `example-run` with the run ID used by your calculation receipts. Mermaid output displays input values, results, formulas, output units, denominators, grain and recorded validation status. JSON also includes calculation details and checks. Input values link to source observations; corrections link to previous receipts. Existing receipts gain these views without a migration.
+
+Illustrative calculation, not a measured research finding:
+
+```mermaid
+flowchart LR
+  source["Source observation"] --> before["before = 120 USD"]
+  source --> after["after = 90 USD"]
+  before --> calculation["before - after"]
+  after --> calculation
+  calculation --> result["Annual savings = 30 USD; check passed"]
+  result --> claim["Reported savings claim"]
+```
+
+The export follows dependency arrows from claims toward calculations and sources. A recorded `passed` check is not an independent audit; use `doctor` to verify stored receipt integrity. Failed and inconclusive calculations remain visible. This is an evidence graph, not a charting engine. See [quantitative analysis](skills/research/references/quantitative-analysis.md).
 
 ## Research depth
 

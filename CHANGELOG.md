@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Show numeric inputs, formulas, results, recorded validation and correction links in evidence graph exports; retain failed outcomes and existing receipts.
+- Revise README onboarding using the Persona Lab README checklist, with a verified CLI smoke check and graph examples.
+
 - Add validated research-method routing with independent depth, source, computation, execution and persistence controls; preserve tentative raw-query hints.
 - Require executed scripts and meaningful validation for derived quantities; label the generated analysis scaffold as profiling-only.
 - Update the README and method guidance; replace personal file examples and stop tracking local Build Loop snapshots.

@@ -4465,6 +4465,13 @@ def cmd_trust_record(args: argparse.Namespace) -> int:
     return 0
 
 
+def _mermaid_label(value: Any) -> str:
+    """Encode user/source text inside a quoted Mermaid label."""
+    return (str(value).replace("&", "&amp;").replace('"', "&quot;")
+            .replace("<", "&lt;").replace(">", "&gt;")
+            .replace("`", "&#96;").replace("\n", " ").replace("\r", " "))
+
+
 def cmd_graph_export(args: argparse.Namespace) -> int:
     ensure_layout()
     ensure_db()
@@ -4524,6 +4531,46 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
         """ + observation_where + " ORDER BY o.captured_at, o.observation_id",
         params,
     ).fetchall()
+    calculation_where = " WHERE run_id=?" if args.run_id else ""
+    calculation_rows = conn.execute(
+        "SELECT * FROM calculation_receipts" + calculation_where + " ORDER BY created_at, receipt_id", params
+    ).fetchall()
+    calculations = []
+    rows = [dict(row) for row in rows]
+    numeric_labels = {}
+    for raw in calculation_rows:
+        calc = dict(raw)
+        for field in ("inputs", "assumptions", "checks"):
+            calc[field] = json.loads(calc.pop(field + "_json"))
+        calculations.append(calc)
+        calc_id = "ent_" + _sha256_text("calculation:" + calc["receipt_id"])[:32]
+        value = calc["result_text"] if calc["result_text"] is not None else "unavailable"
+        numeric_labels[calc_id] = (
+            f"calculation: {calc['claim_id']} = {value} {calc['unit']} [{calc['status']}]"
+            f"; formula: {calc['formula']}; denominator: {calc['denominator']}; grain: {calc['grain']}"
+        )
+        for index, item in enumerate(calc["inputs"]):
+            input_id = "num_" + _sha256_text(f"{calc['receipt_id']}:{index}")[:32]
+            label = f"{item.get('name', 'input')} = {item.get('value', 'unavailable')}"
+            if item.get("unit"):
+                label += f" {item['unit']}"
+            numeric_labels[input_id] = "input: " + label
+            common = {"run_id": calc["run_id"], "observed_at": calc["created_at"], "status": calc["status"]}
+            rows.append({**common, "edge_id": input_id + "_used", "predicate": "usedValue",
+                         "subject_id": calc_id, "subject_kind": "calculation", "subject_label": calc["receipt_id"],
+                         "object_id": input_id, "object_kind": "quantity", "object_label": label})
+            observation = item.get("source_observation_id")
+            if observation:
+                rows.append({**common, "edge_id": input_id + "_source", "predicate": "wasDerivedFrom",
+                             "subject_id": input_id, "subject_kind": "quantity", "subject_label": label,
+                             "object_id": "ent_" + _sha256_text("observation:" + observation)[:32],
+                             "object_kind": "observation", "object_label": observation})
+        if calc["correction_of_receipt_id"]:
+            previous_id = "ent_" + _sha256_text("calculation:" + calc["correction_of_receipt_id"])[:32]
+            rows.append({"edge_id": calc_id + "_correction", "predicate": "corrects",
+                         "run_id": calc["run_id"], "observed_at": calc["created_at"], "status": calc["status"],
+                         "subject_id": calc_id, "subject_kind": "calculation", "subject_label": calc["receipt_id"],
+                         "object_id": previous_id, "object_kind": "calculation", "object_label": calc["correction_of_receipt_id"]})
     conn.close()
     output = Path(args.output).expanduser().resolve() if args.output else content_path("graphs", "research-graph.md")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -4533,7 +4580,9 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
                 {
                     "generated_at": now_iso(),
                     "run_id": args.run_id,
-                    "edges": [dict(row) for row in rows],
+                    "edges": rows,
+                    "calculations": calculations,
+                    "numeric_labels": numeric_labels,
                     "trust_observations": [dict(row) for row in trust_rows],
                     "discrepancies": [dict(row) for row in discrepancy_rows],
                     "source_revisions": [dict(row) for row in revision_rows],
@@ -4550,8 +4599,9 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
         for row in rows:
             labels[row["subject_id"]] = f"{row['subject_kind']}: {row['subject_label']}"
             labels[row["object_id"]] = f"{row['object_kind']}: {row['object_label']}"
+        labels.update(numeric_labels)
         for entity_id, label in sorted(labels.items()):
-            safe_label = str(label).replace('"', "'").replace("\n", " ")
+            safe_label = _mermaid_label(label)
             lines.append(f"  {entity_id.replace('-', '_')}[\"{safe_label}\"]\n")
         for row in rows:
             lines.append(
@@ -4573,7 +4623,7 @@ def cmd_graph_export(args: argparse.Namespace) -> int:
             if row["parent_observation_id"]:
                 parent = "ent_" + _sha256_text(f"observation:{row['parent_observation_id']}")[:32]
                 lines.append(f"  {parent} -.->|discovered| {link_node}\n")
-        lines.append("```\n")
+        lines.append("```\n\nCalculation status is the recorded validation outcome, not an independent audit. Input values retain their source links; missing input units are not inferred from output units. Run `doctor` to check receipt integrity.\n")
         output.write_text("".join(lines))
     print(output)
     return 0

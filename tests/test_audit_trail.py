@@ -1162,3 +1162,45 @@ def test_doctor_plan_refuses_uninitialized_corpus_without_writing(tmp_path: Path
     assert "not initialized" in result.stderr
     assert not (tmp_path / "content").exists()
     assert not (tmp_path / "index").exists()
+
+
+def test_graph_connects_values_formulas_sources_and_corrections(tmp_path: Path) -> None:
+    observation = record_source(tmp_path)
+    spec = {
+        'run_id': 'run-test', 'claim_id': 'savings', 'formula': 'before - after',
+        'unit': 'USD', 'denominator': 'not_applicable: difference', 'grain': 'annual cost',
+        'assumptions': ['equal scope'],
+        'inputs': [
+            {'name': 'before', 'value': '120', 'unit': 'USD', 'source_observation_id': observation},
+            {'name': 'after', 'value': '90', 'unit': 'USD', 'source_observation_id': observation},
+        ],
+        'checks': [{'name': 'fixture', 'expression': 'result == 30'}],
+    }
+    path = tmp_path / 'calculation.json'
+    path.write_text(json.dumps(spec))
+    run_cli(tmp_path, 'calculate', '--spec', str(path))
+    receipt = json.loads(next((tmp_path / 'index/calculation-receipts').glob('*.json')).read_text())
+    spec['correction_of_receipt_id'] = receipt['receipt_id']
+    spec['inputs'][1]['value'] = '80'
+    # A deliberately failing check must remain failed in the graph, not imply support.
+    path.write_text(json.dumps(spec))
+    run_cli(tmp_path, 'calculate', '--spec', str(path), expected=2)
+    graph = tmp_path / 'graph.json'
+    run_cli(tmp_path, 'graph-export', '--run-id', 'run-test', '--format', 'json', '--output', str(graph))
+    data = json.loads(graph.read_text())
+    assert len(data['calculations']) == 2
+    assert {c['status'] for c in data['calculations']} == {'passed', 'failed'}
+    assert {'usedValue', 'wasDerivedFrom', 'corrects'} <= {e['predicate'] for e in data['edges']}
+    assert any('40 USD [failed]' in label for label in data['numeric_labels'].values())
+    assert any('before = 120 USD' in label for label in data['numeric_labels'].values())
+    mermaid = tmp_path / 'graph.md'
+    run_cli(tmp_path, 'graph-export', '--run-id', 'run-test', '--output', str(mermaid))
+    assert 'formula: before - after' in mermaid.read_text()
+    assert '40 USD [failed]' in mermaid.read_text()
+    assert 'annual cost' in mermaid.read_text()
+    run_cli(tmp_path, 'graph-export', '--run-id', 'other-run', '--format', 'json', '--output', str(graph))
+    assert json.loads(graph.read_text())['calculations'] == []
+    # Export enriches existing receipts without adding graph rows to the database.
+    conn = sqlite3.connect(tmp_path / 'index/.db.sqlite3')
+    assert conn.execute("SELECT count(*) FROM graph_entities WHERE kind='quantity'").fetchone()[0] == 0
+    conn.close()

@@ -132,3 +132,9 @@ Certainty should be downgraded when joins are inferred, tables lack primary keys
 **Certainty:** [High / Medium / Low] — [reason]
 **Limitations:** [open risks]
 ```
+
+## Connect calculations to the evidence graph
+
+When numerical findings use registered `calculate` receipts, run `research.py graph-export --run-id <run-id> --output <graph.md>` and link the artifact in the research output when it helps explain dependencies. Use `--format json` for machine-readable calculation details and checks. The graph shows input values linked to source observations, the formula and result, recorded validation status, units, denominator, grain and correction links. Failed or inconclusive calculations must remain visibly qualified.
+
+The graph projects existing receipts; it does not register arbitrary Python results or validate source truth automatically. Preserve custom-script artifacts separately until they have a compatible registered receipt. Numerical charts require a separate plotting step using computed values, labeled units and uncertainty where available. Never treat this dependency graph as a numerical chart.
