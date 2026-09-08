@@ -99,9 +99,9 @@ def main() -> int:
         save = run(["save", "--file", str(entry)], env)
         require(save.returncode == 0, f"save failed: {save.stderr}", failures)
 
-        linked_dir = root / "external" / "speaksavvy" / "docs" / "research"
+        linked_dir = root / "external" / "example-app" / "docs" / "research"
         write_linked_project(linked_dir)
-        link = run(["link-project", "speaksavvy", str(linked_dir)], env)
+        link = run(["link-project", "example-app", str(linked_dir)], env)
         require(link.returncode == 0, f"link-project failed: {link.stderr}", failures)
 
         hyphen = run(["search", "research-plugin", "--project", "research-plugin", "--json"], env)
@@ -118,7 +118,7 @@ def main() -> int:
             failures,
         )
 
-        linked = run(["search", "Made Stick", "--project", "speaksavvy", "--json"], env)
+        linked = run(["search", "Made Stick", "--project", "example-app", "--json"], env)
         require(linked.returncode == 0, f"linked search failed: {linked.stderr}", failures)
         linked_rows = json.loads(linked.stdout or "[]")
         require(
@@ -127,7 +127,7 @@ def main() -> int:
             failures,
         )
 
-        entries_only = run(["search", "Made Stick", "--project", "speaksavvy", "--entries-only", "--json"], env)
+        entries_only = run(["search", "Made Stick", "--project", "example-app", "--entries-only", "--json"], env)
         require(entries_only.returncode == 0, f"entries-only search failed: {entries_only.stderr}", failures)
         require(json.loads(entries_only.stdout or "[]") == [], "entries-only returned linked files", failures)
 

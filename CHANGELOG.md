@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add validated research-method routing with independent depth, source, computation, execution and persistence controls; preserve tentative raw-query hints.
+- Require executed scripts and meaningful validation for derived quantities; label the generated analysis scaffold as profiling-only.
+- Update the README and method guidance; replace personal file examples and stop tracking local Build Loop snapshots.
+
+## Unreleased
+
 - Added append-only run and event history, normalized source observations, graph-ready entities and relationships, topic-scoped trust observations, and source/dependency index exports.
 - Added deterministic calculation receipts. Quantitative claims now require source-linked inputs, units, denominator, grain, assumptions, hashes, local runtime metadata, and passing validation checks; ambiguity returns `inconclusive`.
 - Added a vendor-neutral `research-orchestrator` skill for hypothesis/falsifier framing, bounded second-/third-level link traversal, host-native parallel task packets, and contradiction-preserving merge validation.

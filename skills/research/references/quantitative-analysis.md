@@ -4,7 +4,15 @@ Use this workflow when research requires calculations, table/database inspection
 
 ## Core Rule
 
-The LLM frames the analysis. Code performs the calculation.
+The LLM frames the analysis. Code performs the calculation. This applies to every derived number across all research methods, including percentages in prose, comparisons, forecasts, meta-analysis, simulations and financial models. Faithfully quoting a source number needs attribution; deriving a new number needs execution evidence.
+
+Prefer the existing `research.py calculate --spec <spec.json>` for supported formulas with registered source observations. For tables and databases, use `table-profile` / `db-profile`, then `analyze-plan` and `analyze-run`. The generated script performs profiling only: customize a reviewed Python script for actual estimators, simulations, optimization or other complex calculations. Never describe the profiling scaffold as having answered the requested analytical question.
+
+Keep the input provenance, formula/query, units, denominator, script/spec hash, command, exit status, output and validation checks together. Label results as quoted, computed and validated, computed but unvalidated, estimates, or inconclusive. Execution cannot turn an assumed input into an observed fact.
+
+For complex calculations, validate with a known-answer case or an independent method; check units, denominators, bounds and reconciliation. Add sensitivity analysis, uncertainty estimates, convergence checks and fixed random seeds where the method requires them. Record failed checks rather than suppressing them. Do not call self-reported confidence a statistical confidence interval.
+
+When data or computation is unavailable or forbidden, return the formula and missing inputs or an analysis plan. Do not fabricate a calculated result. Prefer stdlib; use preinstalled scientific libraries when their established algorithms materially reduce implementation risk, recording versions and the reason.
 
 For quantitative work, never rely on mental arithmetic when a local script can compute the result. The LLM should:
 
@@ -95,9 +103,9 @@ Generated analysis scripts must be local, self-contained, and stdlib-only by def
 - Run with a timeout.
 - Store script, plan, result, and audit artifacts together for inspection.
 - Record and verify the generated script hash before execution.
-- If a script is edited for custom metrics, review the diff and require an explicit override before running.
+- If a script is edited for custom metrics, review the diff and use `analyze-run --allow-modified-script` only after confirming the edit is intentional and within the authorized analysis. This flag acknowledges the hash change; it is not a sandbox or an automatic request for user permission.
 
-If non-stdlib libraries are genuinely needed, state the reason and require an explicit user-approved environment setup. Prefer preinstalled, well-known libraries only when they materially reduce risk or complexity.
+If additional libraries are needed, first check the existing environment. Any new environment setup must follow the host permission policy and user constraints. Do not install packages automatically.
 
 ## Database / SQL Rules
 

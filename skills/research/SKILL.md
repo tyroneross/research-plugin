@@ -11,7 +11,11 @@ Phase 1 is **query optimization**: identify one or more meta-questions, decompos
 
 ## Workflow Detection
 
-Route to the appropriate workflow based on user language:
+Before selecting a workflow, apply `references/method-routing.md`: classify the task shape and research method in the host, then validate the contract with `research.py route --request-file <request.json> --json`. Explicit user overrides win. The CLI's keyword hints are tentative; domain labels alone do not select a method. Preserve depth, verification, source policy, computation and persistence as independent controls.
+
+Every derived number in any workflow must be computed through an existing tool or a reviewed Python script, executed and validated. Load `references/quantitative-analysis.md` even when the parent task is a comparison, synthesis or review. A script's successful exit is execution evidence, not proof that the method or inputs are valid.
+
+Use this language table as hints for selecting reference material:
 
 | Trigger Language | Workflow | Reference |
 |-----------------|----------|-----------|
@@ -27,7 +31,7 @@ Route to the appropriate workflow based on user language:
 | "calculate", "quantitative", "analyze this CSV", "database", "SQL", "table", "schema", "metrics", "what does the data show" | **Quantitative / Database Analysis** | `references/quantitative-analysis.md` |
 | "save research", "add to research library", "record this" | **Persist existing findings** | `references/persistence.md` |
 
-**When ambiguous:** Ask the user. If they say "just research it," use General Research.
+**When ambiguous:** Use available context and state a tentative route. Ask only when missing input changes the method or a consequential constraint. If they say "just research it," use General Research.
 
 ## Depth Detection
 
@@ -289,7 +293,7 @@ Always include:
 
 ### Phase 6: Persist
 
-**When to run:** Use the depth classifier. Persist deep research by default, persist standard research when it produces a report-sized or reusable result, and skip light research unless the user asks to archive it.
+**When to run:** Honor explicit no-save or save settings in the route first. Otherwise use the depth classifier. Persist deep research by default, persist standard research when it produces a report-sized or reusable result, and skip light research unless the user asks to archive it.
 
 **See `references/persistence.md` for the full contract.** Summary:
 
@@ -328,7 +332,7 @@ Always include:
 - If a search returns nothing useful, say so. Empty findings are valid findings.
 - Prefer source-faithful extraction over source-count theater. Be expansive by covering the necessary lanes, then go deep on the sources that carry the decision.
 - Research is complete when the question is answered, not when all sources are exhausted.
-- **Phase 6 follows depth** — deep persists by default; standard persists when reusable; light stays inline unless the user asks to save it.
+- **Phase 6 honors persistence** — an explicit no-save setting wins at every depth; deep persists by default; standard persists when reusable; light stays inline unless the user asks to save it.
 
 ## Additional Resources
 

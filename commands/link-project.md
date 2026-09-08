@@ -12,4 +12,4 @@ python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/re
 
 Idempotent. Accepts either `<project-name> <path-to-research-dir>` or `<project-name> --path <path-to-research-dir>`. Re-running refreshes the registration, search index, and symlinks so new files appear and deleted files disappear. The registration is included in `~/dev/research/PORTFOLIO.md` under "Linked external research directories" on the next portfolio rebuild (automatic on this command; force with `/research:index`).
 
-Use when a project already has a research directory (for example `~/dev/git-folder/SpeakSavvy-iOS/docs/research/`) that predates this plugin. This is the opposite of `/research:save` with a `projects:` tag — save is for entries the plugin authored, link-project is for directories it didn't.
+Use when a project already has a research directory (for example `~/projects/example-app/docs/research/`) that predates this plugin. This is the opposite of `/research:save` with a `projects:` tag — save is for entries the plugin authored, link-project is for directories it didn't.

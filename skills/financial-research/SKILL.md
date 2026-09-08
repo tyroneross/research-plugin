@@ -6,6 +6,8 @@ user-invocable: false
 
 # Financial Research
 
+For every derived financial value, prefer `research.py calculate` or the existing analysis workflow; write and run a reviewed Python script for unsupported or complex calculations. Keep source inputs, units, formula, script/spec hash, results and independent checks. Follow `../research/references/quantitative-analysis.md`; never compute financial claims mentally.
+
 Claim-safe research for financial and operating-model questions. The failure mode this skill prevents is not a missing source — it is a number that is real, cited, and **measured on a different basis than the claim it is used to support**.
 
 Host-neutral: "host search tool", "host fetch tool", and "host file-read tool" mean whichever tools the running agent exposes. The plugin CLI is always:

@@ -2125,16 +2125,6 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
     if _matches_any(text, DEPTH_QUANT_PATTERNS):
         score += 3
         reasons.append("Quantitative or tabular claims require profiling and computed validation.")
-    if re.search(r"\b(deep|thorough|comprehensive|expansive|exhaustive|systematic|full)\s+(research|investigation|analysis|review)\b", text):
-        score = max(score, 5)
-        reasons.append("User explicitly requested deep research depth.")
-    if re.search(r"\b(quick|light|brief|short)\s+(research|answer|lookup|summary|take|pass)\b", text) and score < 5:
-        score = min(score, 1)
-        reasons = [
-            reason for reason in reasons
-            if reason != "Explicit research language needs a bounded multi-source pass."
-        ]
-        reasons.append("User explicitly requested light research depth.")
     if len(words) >= 28:
         score += 2
         reasons.append("Long request likely contains multiple subquestions or constraints.")
@@ -2145,8 +2135,18 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
         score -= 1
         reasons.append("Single-source request limits scope.")
     if re.search(r"\b(no need to save|inline only|don't save|do not save)\b", text):
-        score -= 2
-        reasons.append("User asked for inline-only or no persistence.")
+        reasons.append("User asked for inline-only or no persistence; depth is unchanged.")
+
+    if re.search(r"\b(deep|thorough|comprehensive|expansive|exhaustive|systematic|full)\s+(research|investigation|analysis|review)\b", text):
+        score = max(score, 5)
+        reasons.append("User explicitly requested deep research depth.")
+    elif re.search(r"\b(quick|light|brief|short)\s+(research|answer|lookup|summary|take|pass)\b", text):
+        score = min(score, 1)
+        reasons = [
+            reason for reason in reasons
+            if reason != "Explicit research language needs a bounded multi-source pass."
+        ]
+        reasons.append("User explicitly requested light research depth.")
 
     workflow = "general"
     if _matches_any(text, DEPTH_QUANT_PATTERNS):
@@ -2176,6 +2176,10 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
         phases = ["answer", "cite-if-external", "skip-persist-unless-reusable"]
         persist = False
 
+    if re.search(r"\b(no need to save|inline only|don't save|do not save)\b", text):
+        persist = False
+        phases = [phase for phase in phases if "persist" not in phase]
+
     if not reasons:
         reasons.append("No deep-work signals detected; defaulting to a bounded light pass.")
 
@@ -2190,6 +2194,140 @@ def _research_depth_profile(query: str) -> dict[str, Any]:
         "phases": phases,
         "reasons": reasons,
     }
+
+
+# Routing is a contract validator, not an autonomous semantic classifier.
+RESEARCH_SHAPES = {"lookup", "compare", "survey", "explain", "collect"}
+RESEARCH_METHODS = {
+    "review": ("dependency_pipeline", [], "eligibility protocol; study identity; screening decisions; bias appraisal", "coverage and exclusions audited; pooling justified if used"),
+    "qualitative": ("dependency_pipeline", [], "case-linked excerpts; analytic approach; codebook or reflexive memo; exceptions", "interpretations trace to excerpts and preserve case context"),
+    "measurement": ("dependency_pipeline", ["python"], "construct; operational definition; sample; reliability and validity criteria", "measurement checks and uncertainty computed; validity limits stated"),
+    "causal": ("dependency_pipeline", ["python"], "estimand; identification design; confounders; data; estimator", "identification assumptions reviewed; estimates and robustness checks executed"),
+    "forecast": ("dependency_pipeline", ["python"], "event; horizon; cutoff; resolution rule; base rates; scoring rule", "probability recorded with cutoff; calibration evaluated only with resolved outcomes"),
+    "simulation": ("evaluation_loop", ["python", "simulator"], "environment; calibration data; interventions; seeds; model assumptions", "metrics computed; sensitivity and observed-data checks reported"),
+    "hypothesis": ("evaluation_loop", [], "candidate ledger; prior art; competing explanations; falsification criteria", "novelty and testability assessed separately from empirical support"),
+    "experiment": ("evaluation_loop", ["experiment_executor"], "protocol; controls; outcomes; allocation; power rationale; execution permission", "observations and protocol deviations recorded; a plan alone is not an experiment"),
+    "optimize": ("evaluation_loop", ["python", "objective_evaluator"], "objective; constraints; baseline; candidates; fixed evaluator", "feasibility and improvement independently computed against baseline"),
+    "formal": ("evaluation_loop", ["proof_checker"], "formal statement; assumptions; checker environment; proof artifact", "checker accepts proof under stated assumptions"),
+    "archival": ("dependency_pipeline", [], "provenance; chronology; source versions; corroboration; missing records", "claims trace to dated records; contradictions and gaps remain visible"),
+}
+ROUTE_ENUMS = {
+    "task_shape": RESEARCH_SHAPES,
+    "depth": {"light", "standard", "deep"},
+    "workflow": {"general", "collection", "synthesis", "quantitative"},
+    "verification": {"standard", "adjudication"},
+    "source_policy": {"supplied", "local", "web", "mixed"},
+    "computation": {"required", "on_demand", "forbidden"},
+    "allowed_execution": {"plan_only", "local", "agents"},
+}
+
+
+def _research_route(request: dict[str, Any]) -> dict[str, Any]:
+    """Resolve explicit overrides over host classification over tentative hints.
+
+    No files, processes, agents, or network requests are launched by this function.
+    Capabilities describe availability, never permission or proof of execution.
+    """
+    if not isinstance(request, dict):
+        raise ValueError("request must be an object")
+    fields = set(ROUTE_ENUMS) | {"query", "methods", "domain", "persist", "independent_tasks", "available_capabilities"}
+    unknown = set(request) - fields - {"overrides"}
+    if unknown:
+        raise ValueError("unknown request fields: " + ", ".join(sorted(unknown)))
+    overrides = request.get("overrides", {})
+    if not isinstance(overrides, dict) or set(overrides) - (fields - {"query"}):
+        raise ValueError("overrides must be an object containing supported routing fields")
+    values = {**request, **overrides}
+    query = values.get("query", "")
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query must be a non-empty string")
+    for key, choices in ROUTE_ENUMS.items():
+        if key in values and (not isinstance(values[key], str) or values[key] not in choices):
+            raise ValueError(f"{key} must be one of: {', '.join(sorted(choices))}")
+    methods = values.get("methods", [])
+    if not isinstance(methods, list) or any(not isinstance(m, str) or m not in RESEARCH_METHODS for m in methods) or len(set(methods)) != len(methods):
+        raise ValueError("methods must be a unique ordered list of supported method names")
+    if "persist" in values and not isinstance(values["persist"], bool):
+        raise ValueError("persist must be boolean")
+    if "domain" in values and (not isinstance(values["domain"], str) or not values["domain"].strip()):
+        raise ValueError("domain must be a non-empty string")
+    independent = values.get("independent_tasks", 0)
+    if type(independent) is not int or not 0 <= independent <= 100:
+        raise ValueError("independent_tasks must be an integer from 0 to 100")
+    capabilities = values.get("available_capabilities")
+    if capabilities is not None and (not isinstance(capabilities, list) or any(not isinstance(c, str) or not c.strip() for c in capabilities)):
+        raise ValueError("available_capabilities must be a list of non-empty strings")
+    profile = _research_depth_profile(query)
+    text = query.lower()
+    hints = [("collect", r"\b(extract|collect|dataset)\b"), ("compare", r"\b(compare|versus|vs)\b"), ("survey", r"\b(landscape|survey|overview)\b"), ("explain", r"\b(why|explain|synthesize)\b")]
+    shape = values.get("task_shape", next((name for name, pattern in hints if re.search(pattern, text)), "lookup"))
+    # These are suggestions only. The host reads intent before accepting a method.
+    method_hints = {"review": r"systematic review|meta-analysis", "qualitative": r"thematic analysis|interview coding", "measurement": r"psychometric|measurement validity", "causal": r"causal effect|causal inference", "forecast": r"\bforecast", "simulation": r"\bsimulat", "hypothesis": r"hypothesis generation", "experiment": r"design an experiment|randomized trial", "optimize": r"\boptimization\b", "formal": r"formal proof|prove a theorem", "archival": r"archival|historical records"}
+    if "methods" not in values:
+        methods = [name for name, pattern in method_hints.items() if re.search(pattern, text)]
+    quant = profile["workflow"] == "quantitative" or bool(set(methods) & {"measurement", "causal", "forecast", "simulation", "optimize"}) or bool(re.search(r"\b(calculate|calculation|arithmetic|percentage|average|confidence interval|meta-analysis)\b", text))
+    workflow = values.get("workflow", "quantitative" if quant else profile["workflow"])
+    quant = quant or workflow == "quantitative" or values.get("computation") == "required"
+    computation = values.get("computation", "required" if quant else "on_demand")
+    if quant and computation == "on_demand":
+        computation = "required"
+    execution = values.get("allowed_execution", "plan_only")
+    source_policy = values.get("source_policy", "mixed")
+    blockers = []
+    if quant and computation == "forbidden":
+        blockers.append("Calculation is required but execution of calculations is forbidden; return a plan or sourced inputs only.")
+    if profile["web_required"] and source_policy in {"supplied", "local"}:
+        blockers.append("Current external evidence is needed but source policy excludes web access; report the freshness gap.")
+    required = sorted({c for method in methods for c in RESEARCH_METHODS[method][1]} | ({"python"} if quant else set()))
+    missing = sorted(set(required) - set(capabilities)) if capabilities is not None else []
+    if missing:
+        blockers.append("Missing capabilities: " + ", ".join(missing) + "; provide a method plan, not an executed result.")
+    stages = []
+    names = methods or [shape]
+    for i, name in enumerate(names):
+        structure, _, inputs, validation = RESEARCH_METHODS.get(name, ("single_loop", [], "question; permitted sources; answer criteria", "claims grounded; requested scope covered"))
+        if not methods and shape in {"compare", "survey", "collect"} and independent >= 2 and execution == "agents":
+            structure = "bounded_fanout_merge"
+        stages.append({"id": f"stage-{i + 1}", "method": name if methods else None, "task_shape": shape,
+                       "depends_on": [f"stage-{i}"] if i else [], "structure": structure,
+                       "required_inputs": inputs.split("; "), "completion_rule": validation})
+    confidence = "clear" if "task_shape" in values and "methods" in values else "tentative"
+    if blockers:
+        confidence = "needs_input"
+    return {
+        "schema_version": 1, "query": query, "task_shape": shape, "methods": methods,
+        "depth": values.get("depth", profile["depth"]), "workflow": workflow,
+        "verification": values.get("verification", "adjudication" if re.search(r"\b(contested|conflicting evidence|sources disagree|adversarial)\b", text) else "standard"), "domain": values.get("domain", "general"),
+        "source_policy": source_policy, "web_required": profile["web_required"],
+        "persist": values.get("persist", profile["persist"]), "computation": computation,
+        "allowed_execution": execution, "required_capabilities": required,
+        "missing_capabilities": missing, "capabilities_checked": capabilities is not None,
+        "stages": stages, "status": "blocked_missing_input" if blockers else "planned",
+        "confidence": confidence, "blockers": blockers,
+        "reasons": ["Explicit overrides take precedence over host classification; unspecified fields use tentative hints.",
+                    "Routing does not execute work or prove an architecture effective.",
+                    "Derived numbers require executed code and validation; quoted numbers require source attribution."],
+        "field_origins": {key: "user_override" if key in overrides else "host_contract" if key in values else "default_or_hint" for key in sorted(fields - {"query"})},
+        "calculation_contract": {"executor_order": ["calculate", "analyze-plan + analyze-run", "reviewed Python script"],
+            "required_artifacts": ["input provenance and units", "formula or query", "script/spec and hash", "execution result", "validation checks and outcomes"],
+            "complex_checks": ["known-case or independent-method comparison", "units and denominator checks", "sensitivity and numerical stability where relevant"],
+            "claim_statuses": ["quoted", "computed_validated", "computed_unvalidated", "estimate", "inconclusive"]},
+    }
+
+
+def cmd_route(args: argparse.Namespace) -> int:
+    try:
+        request = json.loads(Path(args.request_file).expanduser().read_text()) if args.request_file else {"query": args.query}
+        result = _research_route(request)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: invalid route request: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result, indent=2) if args.json else
+          f"Route: {result['task_shape']} / {', '.join(result['methods']) or 'general'} / {result['depth']}\n"
+          f"Status: {result['status']} ({result['confidence']})\n"
+          f"Computation: {result['computation']}; persistence: {result['persist']}\n" +
+          "\n".join(result["blockers"] or result["reasons"]))
+    return 0
 
 
 def cmd_depth(args: argparse.Namespace) -> int:
@@ -3754,6 +3892,9 @@ def main() -> int:
             rows = read_rows(path, input_type)
             profile = summarize_rows(rows)
         level, reasons = certainty(profile, input_type)
+        if expected_sha != actual_sha:
+            level = "Low"
+            reasons.append("input hash validation failed; input changed after planning")
         findings.append({
             "input": str(path),
             "input_type": input_type,
@@ -3764,6 +3905,8 @@ def main() -> int:
     all_valid = all(v["passed"] for v in validations)
     result = {
         "question": plan.get("question"),
+        "analysis_scope": "profiling_only",
+        "question_answered": False,
         "status": "passed" if all_valid else "validation_failed",
         "validations": validations,
         "findings": findings,
@@ -3773,7 +3916,7 @@ def main() -> int:
     lines = [
         "# Analysis Audit\n\n",
         f"Question: {plan.get('question') or 'unspecified'}\n\n",
-        f"Status: {result['status']}\n\n",
+        f"Status: {result['status']} (input checks only; custom question unanswered)\n\n",
         "## Findings\n\n",
     ]
     for f in findings:
@@ -7006,6 +7149,13 @@ def main() -> int:
     sp.add_argument("-n", type=int, default=20)
     sp.add_argument("--json", action="store_true")
     sp.set_defaults(func=cmd_search)
+
+    sp = sub.add_parser("route", help="Validate a research-method route; never executes research")
+    route_input = sp.add_mutually_exclusive_group(required=True)
+    route_input.add_argument("--query", help="Raw request; returns tentative routing hints")
+    route_input.add_argument("--request-file", help="JSON host classification and explicit user overrides")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_route)
 
     sp = sub.add_parser("depth", help="Classify a research request as light, standard, or deep")
     sp.add_argument("query", help="Research topic or question to classify")

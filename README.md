@@ -1,10 +1,10 @@
 # research
 
-Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.
+Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists reusable entries to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.
 
 ## Start here
 
-Type **`/research:research <topic>`** and describe what you want to know. That one command runs the whole flow — frames the question, picks sources, executes, synthesizes, and persists the entry to `~/dev/research/`. Every other command below is an optional step you can call directly; you do not need any of them to start.
+Type **`/research:research <topic>`** and describe what you want to know. That one command runs the whole flow — frames the question, picks sources, executes, synthesizes, and saves reusable results to `~/dev/research/` unless you ask not to save. Every other command below is an optional step you can call directly; you do not need any of them to start.
 
 To report a bug or request a feature: **`/research:submit-feedback`**.
 
@@ -38,13 +38,15 @@ Codex loads the same plugin root: `.codex-plugin/plugin.json`, `commands/`, `ski
 
 ## First run
 
-By default, any `/research ...` session writes its markdown corpus to `~/dev/research/` and keeps its SQLite index there too. Or bootstrap explicitly:
+When persistence is enabled, a `/research ...` session writes its markdown corpus to `~/dev/research/` and keeps its SQLite index there too. Or bootstrap explicitly:
 
 ```bash
 python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/research.py" init
 ```
 
 ## Roots
+
+Examples use generic project paths. Machine-specific Build Loop state and personal workspace pointers are excluded from tracked plugin files; existing local state remains local.
 
 The plugin now supports separate roots for content and derived index/state:
 
@@ -85,7 +87,7 @@ Two mechanisms, depending on who authored the research.
 
 **Plugin-authored entries** — when an entry's frontmatter includes `projects: [foo]` and a project directory exists, `/research:save` maintains a symlink at `<content-root>/projects/foo/<slug>.md` pointing to the canonical entry under `<content-root>/topics/`. The project directory is not modified. Pass `--with-project-index` if you also want a `<project>/RossLabs-Research.md` index file written into the project (opt-in).
 
-**Pre-existing project research** — for directories like `~/dev/git-folder/SpeakSavvy-iOS/docs/research/` that predate this plugin and should not be restructured, use `/research:link-project <name> <path>`. The plugin walks the directory recursively for `*.md` files, extracts a title and a 1-line summary from each, records the registration in `<index-root>/.linked-projects.json`, and creates symlinks at `<content-root>/projects/<name>/<filename>`. The source directory is never modified.
+**Pre-existing project research** — for directories like `~/projects/example-app/docs/research/` that predate this plugin and should not be restructured, use `/research:link-project <name> <path>`. The plugin walks the directory recursively for `*.md` files, extracts a title and a 1-line summary from each, records the registration in `<index-root>/.linked-projects.json`, and creates symlinks at `<content-root>/projects/<name>/<filename>`. The source directory is never modified.
 
 Both mechanisms surface in `<content-root>/PORTFOLIO.md` under separate sections ("Plugin-managed projects" and "Linked external research directories"). `/research:index` refreshes both.
 
@@ -120,7 +122,8 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 | Subcommand | Purpose |
 |---|---|
 | `init` | Bootstrap the configured content and index roots |
-| `depth <query>` | Classify a request as light, standard, or deep before sourcing — this is what `/research:research` calls in its first step |
+| `route --query <request> --json` | Suggest a tentative route; use `--request-file <request.json>` to validate host classification and explicit user overrides |
+| `depth <query>` | Legacy-compatible light/standard/deep guidance, independent of no-save instructions |
 | `list [N]` | Recent entries |
 | `link <slug>` | Retroactive project symlink for a saved entry |
 | `sync` | Rebuild SQLite from canonical topic markdown; use `--prune-missing` after moves or migrations |
@@ -152,9 +155,52 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 
 `/research:search` defaults to safe plain-text search: punctuation-heavy terms such as `research-plugin` are quoted before they reach FTS5, and results include highlighted snippets. Canonical entries and linked external project files are searched together unless `--entries-only` is passed. Raw FTS5 syntax remains available with `--fts-query` for advanced queries.
 
+## Research paths
+
+The host agent chooses the method from the user's intended outcome. The Python router validates that choice and returns a reviewable receipt; it does not call a model, launch agents, or execute research.
+
+- **Task shape:** lookup, compare, survey, explain or collect.
+- **Research method:** review, qualitative, measurement, causal, forecast, simulation, hypothesis, experiment, optimize, formal or archival. Methods can form ordered stages.
+- **Independent controls:** depth, domain, verification, permitted sources, computation, execution permission and persistence.
+
+Psychology does not always route to one architecture: interview themes use qualitative analysis; scale validity uses measurement; intervention effects use causal analysis. Economics can use forecasting or simulation. Engineering can use optimization or formal verification. Each method carries required inputs and completion evidence.
+
+```bash
+python3 research.py route --query "Compare the options; calculate percentage savings; do not save" --json
+python3 research.py route --request-file request.json --json
+```
+
+A structured request separates host classification from explicit user overrides:
+
+```json
+{
+  "query": "Estimate the intervention's causal effect from the supplied data",
+  "task_shape": "explain",
+  "methods": ["causal"],
+  "domain": "economics",
+  "available_capabilities": ["python"],
+  "overrides": {"depth": "standard", "source_policy": "supplied", "persist": false, "allowed_execution": "local"}
+}
+```
+
+Explicit overrides win. Raw-query classification is deliberately tentative. A receipt can be `planned` or `blocked_missing_input`; it never establishes that a calculation, experiment or proof has run. Capability availability does not establish permission, input readiness or validity.
+
+The four core structures are a single loop, a dependency pipeline, bounded fan-out with merge, and an evaluation loop. Fan-out requires declared independent tasks and permission to use agents. Missing simulators, experimental executors or proof checkers produce a method plan and a capability gap. See the [routing contract and method profiles](skills/research/references/method-routing.md) and [disciplinary evidence assessment](docs/proposals/2026-09-07-discipline-research-methods.md) for method requirements and the limits of published architecture evidence.
+
+## Quantitative analysis: scripts compute and validate
+
+Agents must use an existing calculation tool or write and execute a reviewed Python script for derived numbers, including calculations embedded in otherwise qualitative reports.
+
+1. Use `calculate --spec <spec.json>` for supported formulas with registered source observations.
+2. Use `table-profile` / `db-profile`, then `analyze-plan` / `analyze-run` for structured inputs. The generated script is a profiling scaffold; it does not implement the user's custom analysis automatically.
+3. Write a reviewed Python script for complex estimators, simulations or unsupported formulas. Prefer stdlib or suitable preinstalled scientific libraries; record dependencies and versions.
+4. Preserve input provenance, units, formula/query, script/spec hash, executed results and validation checks. Complex work needs reference cases or an independent calculation, plus sensitivity or numerical checks where relevant.
+
+Reports distinguish source-quoted values, validated computations, unvalidated computations, estimates and inconclusive results. A successful process exit alone does not validate the assumptions or answer the question. No execution means no claim of a calculated result. See [quantitative analysis](skills/research/references/quantitative-analysis.md).
+
 ## Research depth
 
-`research.py depth` (no slash wrapper — called directly by `/research:research` and the `research` skill) is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, coverage requirements, workflow, web requirement, persistence guidance, and rationale.
+`research.py depth` (no slash wrapper — retained for direct scope guidance) is a deterministic pre-flight classifier for choosing scope. It returns `light`, `standard`, or `deep`, plus source budget, coverage requirements, workflow, web requirement, persistence guidance, and rationale.
 
 - `light` — quick answer, usually 0-2 sources, skip persistence unless reusable.
 - `standard` — bounded research, usually 3-8 sources with a target of 5, persist when the answer becomes report-sized.

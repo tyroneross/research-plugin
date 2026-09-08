@@ -32,7 +32,7 @@ Pass `--no-index` to defer portfolio regen on a single save (run `/research:inde
 
 ## Linking existing project research
 
-For project directories that already contain research markdown files the plugin did not author (for example `~/dev/git-folder/SpeakSavvy-iOS/docs/research/`), use `/research:link-project <name> <path>`. The plugin walks the directory recursively for `*.md` files, extracts a title (first `# H1`) and a 1-line summary (first paragraph, first sentence, truncated to 120 chars) from each, records the registration in `~/dev/research/.linked-projects.json`, and creates symlinks at `~/dev/research/projects/<name>/<filename>`. The source directory is never modified. Re-running the command refreshes the registration and symlinks (idempotent); `/research:index` also re-scans every registered linked project.
+For project directories that already contain research markdown files the plugin did not author (for example `~/projects/example-app/docs/research/`), use `/research:link-project <name> <path>`. The plugin walks the directory recursively for `*.md` files, extracts a title (first `# H1`) and a 1-line summary (first paragraph, first sentence, truncated to 120 chars) from each, records the registration in `~/dev/research/.linked-projects.json`, and creates symlinks at `~/dev/research/projects/<name>/<filename>`. The source directory is never modified. Re-running the command refreshes the registration and symlinks (idempotent); `/research:index` also re-scans every registered linked project.
 
 The portfolio has two project sections: "Plugin-managed projects" (from save's `projects:` tag) and "Linked external research directories" (from link-project). Cross-cutting entries (no project tag) appear below.
 

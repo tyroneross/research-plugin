@@ -53,11 +53,13 @@ Counts are **executed invocations**, not mentions. A surface appearing in a sess
 
 Claude Code's 12 skill/slash activations break down as 5 × `Skill(research:research)`, 1 × `Skill(research)` (bare), 3 × `/research`, 3 × `/research:research` (✅ `grep -oh '"skill":"[^"]*"'` and `grep -oh '<command-name>[^<]*</command-name>'` histograms over all 1,853 files).
 
+Private workspace names and file pointers in this historical audit have been generalized; counts retain their original audit meaning.
+
 ### 2.3 Host verdicts
 
-**Codex — WIRED and dominant.** `~/.codex/config.toml:41` registers `[plugins."research@ross-labs-local"] enabled = true`; line 613 enables the `post_tool_use` hook with a pinned trust hash. The cached install at `~/.codex/plugins/cache/ross-labs-local/research/local/research.py` is byte-identical to the repo file (`diff -q` exit 0). 325 invocations across 33 of 2,207 sessions (1.5%), monthly Apr 45 · May 66 · Jun 51 · Jul 163 · **Aug 0**. Top workdirs: ObsidianVault (71), build-loop (55), research-plugin (46, dev work), research (31), rosslabs-agent-harness (22), personal-llm-wiki (14), a private work-notes vault (12). ✅
+**Codex — WIRED and dominant.** `<host-config>` registers `[plugins."research@ross-labs-local"] enabled = true`; the audited hook configuration enables the `post_tool_use` hook with a pinned trust hash. The cached install at `<installed-plugin>/research.py` is byte-identical to the repo file (`diff -q` exit 0). 325 invocations across 33 of 2,207 sessions (1.5%), monthly Apr 45 · May 66 · Jun 51 · Jul 163 · **Aug 0**. Top workdirs: private notes workspace (71), build-loop (55), research-plugin (46, dev work), research (31), rosslabs-agent-harness (22), private wiki workspace (14), a private work-notes vault (12). ✅
 
-**Claude Code — installed, enabled, effectively unrouted.** Symlinked at `~/.claude/plugins/research → <this repo checkout>` and enabled via `settings.json:531`. 17 non-audit CLI calls plus 12 skill/slash activations, against 881 WebSearch and 729 WebFetch calls in the same corpus (✅). Of 320 total Skill-tool calls, `build-loop:build-loop` took 138 and `research:research` took 5.
+**Claude Code — installed, enabled, effectively unrouted.** Symlinked at `<host-plugin-link> → <repository-checkout>` and enabled via the audited host settings. 17 non-audit CLI calls plus 12 skill/slash activations, against 881 WebSearch and 729 WebFetch calls in the same corpus (✅). Of 320 total Skill-tool calls, `build-loop:build-loop` took 138 and `research:research` took 5.
 
 **Other agents — zero.** `~/.gemini`, `~/.cursor`, and `~/.opencode` all exist on disk; none references `research.py`, `research-plugin`, or `~/dev/research` (⚠️ existence and grep verified by subagent, not re-executed by the author).
 
@@ -67,7 +69,7 @@ Claude Code's 12 skill/slash activations break down as 5 × `Skill(research:rese
 
 ### 2.4 Top topics
 
-By entry count in `topics/`: llm (30), design (16), agentic-systems (10), knowledge-graphs (9), product-dev (8), tools (7), projects (6), build-loop (5), agents (5), speech (4). By tagged project: unassigned (48), build-loop (15), atomize-ai (15), claude-code-personal (14), speaksavvy (11), rosslabs-agent-harness (9) (✅ `sqlite3 -readonly ~/dev/research/.db.sqlite3`).
+By entry count in `topics/`: llm (30), design (16), agentic-systems (10), knowledge-graphs (9), product-dev (8), tools (7), projects (6), build-loop (5), agents (5), speech (4). By tagged project: unassigned (48), build-loop (15), atomize-ai (15), claude-code-personal (14), example-app (11), rosslabs-agent-harness (9) (✅ `sqlite3 -readonly ~/dev/research/.db.sqlite3`).
 
 ### 2.5 Unused surfaces
 
@@ -293,7 +295,7 @@ grep -c 'research.py' ~/.zsh_history ~/.bash_history  # 0, 0
 
 - Store: `~/dev/research/.db.sqlite3` (8.48 MB, mtime Aug 14 01:08), `~/dev/research/topics/`, `~/dev/research/PORTFOLIO.md`
 - Dead decoys: `~/dev/research/index.db` (0 B), `~/dev/research/research.db` (0 B)
-- Codex wiring: `~/.codex/config.toml:41`, `:613`; `~/.codex/plugins/cache/ross-labs-local/research/local/research.py`
+- Codex wiring: `<host-config>`, `:613`; `<installed-plugin>/research.py`
 - Claude Code wiring: `~/.claude/plugins/research` → dev repo; `~/.claude/settings.json:531`; caches at `~/.claude/plugins/cache/rosslabs-ai-toolkit/research/{0.5.1,e97091896725}/`
 - Competing store: `build-loop-memory/projects/*/research/` (124 files); backlog item `build-loop-memory/projects/build-loop/issues/bl-research-plugin-trigger-policy.md`
 - Parsers used: `mine2.py`, `mine3.py`, `mine4.py`, `cx2.py`, `cx3.py` (session scratchpad, not committed)

@@ -239,11 +239,11 @@ That is the only side-effect by default. The project directory itself is not tou
 
 ## Linked external directories (v0.3.1)
 
-Some projects already have research directories the plugin did not author (for example `~/dev/git-folder/SpeakSavvy-iOS/docs/research/` with 17 markdown files in flat/plain format). Copying them into the plugin's layout would be destructive; instead, register them.
+Some projects already have research directories the plugin did not author (for example `~/projects/example-app/docs/research/` with 17 markdown files in flat/plain format). Copying them into the plugin's layout would be destructive; instead, register them.
 
 ```
-python research.py link-project speaksavvy --path ~/dev/git-folder/SpeakSavvy-iOS/docs/research/
-# or: /research:link-project speaksavvy ~/dev/git-folder/SpeakSavvy-iOS/docs/research/
+python research.py link-project example-app --path ~/projects/example-app/docs/research/
+# or: /research:link-project example-app ~/projects/example-app/docs/research/
 ```
 
 What happens:
@@ -274,7 +274,7 @@ If a project contains `<project>/research/` file copies, `<project>/research/.li
 If you realize later that research `prompting.chain-of-thought` is relevant to a project:
 
 1. Edit frontmatter to add the project: `projects: [atomize-ai]`.
-2. Run `python research.py link prompting.chain-of-thought ~/dev/git-folder/atomize-ai`.
+2. Run `python research.py link prompting.chain-of-thought ~/projects/example-app`.
 3. Script creates the symlink and appends to that project's `INDEX.md`.
 
 ## Archival (v0.3 preview)
