@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Research you already did disappears into chat scrollback, so you re-run the same searches and cannot tell which claims were ever sourced. This plugin runs a structured flow (frame, source, execute, synthesize) and persists every entry to a central FTS5-searchable corpus with source scoring, claim verification, quantitative analysis, and project-linked views. You stop repeating work and can show where any claim came from.",
-    "version": "0.6.0"
+    "version": "0.6.1"
   },
   "plugins": [
     {
