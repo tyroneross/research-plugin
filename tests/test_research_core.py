@@ -20,6 +20,18 @@ def test_optional_symbolic_verifier_is_callable_without_static_dependency() -> N
     assert result["verdict"] in {"passed", "inconclusive"}
 
 
+def test_code_verifier_never_runs_on_host_without_docker(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(research.shutil, "which", lambda name: None)
+    monkeypatch.setattr(research.subprocess, "run", lambda *a, **k: calls.append(a) or None)
+
+    result = research._verify_code({"code": "print('host')"}, "unused-entry")
+
+    assert calls == []
+    assert result["verdict"] == "inconclusive"
+    assert result["confidence"] == "❓"
+
+
 def test_ordered_pair_has_stable_two_item_shape() -> None:
     assert research._ordered_pair("claim-b", "claim-a") == ("claim-a", "claim-b")
 

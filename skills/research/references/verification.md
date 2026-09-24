@@ -52,7 +52,7 @@ Based on the FActScore / FacTool decompose-extract-retrieve-verify pattern, stri
 | `numeric` | Regex-parse quantities + units, retrieve top-5 Raw chunks via FTS5, bootstrap CI via stdlib `statistics` + `random.choices`. | stdlib |
 | `citation` | `urllib.request` → `api.openalex.org/works?filter=doi:<doi>` or `search=<title>`. Confirm existence + year. | stdlib |
 | `symbolic` | `sympy.simplify(lhs - rhs) == 0`. Falls back to `inconclusive` if `sympy` not installed. | sympy (opt) |
-| `code` | v0.3: `subprocess` + `tempfile` + resource limits (Docker if available). v0.2 marks `inconclusive`. | stdlib (+docker opt) |
+| `code` | `docker run --network=none --memory=256m --cpus=1 python:3.12-slim`. Without Docker, marks `inconclusive` (❓) and never runs the code on the host. | docker (opt) |
 
 ## Verifier output
 

@@ -3181,28 +3181,29 @@ def _verify_citation(atom: dict[str, Any], _slug: str) -> dict[str, Any]:
 
 
 def _verify_code(atom: dict[str, Any], _slug: str) -> dict[str, Any]:
-    """Run code sandbox-ish. v0.3: Docker if available, else subprocess with limits."""
+    """Run the atom's code inside a --network=none Docker sandbox.
+
+    Fails closed: with no Docker, the atom is marked inconclusive and the code
+    never runs on the host.
+    """
     code = atom.get("code") or ""
     if not code:
         return {"verdict": "inconclusive", "evidence": "no code provided", "confidence": "❓"}
     docker = shutil.which("docker")
-    if docker:
-        try:
-            proc = subprocess.run(
-                [docker, "run", "--rm", "-i", "--network=none", "--memory=256m",
-                 "--cpus=1", "python:3.12-slim", "python", "-c", code],
-                capture_output=True, text=True, timeout=30,
-            )
-        except subprocess.TimeoutExpired:
-            return {"verdict": "failed", "evidence": "timeout", "confidence": "❌"}
-    else:
-        try:
-            proc = subprocess.run(
-                [sys.executable, "-c", code],
-                capture_output=True, text=True, timeout=10,
-            )
-        except subprocess.TimeoutExpired:
-            return {"verdict": "failed", "evidence": "timeout", "confidence": "❌"}
+    if not docker:
+        return {
+            "verdict": "inconclusive",
+            "evidence": "skipped: no --network=none sandbox (docker not found); code not run on host",
+            "confidence": "❓",
+        }
+    try:
+        proc = subprocess.run(
+            [docker, "run", "--rm", "-i", "--network=none", "--memory=256m",
+             "--cpus=1", "python:3.12-slim", "python", "-c", code],
+            capture_output=True, text=True, timeout=30,
+        )
+    except subprocess.TimeoutExpired:
+        return {"verdict": "failed", "evidence": "timeout", "confidence": "❌"}
     if proc.returncode == 0:
         return {"verdict": "passed", "evidence": proc.stdout.strip()[:500], "confidence": "✅"}
     return {"verdict": "failed", "evidence": proc.stderr.strip()[:500], "confidence": "❌"}
