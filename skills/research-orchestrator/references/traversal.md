@@ -2,6 +2,8 @@
 
 Treat the seed page as depth 0. Traverse breadth-first so one branch cannot consume the budget.
 
+For expansion from a seed idea or expert tip, also apply the [seeded snowball overlay](../../research/references/seeded-snowball.md). It validates the premise and labels conceptual/citation relationships, applicability, independent support, and stopping reasons. Conceptual radius is an editorial relevance judgment; it never replaces the URL hop depth or retrieval limits here. Keep its concept records alongside the run records without inventing new contract or traversal-manifest fields.
+
 ## Required limits
 
 - Default maximum depth: 2.

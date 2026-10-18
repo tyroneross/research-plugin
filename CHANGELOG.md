@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a seeded snowball sourcing overlay: validate seed claims, expand through labeled conceptual/citation relationships, track independent support and applicability, and preserve saturation/drift/budget stopping records with concept relationships and a reading list.
+
 - Connect mixed financial, quantitative and qualitative claims through evidence-backed assertions with explicit rationale and basis alignment.
 
 - Show numeric inputs, formulas, results, recorded validation and correction links in evidence graph exports; retain failed outcomes and existing receipts.

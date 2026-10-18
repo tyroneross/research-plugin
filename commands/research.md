@@ -16,6 +16,8 @@ Use `light` for quick answers, `standard` for bounded multi-source work, and `de
 
 Read `skills/research/references/method-routing.md`. Classify intent in the host, preserve explicit user controls in `overrides`, and validate the resulting JSON using `research.py route --request-file <request.json> --json`. Keyword hints are tentative. Every derived number requires an executed calculation tool or reviewed Python script and meaningful validation.
 
+For "snowball", "expand this idea/tip/source", or "find similar helpful content", also load `skills/research/references/seeded-snowball.md`. Validate or correct the premise before expanding; follow explicit concept and citation relationships; separate independent support from repeated mentions; stop at saturation, drift, or the declared budget. Deliver concept relationships and an annotated reading list with applicability and coverage limits. This is a sourcing overlay, not a new CLI `methods` value.
+
 Load the `research` skill from this plugin and follow the phases appropriate to the depth:
 
 1. **Frame** — clarify scope, success criteria, decision the research informs

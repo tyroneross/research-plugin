@@ -21,6 +21,17 @@ For a coding agent working in this repository, use this handoff:
 
 To report a bug or request a feature: **`/research:submit-feedback`**.
 
+### Expand from an idea or expert tip
+
+```text
+/research:research I received this tip about coding hooks: <tip and source>.
+Validate the premise, then snowball outward to related principles and helpful
+content for <my framework/use case>. Show direct and conditional relevance,
+independent support, a concept map, and an annotated reading list.
+```
+
+The [seeded snowball workflow](skills/research/references/seeded-snowball.md) checks the starting claim, follows labeled conceptual and citation relationships, and stops at saturation, topic drift, or the chosen budget. It separates repeated mentions from independent evidence and preserves uncertain or corrected premises. Conceptual distance is an editorial judgment; the result does not establish expert consensus. The host follows this guidance through the existing research skill; no new CLI method, crawler, or dependency is added.
+
 ## Install
 
 ### Python prerequisite

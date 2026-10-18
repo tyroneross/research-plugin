@@ -1,6 +1,6 @@
 ---
 name: research
-description: Use when the user asks to research, investigate, evaluate, compare options, optimize a research question, extract findings, synthesize, analyze CSV/databases, or save to the research library. Frames the request as meta-questions and MECE section contracts before sourcing. Sourced, verified, persisted to ~/dev/research/. Not for rendering an existing audit's findings as a visual HTML dashboard; use `audit-dashboard` instead. Not for a repo-grounded pre-build decision packet tied to an active build-loop run; use the build-loop plugin's own research skill for that.
+description: Use when the user asks to research, investigate, evaluate, compare options, expand an idea or expert tip into related guidance, optimize a research question, extract findings, synthesize, analyze CSV/databases, or save to the research library. Frames the request as meta-questions and MECE section contracts before sourcing. Sourced, verified, persisted to ~/dev/research/. Not for rendering an existing audit's findings as a visual HTML dashboard; use `audit-dashboard` instead. Not for a repo-grounded pre-build decision packet tied to an active build-loop run; use the build-loop plugin's own research skill for that.
 ---
 
 # Research
@@ -22,6 +22,7 @@ Use this language table as hints for selecting reference material:
 | Trigger Language | Workflow | Reference |
 |-----------------|----------|-----------|
 | "research", "investigate", "evaluate", "compare", "look into", "what's better X or Y" | **General Research** | Phases 1-6 below |
+| "snowball", "expand from this idea/tip/source", "find similar helpful content", "underlying principles", "expand outward" | **Seeded Snowball Overlay** | `references/seeded-snowball.md`; validate the premise before expanding |
 | "optimize this prompt/question", "make this research-ready", vague or multi-part request, voice transcript | **Query Optimization** | `references/query-optimization.md` · `/research:optimize` |
 | "margin", "cost of sales", "COGS", "gross/operating margin", "EBITDA", "working capital", "unit economics", "cost bucket", "P&L", "financial model input", "comparable companies", "filings", "10-K", "earnings call" | **Financial Research** | `financial-research` skill |
 | "section contracts", "query ledger", "source register", "claim register", "reconcile sources", multi-section deep run | **Deep Research Orchestration** | `references/deep-orchestration.md` |
@@ -188,6 +189,8 @@ Per-sub-question standard: **one ask · short · concrete · basis-defined · ne
 
 Select sources based on research type. Always prefer higher-tier sources.
 
+When expanding from a seed idea, tip, or source, load [seeded-snowball.md](references/seeded-snowball.md). Assess the specific premise before expansion, record any corrected framing, and define the anchor, applicability boundary, budget, and stopping rule. Keep this host-executed overlay in the section contracts; it is not a new CLI `methods` value and does not change depth or persistence.
+
 **The section contracts from Phase 1 are the source plan.** Work one section at a time against its `Evidence required` column until its completion rule is met or provably unmeetable. A section that cannot be completed becomes a stated gap, never a quietly thinner section. No finding may satisfy two sections — if one does, the themes were not mutually exclusive and the contract is fixed rather than the evidence double-counted.
 
 Before searching, create a **coverage map**:
@@ -255,6 +258,7 @@ Use `/research:extract <path>` — routes everything through `@tyroneross/omnipa
 4. Note gaps — missing data is a finding
 
 **Research discipline:**
+- For seeded snowball runs, follow labeled conceptual and citation relationships, record independent support separately from mentions, and retain excluded branches and the reason for stopping. Relevance radius is editorial; URL hop limits remain separate.
 - Record what each source actually says, not what you expected
 - Preserve failure evidence — if a promising lead was wrong, note it
 - When sources conflict, present both with their tiers
@@ -272,6 +276,7 @@ Compile findings into structured output. Use the appropriate template from `refe
 - Date context if time-sensitive
 
 **Synthesis rules:**
+- For seeded snowball runs, include the seed disposition, source-backed concept relationships, applicability conditions, annotated reading list, and stop/coverage record from `references/seeded-snowball.md`. Repeated mentions never establish expert consensus.
 - Lead with the answer, then evidence
 - Separate facts from interpretation
 - Flag stale data explicitly
@@ -341,6 +346,7 @@ Always include:
 For detailed methodology and output formats, consult:
 - **`references/query-optimization.md`** — Phase 1 contract: input registers, decision card, meta-questions, MECE groups, section contracts, Q0-Q4 levels, 0-24 readiness score
 - **`references/deep-orchestration.md`** — Section contracts in execution, query ledger, source and claim registers, reconcile step, cross-section synthesis, completion rules
+- **`references/seeded-snowball.md`** — Expand a seed idea through explicit conceptual/citation relationships with premise validation, independent support, relevance boundaries, and stopping rules
 - **`references/credibility.md`** — Two-dimensional credibility framework (source quality + claim corroboration)
 - **`references/source_scoring.md`** — Deterministic tier scoring pipeline (domain cache → rules → LLM residue)
 - **`references/collection.md`** — 4 collection modes (standard, technical PDF, concise, large corpus)

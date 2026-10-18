@@ -56,6 +56,8 @@ For ordinary information tasks, use a single loop. Comparison, survey and collec
 
 Ordered methods create dependent stages, e.g. `qualitative` → `hypothesis` → `experiment` → `causal`. For changing task shapes (survey → compare), create separate route requests and connect their output/inputs in the section contracts or existing orchestrator task DAG. Re-route when new evidence changes the task; preserve the previous route and reason.
 
+For discovery starting from an idea, expert tip, or article, apply the [seeded snowball overlay](seeded-snowball.md) within the selected workflow. Validate the premise, fix an anchor, and expand through labeled conceptual and citation relationships. This is host-executed sourcing guidance, not an additional CLI method: record it in the decision card and section contracts, and keep the route's supported `methods` values and independent controls unchanged.
+
 ## Validation and escalation
 
 Use the lightest structure that meets the method's evidence requirements. Depth source counts are planning guidance for open research, not quotas for a supplied dataset, a proof or an experiment. Apply the method's evidence rules and record unavailable source lanes instead of padding citations. Add independent extraction, a challenger or a bounded search lane only for a named gap. Adjudication checks source independence, dates, definitions and conflicting evidence; agreement between agents is not validation.
