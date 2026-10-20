@@ -58,6 +58,9 @@ historical pack, supply the historical cutoff explicitly; the default is now.
 | `one-pager-content.md` | Readable content handoff |
 | `webex-brief.md` | Separate copy-ready communication |
 
+Symlinked company/fiscal output directories are rejected before pack allocation;
+an existing output ancestor cannot redirect writes outside the chosen root.
+
 Sources also need retained evidence files, normally under `captures/`. Derived
 metrics need calculation receipts, normally under `calculations/`. References must
 be relative paths within the pack. Symlinks, special files, and files over 4 MiB
@@ -132,6 +135,11 @@ The validator reruns the formula and every recorded check. A copied `passed`
 string or a recomputed hash cannot make incorrect arithmetic pass. This does not
 prove that an input was correctly transcribed or that the chosen formula answers
 the research question; those remain review responsibilities.
+
+Numeric inputs, formula constants and final numeric results use the same finite
+decimal bounds (adjusted exponent magnitude at most 100). Arithmetic failures,
+including intermediate Decimal overflow in formulas or checks, produce a
+structured validation failure rather than a traceback.
 
 ## Structured content contract
 

@@ -13,6 +13,13 @@ Phase 1 is **query optimization**: identify one or more meta-questions, decompos
 
 Before selecting a workflow, apply `references/method-routing.md`: classify the task shape and research method in the host, then validate the contract with `research.py route --request-file <request.json> --json`. Explicit user overrides win. The CLI's keyword hints are tentative; domain labels alone do not select a method. Preserve depth, verification, source policy, computation and persistence as independent controls.
 
+For practical approach selection, read [approach-selection.md](references/approach-selection.md).
+Match the intended answer and available evidence to an ordered `approaches` list,
+or explicitly choose `[]` for ordinary research. Record the reason and rejected
+alternative in the decision card. Resolve tentative `approach_candidates` before
+sourcing; the CLI validates selections and returns their input/completion
+contracts, but never substitutes keyword matching for the host's judgment.
+
 When findings combine financial, quantitative and qualitative evidence, use explicit source-backed claim connections from `../research-orchestrator/references/contracts.md`. Record relationship rationale and basis alignment; never infer causation from a graph link.
 
 Every derived number in any workflow must be computed through an existing tool or a reviewed Python script, executed and validated. Load `references/quantitative-analysis.md` even when the parent task is a comparison, synthesis or review. A script's successful exit is execution evidence, not proof that the method or inputs are valid.
@@ -22,7 +29,8 @@ Use this language table as hints for selecting reference material:
 | Trigger Language | Workflow | Reference |
 |-----------------|----------|-----------|
 | "research", "investigate", "evaluate", "compare", "look into", "what's better X or Y" | **General Research** | Phases 1-6 below |
-| "snowball", "expand from this idea/tip/source", "find similar helpful content", "underlying principles", "expand outward" | **Seeded Snowball Overlay** | `references/seeded-snowball.md`; validate the premise before expanding |
+| "snowball", "expand from this idea/tip/source", "find similar helpful content" | **Seeded Snowball Overlay** | `references/seeded-snowball.md`; validate the premise before expanding |
+| "earnings analysis", "compare quarterly results", "why did margin change", "scenario analysis", "themes across interviews", "update previous research", "expert interview questions" | **Select a practical approach** | `references/approach-selection.md`; match outcome and evidence, then validate `approaches` |
 | "optimize this prompt/question", "make this research-ready", vague or multi-part request, voice transcript | **Query Optimization** | `references/query-optimization.md` · `/research:optimize` |
 | "margin", "cost of sales", "COGS", "gross/operating margin", "EBITDA", "working capital", "unit economics", "cost bucket", "P&L", "financial model input", "comparable companies", "filings", "10-K", "earnings call" | **Financial Research** | `financial-research` skill |
 | "section contracts", "query ledger", "source register", "claim register", "reconcile sources", multi-section deep run | **Deep Research Orchestration** | `references/deep-orchestration.md` |
@@ -344,6 +352,7 @@ Always include:
 ## Additional Resources
 
 For detailed methodology and output formats, consult:
+- **`references/approach-selection.md`** — Select and combine practical research approaches from evidence needs, with exclusions, required inputs, and completion rules
 - **`references/query-optimization.md`** — Phase 1 contract: input registers, decision card, meta-questions, MECE groups, section contracts, Q0-Q4 levels, 0-24 readiness score
 - **`references/deep-orchestration.md`** — Section contracts in execution, query ledger, source and claim registers, reconcile step, cross-section synthesis, completion rules
 - **`references/seeded-snowball.md`** — Expand a seed idea through explicit conceptual/citation relationships with premise validation, independent support, relevance boundaries, and stopping rules

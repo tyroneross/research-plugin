@@ -18,6 +18,12 @@ python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN_ROOT}}}/re
 
 This skill is an overlay on the `research` skill, not a replacement. Run `/research:optimize` at level Q4 first, then the general research phases, with the controls below binding at every step. Full detail: `references/financial-controls.md`. Deliverable shape: `references/evidence-package-template.md`.
 
+Choose `earnings_analysis`, `financial_mechanisms`, or `scenario_analysis` when
+their evidence job matches the request, following
+`../research/references/approach-selection.md`. Do not infer a method from a
+financial topic alone. Keep basis controls for all financial work, and use the
+full earnings pack only when that deliverable is requested.
+
 ## When this skill fires
 
 Trigger language: margin · cost of sales · COGS · oCOGS · gross margin · operating margin · EBITDA · working capital · unit economics · cost bucket · P&L · financial model input · comparable companies · filings · 10-K · earnings call · transformation cost · manufacturing cost · supply-chain cost · NPI.

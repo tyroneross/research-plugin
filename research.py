@@ -39,7 +39,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, date
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, DecimalException, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
@@ -2212,6 +2212,47 @@ RESEARCH_METHODS = {
     "formal": ("evaluation_loop", ["proof_checker"], "formal statement; assumptions; checker environment; proof artifact", "checker accepts proof under stated assumptions"),
     "archival": ("dependency_pipeline", [], "provenance; chronology; source versions; corroboration; missing records", "claims trace to dated records; contradictions and gaps remain visible"),
 }
+RESEARCH_APPROACHES = {
+    "seeded_snowball": (
+        "skills/research/references/seeded-snowball.md",
+        "seed claim and attribution; premise disposition; anchor question; relevance boundary; expansion budget",
+        "concept and citation relationships labeled; independence and applicability recorded; stop reason and gaps stated"),
+    "earnings_analysis": (
+        "skills/research/references/approach-selection.md#earnings-analysis",
+        "issuer and fiscal event; source cutoff; release/filing/call availability; prior guide and comparison basis; decision lens",
+        "actual, prior-period, guidance and consensus separated; narrative tested against operating evidence; release-only gaps explicit; pack validated if requested"),
+    "financial_mechanisms": (
+        "skills/research/references/approach-selection.md#financial-mechanisms",
+        "metric definition and statement location; comparable periods and scopes; competing driver explanations; attribution evidence",
+        "drivers classified as disclosed, derived, directional or hypothetical; implications have mechanism, horizon, monitor and disconfirming evidence"),
+    "scenario_analysis": (
+        "skills/research/references/approach-selection.md#scenario-analysis",
+        "decision and outcome metric; common baseline and forecast vintage; demand/supply/cost inputs; deliberate variables; formulas and constraints",
+        "scenario differences reconciled to changed assumptions; calculations and sensitivity checks executed; assumptions distinguished from predictions"),
+    "thematic_synthesis": (
+        "skills/research/references/approach-selection.md#thematic-synthesis",
+        "bounded supplied corpus; synthesis question; source locators and independence; analytic approach",
+        "themes trace to excerpts; dissent and exceptions preserved; relevant, irrelevant and missing source coverage accounted for"),
+    "longitudinal_update": (
+        "skills/research/references/active-project-ingestion.md",
+        "previous research state; new dated evidence; entity and period alignment; active decision questions",
+        "strengthened, weakened, contradicted and superseded claims traced through a dated change record; prior evidence preserved"),
+    "expert_interview": (
+        "skills/research/references/approach-selection.md#expert-interview",
+        "unresolved evidence gaps; expert role and firsthand visibility; interview permissions; prioritized neutral questions",
+        "questions mapped to gaps; completed interviews have attributed excerpts and reconciled claims; an interview guide alone remains a plan"),
+}
+
+# Discovery hints are deliberately narrow and never select an approach themselves.
+APPROACH_HINTS = {
+    "seeded_snowball": r"\bsnowball\s+(?:research|search|from)\b|\bexpand\s+(?:from\s+)?(?:this|an?|the)\s+(?:idea|tip|source)\b|\b(?:tip|expert recommended|seed idea)\b.*\b(?:related|similar|principles|expand)\b",
+    "earnings_analysis": r"\b(?:analy[sz]e|compare|summari[sz]e|update|brief|review)\b.*\b(?:earnings|quarterly results)\b|\bearnings\s+(?:analysis|update|brief|comparison)\b|\bquarter\b.*\b(?:results|guidance)\b",
+    "financial_mechanisms": r"\b(?:why|explain|drivers?|attribut\w*)\b.*\b(?:margin|costs?|profitability)\b",
+    "scenario_analysis": r"\b(?:compare|model|calculate|build|evaluate)\b.*\bscenarios?\b|\bscenario\s+analysis\b",
+    "thematic_synthesis": r"\b(?:themes?|thematic|dissent)\b.*\b(?:interviews?|sources?|reports?|corpus)\b|\b(?:interviews?|sources?|reports?|corpus)\b.*\b(?:themes?|thematic|dissent)\b",
+    "longitudinal_update": r"\b(?:update|refresh|revisit)\b.*\b(?:prior|previous|existing)\s+(?:research|findings|evidence)\b|\b(?:themes?|claims?|evidence)\b.*\b(?:evolved|superseded|changed over time)\b",
+    "expert_interview": r"\b(?:prepare|design|draft|prioriti[sz]e)\b.*\b(?:expert|interview)\b.*\b(?:questions?|guide|gaps?)\b|\bquestions?\b.*\b(?:expert call|expert interview)\b",
+}
 ROUTE_ENUMS = {
     "task_shape": RESEARCH_SHAPES,
     "depth": {"light", "standard", "deep"},
@@ -2231,7 +2272,7 @@ def _research_route(request: dict[str, Any]) -> dict[str, Any]:
     """
     if not isinstance(request, dict):
         raise ValueError("request must be an object")
-    fields = set(ROUTE_ENUMS) | {"query", "methods", "domain", "persist", "independent_tasks", "available_capabilities"}
+    fields = set(ROUTE_ENUMS) | {"query", "methods", "approaches", "domain", "persist", "independent_tasks", "available_capabilities"}
     unknown = set(request) - fields - {"overrides"}
     if unknown:
         raise ValueError("unknown request fields: " + ", ".join(sorted(unknown)))
@@ -2248,6 +2289,9 @@ def _research_route(request: dict[str, Any]) -> dict[str, Any]:
     methods = values.get("methods", [])
     if not isinstance(methods, list) or any(not isinstance(m, str) or m not in RESEARCH_METHODS for m in methods) or len(set(methods)) != len(methods):
         raise ValueError("methods must be a unique ordered list of supported method names")
+    approaches = values.get("approaches", [])
+    if not isinstance(approaches, list) or any(not isinstance(a, str) or a not in RESEARCH_APPROACHES for a in approaches) or len(set(approaches)) != len(approaches):
+        raise ValueError("approaches must be a unique ordered list of supported approach names")
     if "persist" in values and not isinstance(values["persist"], bool):
         raise ValueError("persist must be boolean")
     if "domain" in values and (not isinstance(values["domain"], str) or not values["domain"].strip()):
@@ -2260,13 +2304,14 @@ def _research_route(request: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("available_capabilities must be a list of non-empty strings")
     profile = _research_depth_profile(query)
     text = query.lower()
+    approach_candidates = [name for name, pattern in APPROACH_HINTS.items() if re.search(pattern, text)] if "approaches" not in values else []
     hints = [("collect", r"\b(extract|collect|dataset)\b"), ("compare", r"\b(compare|versus|vs)\b"), ("survey", r"\b(landscape|survey|overview)\b"), ("explain", r"\b(why|explain|synthesize)\b")]
     shape = values.get("task_shape", next((name for name, pattern in hints if re.search(pattern, text)), "lookup"))
     # These are suggestions only. The host reads intent before accepting a method.
     method_hints = {"review": r"systematic review|meta-analysis", "qualitative": r"thematic analysis|interview coding", "measurement": r"psychometric|measurement validity", "causal": r"causal effect|causal inference", "forecast": r"\bforecast", "simulation": r"\bsimulat", "hypothesis": r"hypothesis generation", "experiment": r"design an experiment|randomized trial", "optimize": r"\boptimization\b", "formal": r"formal proof|prove a theorem", "archival": r"archival|historical records"}
     if "methods" not in values:
         methods = [name for name, pattern in method_hints.items() if re.search(pattern, text)]
-    quant = profile["workflow"] == "quantitative" or bool(set(methods) & {"measurement", "causal", "forecast", "simulation", "optimize"}) or bool(re.search(r"\b(calculate|calculation|arithmetic|percentage|average|confidence interval|meta-analysis)\b", text))
+    quant = profile["workflow"] == "quantitative" or "scenario_analysis" in approaches or bool(set(methods) & {"measurement", "causal", "forecast", "simulation", "optimize"}) or bool(re.search(r"\b(calculate|calculation|arithmetic|percentage|average|confidence interval|meta-analysis)\b", text))
     workflow = values.get("workflow", "quantitative" if quant else profile["workflow"])
     quant = quant or workflow == "quantitative" or values.get("computation") == "required"
     computation = values.get("computation", "required" if quant else "on_demand")
@@ -2292,11 +2337,17 @@ def _research_route(request: dict[str, Any]) -> dict[str, Any]:
         stages.append({"id": f"stage-{i + 1}", "method": name if methods else None, "task_shape": shape,
                        "depends_on": [f"stage-{i}"] if i else [], "structure": structure,
                        "required_inputs": inputs.split("; "), "completion_rule": validation})
-    confidence = "clear" if "task_shape" in values and "methods" in values else "tentative"
+    confidence = "clear" if "task_shape" in values and "methods" in values and not approach_candidates else "tentative"
     if blockers:
         confidence = "needs_input"
     return {
         "schema_version": 1, "query": query, "task_shape": shape, "methods": methods,
+        "approaches": approaches,
+        "approach_selection_required": bool(approach_candidates),
+        "approach_candidates": [{"approach": name, "status": "tentative", "reference": RESEARCH_APPROACHES[name][0]} for name in approach_candidates],
+        "approach_contracts": [{"approach": name, "reference": RESEARCH_APPROACHES[name][0],
+                                "required_inputs": RESEARCH_APPROACHES[name][1].split("; "),
+                                "completion_rule": RESEARCH_APPROACHES[name][2]} for name in approaches],
         "depth": values.get("depth", profile["depth"]), "workflow": workflow,
         "verification": values.get("verification", "adjudication" if re.search(r"\b(contested|conflicting evidence|sources disagree|adversarial)\b", text) else "standard"), "domain": values.get("domain", "general"),
         "source_policy": source_policy, "web_required": profile["web_required"],
@@ -2306,6 +2357,7 @@ def _research_route(request: dict[str, Any]) -> dict[str, Any]:
         "stages": stages, "status": "blocked_missing_input" if blockers else "planned",
         "confidence": confidence, "blockers": blockers,
         "reasons": ["Explicit overrides take precedence over host classification; unspecified fields use tentative hints.",
+                    "The host selects approaches from the requested outcome and available evidence; tentative candidates never activate tools or change permissions.",
                     "Routing does not execute work or prove an architecture effective.",
                     "Derived numbers require executed code and validation; quoted numbers require source attribution."],
         "field_origins": {key: "user_override" if key in overrides else "host_contract" if key in values else "default_or_hint" for key in sorted(fields - {"query"})},
@@ -2326,6 +2378,7 @@ def cmd_route(args: argparse.Namespace) -> int:
     print(json.dumps(result, indent=2) if args.json else
           f"Route: {result['task_shape']} / {', '.join(result['methods']) or 'general'} / {result['depth']}\n"
           f"Status: {result['status']} ({result['confidence']})\n"
+          f"Approaches: {', '.join(result['approaches']) or 'ordinary research'}; candidates: {', '.join(x['approach'] for x in result['approach_candidates']) or 'none'}\n"
           f"Computation: {result['computation']}; persistence: {result['persist']}\n" +
           "\n".join(result["blockers"] or result["reasons"]))
     return 0
@@ -5302,7 +5355,7 @@ def cmd_calculate(args: argparse.Namespace) -> int:
                 check_results.append({"name": str(check.get("name") or expression), "expression": expression, "passed": passed})
             if not all(item["passed"] for item in check_results):
                 status = "failed"
-    except (ValueError, ZeroDivisionError, InvalidOperation, SyntaxError) as exc:
+    except (ValueError, ZeroDivisionError, DecimalException, SyntaxError) as exc:
         status = "inconclusive"
         failure = str(exc)
     runtime_ms = max(0, (time.perf_counter_ns() - started) // 1_000_000)
@@ -7321,6 +7374,7 @@ def _ep_pending_review() -> dict:
 
 
 def _ep_allocate(base: Path, as_of: str) -> tuple[Path, int]:
+    _ep_require(not any(path.is_symlink() for path in (base, *base.parents)), "output directory ancestors cannot be symlinks")
     base.mkdir(parents=True, exist_ok=True)
     versions = [int(m.group(1)) for p in base.iterdir() if (m := re.fullmatch(re.escape(as_of) + r"-v([1-9]\d*)", p.name))]
     version = max(versions, default=0) + 1
@@ -7448,6 +7502,17 @@ def _ep_claims(root: Path, sources: dict, complete: bool) -> tuple[dict, list[di
     return claims, rows
 
 
+def _ep_calculate(expression: str, values: dict[str, Decimal]) -> Decimal | bool:
+    # Apply the pack's numeric bounds to literal constants as well as inputs.
+    for node in ast.walk(ast.parse(expression, mode="eval")):
+        if isinstance(node, ast.Constant) and not isinstance(node.value, bool) and isinstance(node.value, (int, float, str)):
+            _ep_decimal(str(node.value))
+    result = _safe_calculate(expression, values)
+    if isinstance(result, Decimal):
+        _ep_require(result.is_finite() and abs(result.adjusted()) <= 100, "calculation result must be finite and bounded")
+    return result
+
+
 def _ep_receipt(root: Path, claim: dict, sources: dict) -> str:
     cid = claim["claim_id"]
     _ep_require(claim["kind"] == "metric" and claim["validation"] == "passed", f"{cid}: derived metrics require passed validation")
@@ -7470,7 +7535,7 @@ def _ep_receipt(root: Path, claim: dict, sources: dict) -> str:
         matches = [s for sid, s in sources.items() if sid in claim["sources"] and s["observation_id"] == item.get("source_observation_id") and s["content_hash"] == item.get("source_content_hash")]
         _ep_require(len(matches) == 1, f"{cid}: calculation input has no unique source observation and capture hash")
         values[item["name"]] = _ep_decimal(str(item.get("value")))
-    result = _safe_calculate(claim["formula"], values)
+    result = _ep_calculate(claim["formula"], values)
     _ep_require(not isinstance(result, bool) and result.is_finite(), f"{cid}: formula must return a finite number")
     _ep_require(result == _ep_decimal(claim["value"]) == _ep_decimal(receipt.get("result_text")), f"{cid}: calculation result mismatch")
     checks = _ep_list(receipt.get("checks"), f"{cid}.checks")
@@ -7478,7 +7543,7 @@ def _ep_receipt(root: Path, claim: dict, sources: dict) -> str:
     for check in checks:
         _ep_require(isinstance(check, dict) and check.get("passed") is True and _ep_text(check.get("expression")), f"{cid}: invalid or failed calculation check")
         _ep_require(len(check["expression"]) <= 1000, f"{cid}: calculation check exceeds 1000 characters")
-        _ep_require(_safe_calculate(check["expression"], {**values, "result": result}) is True, f"{cid}: rerun calculation check failed")
+        _ep_require(_ep_calculate(check["expression"], {**values, "result": result}) is True, f"{cid}: rerun calculation check failed")
     expected_output = {"result": receipt["result_text"], "unit": claim["unit"], "status": "passed"}
     _ep_require(receipt.get("output_hash") == _sha256_text(_canonical_json(expected_output)), f"{cid}: output hash mismatch")
     return claim["receipt"]
@@ -7655,7 +7720,7 @@ def _ep_validate(root: Path, scaffold: bool = False, require_review: bool = True
         if manifest["source_state"] == "release_only":
             report["warnings"].append("Release-only coverage: call and Q&A conclusions require a later source refresh.")
         report.update(status="scaffold" if scaffold else "pass", claims=len(claims), sources=len(sources))
-    except (OSError, ValueError, TypeError, KeyError, InvalidOperation, ZeroDivisionError, SyntaxError, RecursionError, csv.Error) as exc:
+    except (OSError, ValueError, TypeError, KeyError, DecimalException, ZeroDivisionError, SyntaxError, RecursionError, csv.Error) as exc:
         report["errors"].append(str(exc))
     return report
 

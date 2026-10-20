@@ -199,6 +199,17 @@ for commands, schemas, review steps, and a populated synthetic example. This is
 a new `research.earnings.v1` contract; historical WorkWiki schemas are not
 silently accepted. No helper calls a model or fetches financial sources.
 
+## Research approach selection
+
+Research selection separates task shape, scientific method, and practical
+approach. The host reads the [approach decision guide](skills/research/references/approach-selection.md),
+selects an ordered `approaches` list, and validates it with `route --request-file`.
+The route returns required inputs and completion rules for snowball discovery,
+earnings, financial mechanisms, quantitative scenarios, thematic synthesis,
+longitudinal updates, and expert interviews. Raw queries produce tentative
+candidates; the host must accept or reject them before sourcing. Explicit `[]`
+keeps ordinary research. Suggestions never execute tools or grant permission.
+
 ## Search
 
 `/research:search` defaults to safe plain-text search: punctuation-heavy terms such as `research-plugin` are quoted before they reach FTS5, and results include highlighted snippets. Canonical entries and linked external project files are searched together unless `--entries-only` is passed. Raw FTS5 syntax remains available with `--fts-query` for advanced queries.

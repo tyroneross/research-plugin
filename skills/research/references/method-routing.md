@@ -6,6 +6,9 @@ Use the requested outcome and evidence needed to justify it. A discipline is a s
 
 1. Read the user's intended output and explicit constraints.
 2. Classify `task_shape` and an ordered `methods` list in the host. No external classifier API is needed. An empty methods list means ordinary information research.
+   Separately apply [approach-selection.md](approach-selection.md) and choose an
+   ordered `approaches` list (or `[]`). Explain the choice and rejected alternative
+   in the decision card; check input availability before dependent execution.
 3. Put explicit user controls in `overrides`; put host classification in the top-level fields. Overrides win over host classification, which wins over tentative keyword defaults.
 4. Run `research.py route --request-file <request.json> --json`. Raw `route --query "..." --json` is a provisional hint, not a semantic decision.
 5. Review the receipt's reasons, confidence, capability gaps and stage requirements. If ambiguous, record an alternative in the decision card. Resolve consequential missing input before dependent execution.
@@ -21,7 +24,17 @@ Use the requested outcome and evidence needed to justify it. A discipline is a s
 }
 ```
 
-Supported fields: `query`, `task_shape`, `methods`, `depth`, `workflow`, `verification`, `domain`, `source_policy`, `computation`, `persist`, `allowed_execution`, `independent_tasks`, `available_capabilities`, and `overrides`. Unknown fields and invalid values fail validation. `overrides` accepts routing fields except `query`; booleans must be JSON booleans.
+Supported fields: `query`, `task_shape`, `methods`, `approaches`, `depth`, `workflow`, `verification`, `domain`, `source_policy`, `computation`, `persist`, `allowed_execution`, `independent_tasks`, `available_capabilities`, and `overrides`. Unknown fields and invalid values fail validation. `overrides` accepts routing fields except `query`; booleans must be JSON booleans.
+
+`approaches` accepts `seeded_snowball`, `earnings_analysis`, `financial_mechanisms`,
+`scenario_analysis`, `thematic_synthesis`, `longitudinal_update`, and
+`expert_interview`. These are sourcing/analysis overlays, not additional
+scientific `methods`. Explicit selections return `approach_contracts` with
+references, required inputs and completion rules. Raw-query `approach_candidates`
+are tentative; when `approach_selection_required` is true, the host must select
+or reject them explicitly before sourcing. `approaches: []` suppresses candidates.
+Only an explicitly selected quantitative scenario approach requires computation;
+a candidate alone does not activate tools or change constraints.
 
 | Control | Values / meaning |
 |---|---|

@@ -413,7 +413,8 @@ def test_failed_write_cleans_only_its_new_pack(tmp_path, monkeypatch):
     assert list(parent.parent.iterdir()) == [parent]
 
 
-def test_actual_calculator_receipt_is_reused_and_recomputed(pack, tmp_path):
+@pytest.mark.parametrize("corruption", ["result", "overflow_literal", "overflow_intermediate", "overflow_check"])
+def test_actual_calculator_receipt_is_reused_and_recomputed(pack, tmp_path, corruption):
     env = {**os.environ, "RESEARCH_CONTENT_DIR": str(tmp_path / "calc-corpus"), "RESEARCH_INDEX_DIR": str(tmp_path / "calc-index")}
     capture = pack / "captures/example.txt"
     manifest = tmp_path / "source.json"
@@ -442,8 +443,48 @@ def test_actual_calculator_receipt_is_reused_and_recomputed(pack, tmp_path):
     rows[0].update(status="derived", validation="passed", formula="revenue / 2", receipt="calculations/C1.json")
     write_ledger(pack, rows)
     seal(pack)
-    receipt["result_text"] = "1"
-    # A rewritten hash alone cannot make incorrect arithmetic pass.
+    if corruption == "result":
+        receipt["result_text"] = "1"
+    elif corruption == "overflow_check":
+        receipt["checks"][0]["expression"] = "('1e100' ** 100) ** 100 > 0"
+    else:
+        formula = "'1e999999' * 10" if corruption == "overflow_literal" else "('1e100' ** 100) ** 100"
+        rows[0]["formula"] = receipt["formula"] = formula
+        receipt["formula_hash"] = hashlib.sha256(formula.encode()).hexdigest()
+        write_ledger(pack, rows)
+    # Consistent hashes cannot make incorrect arithmetic or overflow pass.
     receipt["receipt_hash"] = "sha256:" + research._sha256_text(research._canonical_json({k: v for k, v in receipt.items() if k != "receipt_hash"}))
     write_json(pack / "calculations/C1.json", receipt)
-    assert "calculation result mismatch" in " ".join(research._ep_validate(pack)["errors"])
+    result = cli(tmp_path, "validate_earnings_output.py", pack, "--json")
+    assert result.returncode == 2
+    report = json.loads(result.stdout)
+    assert report["status"] == "fail" and report["errors"]
+    assert "Traceback" not in result.stderr
+    if corruption == "result":
+        assert "calculation result mismatch" in " ".join(report["errors"])
+    if corruption == "overflow_intermediate":
+        payload = read_json(spec)
+        payload["formula"] = "('1e100' ** 100) ** 100"
+        write_json(spec, payload)
+        calculated = subprocess.run([sys.executable, str(ROOT / "research.py"), "calculate", "--spec", str(spec)], env=env, text=True, capture_output=True)
+        assert calculated.returncode == 2
+        assert read_json(Path(calculated.stdout.splitlines()[0]))["status"] == "inconclusive"
+        assert "Traceback" not in calculated.stderr
+
+
+@pytest.mark.parametrize("ancestor", ["company", "fiscal"])
+def test_initializer_rejects_symlinked_output_ancestors(tmp_path, ancestor):
+    base = tmp_path / "packs"
+    base.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if ancestor == "company":
+        (base / "example").symlink_to(outside, target_is_directory=True)
+    else:
+        (base / "example").mkdir()
+        (base / "example" / "fy2026-q2").symlink_to(outside, target_is_directory=True)
+    result = cli(tmp_path, "init_earnings_output.py", "--company", "Example", "--ticker", "EX",
+                 "--fiscal-year", "2026", "--quarter", "Q2", "--as-of", "2026-08-04", "--base-dir", base, "--json")
+    assert result.returncode == 2
+    assert "symlink" in json.loads(result.stdout)["errors"][0]
+    assert list(outside.iterdir()) == []
