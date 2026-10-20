@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Build three earnings output helpers backed by `research.py`: versioned scaffolds, read-only claim/display/receipt validation, and revisions with dependency invalidation and content-bound review. Document the new `research.earnings.v1` contract with a synthetic example; historical WorkWiki schemas require explicit conversion.
+
 - Add a seeded snowball sourcing overlay: validate seed claims, expand through labeled conceptual/citation relationships, track independent support and applicability, and preserve saturation/drift/budget stopping records with concept relationships and a reading list.
 
 - Connect mixed financial, quantitative and qualitative claims through evidence-backed assertions with explicit rationale and basis alignment.

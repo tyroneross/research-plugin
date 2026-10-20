@@ -169,6 +169,9 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 | `score <url>` | Inspect or set source tier for a domain |
 | `verify <slug>` | Run claim verification on an entry |
 | `calculate --spec <path>` | Execute a deterministic formula with source-linked inputs and append a quantitative receipt |
+| `earnings-init --company <name> --ticker <symbol> --fiscal-year <year> --quarter <Q1-Q4> --as-of <date>` | Create a non-overwriting earnings scaffold; defaults to `<content-root>/earnings/` |
+| `earnings-validate <pack> [--scaffold] [--json]` | Check evidence captures, ledger links, decimal display, calculator receipts, and a content-bound review |
+| `earnings-revise <pack> --scope <scope> --change-note <note> [--claim-id <id>]` | Copy an explicitly selected validated parent into a new version and invalidate affected claims |
 | `doctor` | Audit event-chain integrity, index parity, provenance coverage, malformed entries, and duplicate slugs |
 | `doctor-plan` | Produce a hashed, plan-only remediation sequence from doctor findings without applying corpus changes |
 | `source-record --manifest <path>` | Append one host-fetched or locally extracted source representation |
@@ -187,6 +190,14 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 | `compress <slug>` | Compact an entry's TL;DR and Raw sections |
 
 `/research:dashboard` had no `research.py` equivalent even before removal — its capability lives entirely in the `audit-dashboard` skill. Load that skill, or run directly: `python3 skills/audit-dashboard/scripts/render_dashboard.py <audit.json> --out <file.html>` (`--validate-only` checks the payload without rendering).
+
+The earnings interfaces are also available as `scripts/init_earnings_output.py`,
+`scripts/validate_earnings_output.py`, and `scripts/revise_earnings_output.py`.
+They share one implementation in `research.py`. See the
+[earnings pack contract](skills/financial-research/references/earnings-packs.md)
+for commands, schemas, review steps, and a populated synthetic example. This is
+a new `research.earnings.v1` contract; historical WorkWiki schemas are not
+silently accepted. No helper calls a model or fetches financial sources.
 
 ## Search
 

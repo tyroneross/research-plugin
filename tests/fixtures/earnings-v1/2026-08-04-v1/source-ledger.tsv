@@ -1,0 +1,5 @@
+claim_id	kind	statement	value	unit	period	scope	basis	status	material	evidence_class	source_ids	locators	validation	formula	denominator	grain	receipt	depends_on
+C1	metric	Synthetic revenue is 1255000000 USD.	1255000000	USD	FY2026 Q2	consolidated	GAAP	reported	true	reported_fact	"[""S1""]"	"{""S1"":""line 1""}"	source_only		not_applicable: absolute revenue	company-quarter		[]
+C2	metric	Synthetic gross margin is 50 percent.	50	percent	FY2026 Q2	consolidated	GAAP	reported	true	reported_fact	"[""S1""]"	"{""S1"":""line 1""}"	source_only		revenue	company-quarter		[]
+C3	metric	Synthetic operating margin is 20 percent.	20	percent	FY2026 Q2	consolidated	GAAP	reported	true	reported_fact	"[""S1""]"	"{""S1"":""line 1""}"	source_only		revenue	company-quarter		[]
+C4	inference	Synthetic revenue could support future investment.						estimated	true	inference	"[""S1""]"	"{""S1"":""line 1""}"	source_only					"[""C1""]"

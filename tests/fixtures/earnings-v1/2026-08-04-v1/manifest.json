@@ -1,0 +1,26 @@
+{
+  "schema_version": "research.earnings.v1",
+  "company": "Example Systems",
+  "ticker": "EXAMPLE",
+  "fiscal_year": 2026,
+  "quarter": "Q2",
+  "period_end": "2026-06-30",
+  "earnings_date": "2026-08-04",
+  "as_of": "2026-08-04",
+  "version": 1,
+  "created_at": "2026-08-04T20:00:00+00:00",
+  "source_cutoff": "2026-08-04T20:00:00+00:00",
+  "source_state": "release_only",
+  "latest_period_check": {
+    "status": "passed",
+    "checked_at": "2026-08-04T19:00:00+00:00",
+    "note": "Synthetic fixture event; no real issuer or current-market claim."
+  },
+  "review": {
+    "status": "passed",
+    "reviewer": "synthetic-fixture-reviewer",
+    "reviewed_at": "2026-08-04T21:00:00+00:00",
+    "input_hash": "sha256:7b980447e9bdf23d5b246c7659a313f7e0d9f42a9d8965eec37a3f2ad72fad90"
+  },
+  "revision": null
+}

@@ -29,6 +29,7 @@ import random
 import re
 import shutil
 import sqlite3
+import stat
 import statistics
 import subprocess
 import sys
@@ -38,7 +39,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from datetime import datetime, date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
@@ -7217,11 +7218,587 @@ def cmd_eval_check(args: argparse.Namespace) -> int:
     return 0 if not errors else 2
 
 
+# ---------- Versioned earnings packs ----------
+
+EARNINGS_SCHEMA = "research.earnings.v1"
+EARNINGS_FILES = ("webex-brief.md", "one-pager-content.md", "one-pager-content.json", "source-ledger.tsv")
+EARNINGS_COLUMNS = (
+    "claim_id", "kind", "statement", "value", "unit", "period", "scope", "basis",
+    "status", "material", "evidence_class", "source_ids", "locators", "validation",
+    "formula", "denominator", "grain", "receipt", "depends_on",
+)
+EARNINGS_SCOPES = ("formatting", "wording", "interpretation", "financial-data", "source-refresh")
+EARNINGS_CLASSES = ("reported_fact", "management_view", "external_view", "inference")
+
+
+def _ep_require(condition: Any, message: str) -> None:
+    if not condition:
+        raise ValueError(message)
+
+
+def _ep_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _ep_fields(value: Any, required: set[str], label: str, optional: set[str] | None = None) -> None:
+    _ep_require(isinstance(value, dict), f"{label}: expected object")
+    _ep_require(required <= value.keys(), f"{label}: missing fields {sorted(required - value.keys())}")
+    _ep_require(value.keys() <= required | (optional or set()), f"{label}: unknown fields {sorted(value.keys() - required - (optional or set()))}")
+
+
+def _ep_list(value: Any, label: str) -> list:
+    _ep_require(isinstance(value, list), f"{label}: expected list")
+    return value
+
+
+def _ep_ids(value: Any, label: str) -> list[str]:
+    _ep_list(value, label)
+    _ep_require(all(_ep_text(x) for x in value), f"{label}: IDs must be non-empty strings")
+    _ep_require(len(value) == len(set(value)), f"{label}: duplicate IDs")
+    return value
+
+
+def _ep_json(text: str) -> Any:
+    def pairs(items: list[tuple[str, Any]]) -> dict:
+        result: dict = {}
+        for key, value in items:
+            _ep_require(key not in result, f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    def bad_constant(value: str) -> None:
+        raise ValueError(f"non-finite JSON number: {value}")
+
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=bad_constant)
+
+
+def _ep_child(root: Path, name: str) -> Path:
+    _ep_require(_ep_text(name), "artifact path must be a non-empty string")
+    relative = Path(name)
+    _ep_require(not relative.is_absolute() and ".." not in relative.parts, f"artifact path must stay inside pack: {name}")
+    path = root / relative
+    current = root
+    for part in relative.parts:
+        current = current / part
+        _ep_require(not current.is_symlink(), f"symlink artifact: {name}")
+    _ep_require(path.resolve().is_relative_to(root.resolve()), f"artifact escapes pack: {name}")
+    _ep_require(stat.S_ISREG(path.stat().st_mode), f"artifact must be a regular file: {name}")
+    _ep_require(path.stat().st_size <= 4 * 1024 * 1024, f"artifact exceeds 4 MiB: {name}")
+    return path
+
+
+def _ep_date(value: Any, label: str) -> None:
+    _ep_require(isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value), f"{label}: use YYYY-MM-DD")
+    date.fromisoformat(value)
+
+
+def _ep_time(value: Any, label: str) -> datetime:
+    _ep_require(isinstance(value, str), f"{label}: expected timestamp")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    _ep_require(parsed.utcoffset() is not None, f"{label}: timezone offset required")
+    return parsed
+
+
+def _ep_decimal(value: Any) -> Decimal:
+    _ep_require(isinstance(value, str) and len(value) <= 80, "numeric value must be a decimal string of at most 80 characters")
+    number = Decimal(value)
+    _ep_require(number.is_finite() and abs(number.adjusted()) <= 100, "numeric value must be finite and bounded")
+    return number
+
+
+def _ep_display(value: str, spec: dict) -> str:
+    _ep_fields(spec, {"scale", "decimals", "prefix", "suffix"}, "display")
+    _ep_require(spec["scale"] in ("1", "1000", "1000000", "1000000000"), "display.scale: unsupported scale")
+    _ep_require(type(spec["decimals"]) is int and 0 <= spec["decimals"] <= 6, "display.decimals: use 0 through 6")
+    _ep_require(all(isinstance(spec[k], str) for k in ("prefix", "suffix")), "display prefix/suffix must be strings")
+    number = _ep_decimal(value) / Decimal(spec["scale"])
+    rounded = number.quantize(Decimal(1).scaleb(-spec["decimals"]), rounding=ROUND_HALF_UP)
+    return f"{spec['prefix']}{rounded:.{spec['decimals']}f}{spec['suffix']}"
+
+
+def _ep_pending_review() -> dict:
+    return {"status": "pending", "reviewer": "", "reviewed_at": "", "input_hash": ""}
+
+
+def _ep_allocate(base: Path, as_of: str) -> tuple[Path, int]:
+    base.mkdir(parents=True, exist_ok=True)
+    versions = [int(m.group(1)) for p in base.iterdir() if (m := re.fullmatch(re.escape(as_of) + r"-v([1-9]\d*)", p.name))]
+    version = max(versions, default=0) + 1
+    while True:
+        destination = base / f"{as_of}-v{version}"
+        try:
+            destination.mkdir()
+            return destination, version
+        except FileExistsError:
+            version += 1
+
+
+def _ep_write_json(path: Path, value: Any) -> None:
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + "\n", encoding="utf-8")
+
+
+def _ep_write_ledger(path: Path, rows: list[dict]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=EARNINGS_COLUMNS, delimiter="\t", lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def cmd_earnings_init(args: argparse.Namespace) -> int:
+    destination: Path | None = None
+    try:
+        _ep_require(_ep_text(args.company) and _ep_text(args.ticker), "company and ticker must be non-empty")
+        _ep_require(type(args.fiscal_year) is int and 1900 <= args.fiscal_year <= 9999, "fiscal year must be between 1900 and 9999")
+        _ep_require(args.quarter in ("Q1", "Q2", "Q3", "Q4"), "quarter must be Q1 through Q4")
+        _ep_date(args.as_of, "as-of")
+        for key in ("period_end", "earnings_date"):
+            if getattr(args, key):
+                _ep_date(getattr(args, key), key)
+        cutoff = args.source_cutoff or now_iso()
+        _ep_time(cutoff, "source-cutoff")
+        slug = re.sub(r"[^a-z0-9]+", "-", args.company.lower()).strip("-")
+        _ep_require(bool(slug) and len(slug) <= 100, "company must produce a slug of 1 through 100 characters")
+        base = Path(args.base_dir).expanduser().resolve() if args.base_dir else content_path("earnings").resolve()
+        identity = {"company": args.company.strip(), "ticker": args.ticker.strip(), "fiscal_year": args.fiscal_year,
+                    "quarter": args.quarter, "period_end": args.period_end or "", "earnings_date": args.earnings_date or ""}
+        destination, version = _ep_allocate(base / slug / f"fy{args.fiscal_year}-{args.quarter.lower()}", args.as_of)
+        manifest = {"schema_version": EARNINGS_SCHEMA, **identity, "as_of": args.as_of, "version": version,
+                    "created_at": now_iso(), "source_cutoff": cutoff, "source_state": "release_only",
+                    "latest_period_check": {"status": "pending", "checked_at": "", "note": ""},
+                    "review": _ep_pending_review(), "revision": None}
+        content = {"metadata": identity, "headline": {"title": f"{identity['company']} FY{args.fiscal_year} {args.quarter} Earnings Update", "takeaway": ""},
+                   "financial_highlights": [], "financial_drivers": [],
+                   "strategic_highlights": {k: [] for k in ("product", "gtm", "management_commentary", "competitive_reads", "strategic_watches")},
+                   "implications_slide": {k: [] for k in ("stock_reaction", "consensus_target", "analyst_sentiment", "competitive_impact", "partnership_opportunity", "recommended_actions")},
+                   "sources": [], "footnotes": [], "content_gaps": []}
+        _ep_write_json(destination / "manifest.json", manifest)
+        _ep_write_json(destination / "one-pager-content.json", content)
+        _ep_write_ledger(destination / "source-ledger.tsv", [])
+        (destination / "webex-brief.md").write_text(f"**{content['headline']['title']}**\n\n<!-- EARNINGS_DRAFT: Add a supported takeaway and proof bullets. -->\n", encoding="utf-8")
+        (destination / "one-pager-content.md").write_text(f"# {content['headline']['title']}\n\n<!-- EARNINGS_DRAFT: Complete the evidence-backed content handoff. -->\n", encoding="utf-8")
+        report = {"status": "scaffold", "path": str(destination), "version": version, "next": "Populate evidence and claims, then run earnings-validate."}
+    except (OSError, ValueError) as exc:
+        if destination is not None:
+            shutil.rmtree(destination)
+        report = {"status": "fail", "errors": [str(exc)]}
+    return _ep_print(report, args.json)
+
+
+def _ep_claims(root: Path, sources: dict, complete: bool) -> tuple[dict, list[dict]]:
+    path = _ep_child(root, "source-ledger.tsv")
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        _ep_require(reader.fieldnames == list(EARNINGS_COLUMNS), "source-ledger.tsv: header must exactly match the v1 column contract")
+        rows = list(reader)
+    claims: dict = {}
+    for row in rows:
+        _ep_require(set(row) == set(EARNINGS_COLUMNS) and all(isinstance(v, str) for v in row.values()), "ledger row has missing or extra cells")
+        cid = row["claim_id"]
+        _ep_require(bool(re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,79}", cid)), f"invalid claim_id: {cid}")
+        _ep_require(cid not in claims, f"duplicate claim_id: {cid}")
+        _ep_require(row["kind"] in ("metric", "statement", "quote", "inference"), f"{cid}: invalid kind")
+        _ep_require(_ep_text(row["statement"]), f"{cid}: statement required")
+        _ep_require(row["status"] in ("reported", "guidance", "consensus", "derived", "estimated"), f"{cid}: invalid status")
+        _ep_require(row["material"] in ("true", "false"), f"{cid}: material must be true or false")
+        _ep_require(row["evidence_class"] in EARNINGS_CLASSES, f"{cid}: invalid evidence_class")
+        _ep_require(row["validation"] in ("passed", "source_only", "gapped", "failed", "pending"), f"{cid}: invalid validation")
+        if complete:
+            _ep_require(row["material"] != "true" or row["validation"] in ("passed", "source_only"), f"{cid}: material claim has {row['validation']} validation")
+        ids = _ep_ids(_ep_json(row["source_ids"]), f"{cid}.source_ids")
+        _ep_require(bool(ids) and set(ids) <= sources.keys(), f"{cid}: missing or unknown source IDs")
+        locators = _ep_json(row["locators"])
+        _ep_require(isinstance(locators, dict) and set(locators) == set(ids) and all(_ep_text(x) for x in locators.values()), f"{cid}: exact locator required for every source")
+        deps = _ep_ids(_ep_json(row["depends_on"]), f"{cid}.depends_on")
+        if row["kind"] == "metric":
+            _ep_decimal(row["value"])
+            _ep_require(all(_ep_text(row[k]) for k in ("unit", "period", "scope", "basis", "denominator", "grain")), f"{cid}: metric basis fields required")
+            _ep_require(all(row[k].strip().lower() not in ("unknown", "tbd", "todo", "n/a", "not_applicable", "none", "null") for k in ("unit", "period", "scope", "basis", "denominator", "grain")), f"{cid}: metric basis cannot be an unresolved placeholder")
+        else:
+            _ep_require(not row["value"] and not row["receipt"] and not row["formula"], f"{cid}: non-metric cannot carry a numeric value or calculation")
+        if row["kind"] == "inference":
+            _ep_require(row["evidence_class"] == "inference", f"{cid}: inference must be labeled")
+        if row["status"] == "guidance":
+            _ep_require(row["evidence_class"] == "management_view", f"{cid}: guidance must be management_view")
+        if row["status"] == "consensus":
+            _ep_require(row["evidence_class"] == "external_view", f"{cid}: consensus must be external_view")
+        if row["status"] == "derived":
+            _ep_require(row["kind"] == "metric", f"{cid}: derived status requires a metric")
+        else:
+            _ep_require(not row["formula"] and not row["receipt"], f"{cid}: only derived metrics may carry a formula or receipt")
+        claims[cid] = {**row, "sources": ids, "dependencies": deps}
+    visiting: set = set()
+    visited: set = set()
+
+    def visit(cid: str) -> None:
+        _ep_require(cid in claims, f"unknown dependency: {cid}")
+        _ep_require(cid not in visiting, f"claim dependency cycle at {cid}")
+        if cid in visited:
+            return
+        visiting.add(cid)
+        for dep in claims[cid]["dependencies"]:
+            visit(dep)
+        visiting.remove(cid)
+        visited.add(cid)
+    for cid in claims:
+        visit(cid)
+    if complete:
+        for cid, claim in claims.items():
+            if claim["validation"] in ("passed", "source_only"):
+                _ep_require(all(claims[dep]["validation"] in ("passed", "source_only") for dep in claim["dependencies"]), f"{cid}: validated claim depends on an unvalidated claim")
+    return claims, rows
+
+
+def _ep_receipt(root: Path, claim: dict, sources: dict) -> str:
+    cid = claim["claim_id"]
+    _ep_require(claim["kind"] == "metric" and claim["validation"] == "passed", f"{cid}: derived metrics require passed validation")
+    receipt_path = _ep_child(root, claim["receipt"])
+    receipt = _ep_json(receipt_path.read_text(encoding="utf-8"))
+    _ep_require(isinstance(receipt, dict), f"{cid}: calculation receipt must be an object")
+    unsigned = {k: v for k, v in receipt.items() if k != "receipt_hash"}
+    _ep_require(receipt.get("receipt_hash") == "sha256:" + _sha256_text(_canonical_json(unsigned)), f"{cid}: receipt hash mismatch")
+    _ep_require(receipt.get("claim_id") == cid and receipt.get("status") == "passed", f"{cid}: receipt must match the claim and pass")
+    for key in ("formula", "unit", "denominator", "grain"):
+        _ep_require(receipt.get(key) == claim[key], f"{cid}: receipt {key} mismatch")
+    _ep_require(receipt.get("formula_hash") == _sha256_text(claim["formula"]), f"{cid}: formula hash mismatch")
+    inputs = _ep_list(receipt.get("inputs"), f"{cid}.inputs")
+    _ep_require(0 < len(inputs) <= 50 and receipt.get("input_hash") == _sha256_text(_canonical_json(inputs)), f"{cid}: input hash mismatch or unsupported input count")
+    _ep_require(0 < len(claim["formula"]) <= 1000, f"{cid}: formula must be 1 through 1000 characters")
+    values: dict = {}
+    for item in inputs:
+        _ep_require(isinstance(item, dict) and _ep_text(item.get("name")), f"{cid}: invalid calculation input")
+        _ep_require(item["name"].isidentifier() and item["name"] not in values and item["name"] != "result", f"{cid}: invalid or duplicate calculation input name")
+        matches = [s for sid, s in sources.items() if sid in claim["sources"] and s["observation_id"] == item.get("source_observation_id") and s["content_hash"] == item.get("source_content_hash")]
+        _ep_require(len(matches) == 1, f"{cid}: calculation input has no unique source observation and capture hash")
+        values[item["name"]] = _ep_decimal(str(item.get("value")))
+    result = _safe_calculate(claim["formula"], values)
+    _ep_require(not isinstance(result, bool) and result.is_finite(), f"{cid}: formula must return a finite number")
+    _ep_require(result == _ep_decimal(claim["value"]) == _ep_decimal(receipt.get("result_text")), f"{cid}: calculation result mismatch")
+    checks = _ep_list(receipt.get("checks"), f"{cid}.checks")
+    _ep_require(0 < len(checks) <= 50, f"{cid}: 1 through 50 calculation checks required")
+    for check in checks:
+        _ep_require(isinstance(check, dict) and check.get("passed") is True and _ep_text(check.get("expression")), f"{cid}: invalid or failed calculation check")
+        _ep_require(len(check["expression"]) <= 1000, f"{cid}: calculation check exceeds 1000 characters")
+        _ep_require(_safe_calculate(check["expression"], {**values, "result": result}) is True, f"{cid}: rerun calculation check failed")
+    expected_output = {"result": receipt["result_text"], "unit": claim["unit"], "status": "passed"}
+    _ep_require(receipt.get("output_hash") == _sha256_text(_canonical_json(expected_output)), f"{cid}: output hash mismatch")
+    return claim["receipt"]
+
+
+def _ep_content_items(content: dict) -> list[dict]:
+    items = list(_ep_list(content["financial_drivers"], "financial_drivers"))
+    for section, keys in (
+        ("strategic_highlights", {"product", "gtm", "management_commentary", "competitive_reads", "strategic_watches"}),
+        ("implications_slide", {"stock_reaction", "consensus_target", "analyst_sentiment", "competitive_impact", "partnership_opportunity", "recommended_actions"}),
+    ):
+        _ep_fields(content[section], keys, section)
+        for key, value in content[section].items():
+            items.extend(_ep_list(value, f"{section}.{key}"))
+    return items
+
+
+def _ep_review_hash(root: Path, manifest: dict, artifacts: set[str]) -> str:
+    payload = {"manifest": {k: v for k, v in manifest.items() if k != "review"},
+               "artifacts": {name: _file_sha256(_ep_child(root, name)) for name in sorted(artifacts)}}
+    return "sha256:" + _sha256_text(_canonical_json(payload))
+
+
+def _ep_validate(root: Path, scaffold: bool = False, require_review: bool = True) -> dict:
+    report: dict = {"status": "fail", "path": str(root), "schema_version": EARNINGS_SCHEMA, "errors": [], "warnings": [], "review_input_hash": None}
+    try:
+        _ep_require(root.is_dir() and not root.is_symlink(), "pack must be a directory, not a symlink")
+        root = root.resolve()
+        manifest = _ep_json(_ep_child(root, "manifest.json").read_text(encoding="utf-8"))
+        manifest_keys = {"schema_version", "company", "ticker", "fiscal_year", "quarter", "period_end", "earnings_date", "as_of", "version", "created_at", "source_cutoff", "source_state", "latest_period_check", "review", "revision"}
+        _ep_fields(manifest, manifest_keys, "manifest")
+        _ep_require(manifest["schema_version"] == EARNINGS_SCHEMA, "unsupported earnings schema; historical WorkWiki schemas require explicit conversion")
+        _ep_require(_ep_text(manifest["company"]) and _ep_text(manifest["ticker"]), "company and ticker required")
+        _ep_require(type(manifest["fiscal_year"]) is int and 1900 <= manifest["fiscal_year"] <= 9999, "invalid fiscal_year")
+        _ep_require(manifest["quarter"] in ("Q1", "Q2", "Q3", "Q4"), "invalid quarter")
+        _ep_require(type(manifest["version"]) is int and manifest["version"] > 0, "version must be a positive integer")
+        _ep_date(manifest["as_of"], "as_of")
+        _ep_require(root.name == f"{manifest['as_of']}-v{manifest['version']}", "directory name does not match manifest date/version")
+        created = _ep_time(manifest["created_at"], "created_at")
+        cutoff = _ep_time(manifest["source_cutoff"], "source_cutoff")
+        _ep_require(created <= datetime.now().astimezone(), "created_at is in the future")
+        _ep_require(cutoff <= created, "source_cutoff cannot follow pack creation")
+        for key in ("period_end", "earnings_date"):
+            if not scaffold or manifest[key]:
+                _ep_date(manifest[key], key)
+        if not scaffold:
+            _ep_require(manifest["period_end"] <= manifest["earnings_date"] <= manifest["as_of"], "event dates must satisfy period_end <= earnings_date <= as_of")
+            _ep_require(manifest["earnings_date"] <= cutoff.date().isoformat() <= manifest["as_of"], "source cutoff date must be between earnings_date and as_of")
+        _ep_require(manifest["source_state"] in ("release_only", "call_included"), "invalid source_state")
+        check = manifest["latest_period_check"]
+        _ep_fields(check, {"status", "checked_at", "note"}, "latest_period_check")
+        _ep_require(check["status"] in ("pending", "passed"), "invalid latest_period_check status")
+        if not scaffold:
+            _ep_require(check["status"] == "passed" and _ep_text(check["note"]), "latest event/correction check requires passed status and evidence note")
+            _ep_require(_ep_time(check["checked_at"], "latest_period_check.checked_at") <= cutoff, "latest-period check must be within source cutoff")
+        content = _ep_json(_ep_child(root, "one-pager-content.json").read_text(encoding="utf-8"))
+        _ep_fields(content, {"metadata", "headline", "financial_highlights", "financial_drivers", "strategic_highlights", "implications_slide", "sources", "footnotes", "content_gaps"}, "one-pager-content")
+        _ep_require(content["metadata"] == {k: manifest[k] for k in ("company", "ticker", "fiscal_year", "quarter", "period_end", "earnings_date")}, "content metadata does not match manifest")
+        _ep_fields(content["headline"], {"title", "takeaway"}, "headline")
+        _ep_require(_ep_text(content["headline"]["title"]), "headline title required")
+        gaps = _ep_ids(content["content_gaps"], "content_gaps")
+        if not scaffold:
+            _ep_require(_ep_text(content["headline"]["takeaway"]), "headline takeaway required")
+        sources: dict = {}
+        artifacts = set(EARNINGS_FILES)
+        source_keys = {"source_id", "citation_text", "url", "path", "role", "tier", "tier_rationale", "publication_date", "accessed_at", "recency_status", "upstream_source_ids", "capture_path", "content_hash", "observation_id", "document_type"}
+        for source in _ep_list(content["sources"], "sources"):
+            _ep_fields(source, source_keys, "source")
+            sid = source["source_id"]
+            _ep_require(_ep_text(sid) and sid not in sources, "source_id must be non-empty and unique")
+            _ep_require(all(_ep_text(source[k]) for k in ("citation_text", "tier_rationale", "observation_id")), f"{sid}: citation, tier rationale, and observation ID required")
+            _ep_require(_ep_text(source["url"]) or _ep_text(source["path"]), f"{sid}: source URL or original path required")
+            _ep_require(source["tier"] in ("T1", "T2", "T3", "T4"), f"{sid}: invalid source tier")
+            _ep_require(source["role"] in ("PRIMARY-DISCLOSURE", "DIRECT-EXPERT", "INDEPENDENT-ANALYSIS", "DERIVATIVE-SUMMARY", "AI-DISCOVERY"), f"{sid}: invalid source role")
+            _ep_require(source["document_type"] in ("release", "filing", "presentation", "transcript", "expert", "market", "other"), f"{sid}: invalid document type")
+            _ep_require(source["recency_status"] in ("current", "recent-context", "stale", "undated", "conflicted"), f"{sid}: invalid recency status")
+            _ep_ids(source["upstream_source_ids"], f"{sid}.upstream_source_ids")
+            _ep_date(source["publication_date"], f"{sid}.publication_date")
+            accessed = _ep_time(source["accessed_at"], f"{sid}.accessed_at")
+            _ep_require(source["publication_date"] <= accessed.date().isoformat() and accessed <= cutoff, f"{sid}: publication/access must be within cutoff")
+            capture = _ep_child(root, source["capture_path"])
+            _ep_require(source["capture_path"] not in (*EARNINGS_FILES, "manifest.json"), f"{sid}: capture must be separate from generated artifacts")
+            _ep_require(source["content_hash"] == "sha256:" + _file_sha256(capture), f"{sid}: source capture hash mismatch")
+            artifacts.add(source["capture_path"])
+            sources[sid] = source
+        _ep_require(len({s["observation_id"] for s in sources.values()}) == len(sources), "source observation IDs must be unique")
+        if not scaffold and manifest["source_state"] == "call_included":
+            _ep_require(any(s["document_type"] == "transcript" and s["recency_status"] == "current" for s in sources.values()), "call_included requires current transcript evidence")
+        if manifest["source_state"] == "release_only":
+            _ep_require(not any(s["document_type"] == "transcript" and s["recency_status"] == "current" for s in sources.values()), "current transcript evidence requires call_included source state")
+        for sid, source in sources.items():
+            _ep_require(set(source["upstream_source_ids"]) <= sources.keys() and sid not in source["upstream_source_ids"], f"{sid}: unknown or self upstream source")
+        claims, rows = _ep_claims(root, sources, not scaffold)
+        if not scaffold:
+            _ep_require(bool(sources) and bool(claims), "completed packs require sources and claims")
+        for cid, claim in claims.items():
+            if not scaffold and claim["material"] == "true":
+                _ep_require(all(sources[s]["role"] != "AI-DISCOVERY" and sources[s]["recency_status"] not in ("stale", "undated", "conflicted") for s in claim["sources"]), f"{cid}: material claim uses discovery-only, stale, undated, or conflicted evidence")
+            if claim["status"] == "derived" and (not scaffold or claim["validation"] == "passed"):
+                artifacts.add(_ep_receipt(root, claim, sources))
+        footnotes: dict = {}
+        for footnote in _ep_list(content["footnotes"], "footnotes"):
+            _ep_fields(footnote, {"footnote_id", "text", "source_ids"}, "footnote")
+            _ep_require(_ep_text(footnote["footnote_id"]) and footnote["footnote_id"] not in footnotes and _ep_text(footnote["text"]), "invalid or duplicate footnote")
+            _ep_require(set(_ep_ids(footnote["source_ids"], "footnote.source_ids")) <= sources.keys(), "footnote references unknown source")
+            footnotes[footnote["footnote_id"]] = footnote
+        highlights = _ep_list(content["financial_highlights"], "financial_highlights")
+        if not scaffold:
+            _ep_require(1 <= len(highlights) <= 5, "completed packs require 1 through 5 highlights")
+            _ep_require(len(highlights) >= 3 or bool(gaps), "fewer than three highlights requires an explicit content gap")
+        used: set = set()
+        for item in highlights:
+            _ep_fields(item, {"claim_id", "label", "display_value", "display", "comparison", "insight", "unit", "period", "scope", "basis", "status", "source_ids", "footnote_ids"}, "highlight")
+            cid = item["claim_id"]
+            _ep_require(isinstance(cid, str) and cid in claims and cid not in used, "highlight claim ID must exist and be unique")
+            used.add(cid)
+            claim = claims[cid]
+            _ep_require(claim["kind"] == "metric", f"{cid}: highlight requires a metric")
+            _ep_require(all(_ep_text(item[k]) for k in ("label", "comparison", "insight")), f"{cid}: label, comparison, insight required")
+            for key in ("unit", "period", "scope", "basis", "status"):
+                _ep_require(item[key] == claim[key], f"{cid}: highlight {key} mismatch")
+            _ep_require(set(_ep_ids(item["source_ids"], f"{cid}.source_ids")) == set(claim["sources"]), f"{cid}: highlight source mismatch")
+            _ep_require(set(_ep_ids(item["footnote_ids"], f"{cid}.footnote_ids")) <= footnotes.keys(), f"{cid}: unknown footnote")
+            _ep_require(item["display_value"] == _ep_display(claim["value"], item["display"]), f"{cid}: displayed value does not match exact ledger value and rounding")
+            if not scaffold:
+                _ep_require(claim["validation"] in ("passed", "source_only"), f"{cid}: displayed claim is not validated")
+        for item in _ep_content_items(content):
+            _ep_fields(item, {"text", "claim_ids", "evidence_class", "confidence", "source_ids"}, "analytical item", {"mechanism", "time_horizon", "monitor", "disconfirming_evidence", "speaker", "role", "context"})
+            ids = _ep_ids(item["claim_ids"], "analytical item.claim_ids")
+            _ep_require(ids and set(ids) <= claims.keys() and _ep_text(item["text"]), "analytical item requires text and known claim IDs")
+            used.update(ids)
+            _ep_require(item["evidence_class"] in EARNINGS_CLASSES and item["confidence"] in ("high", "medium", "low"), "invalid analytical evidence class or confidence")
+            _ep_require(all(claims[c]["evidence_class"] == item["evidence_class"] for c in ids), "analytical evidence class mismatch")
+            expected_sources = {s for c in ids for s in claims[c]["sources"]}
+            _ep_require(set(_ep_ids(item["source_ids"], "analytical item.source_ids")) == expected_sources, "analytical source IDs do not match linked claims")
+            if item["evidence_class"] == "inference":
+                _ep_require(all(_ep_text(item.get(k)) for k in ("mechanism", "time_horizon", "monitor", "disconfirming_evidence")), "inference requires mechanism, horizon, monitor, and disconfirming evidence")
+            if any(claims[c]["kind"] == "quote" for c in ids):
+                _ep_require(all(_ep_text(item.get(k)) for k in ("speaker", "role", "context")), "quote requires speaker, role, and context")
+            if not scaffold:
+                _ep_require(all(claims[c]["validation"] in ("passed", "source_only") for c in ids), "analytical item uses an unvalidated claim")
+        if not scaffold:
+            for cid in used:
+                _ep_require(all(sources[s]["role"] != "AI-DISCOVERY" and sources[s]["recency_status"] not in ("stale", "undated", "conflicted") for s in claims[cid]["sources"]), f"{cid}: published claim uses discovery-only or unavailable evidence")
+        revision = manifest["revision"]
+        if revision is not None:
+            _ep_fields(revision, {"parent_path", "parent_hash", "scope", "change_note", "affected_claim_ids", "invalidated_claim_ids", "protected_hash"}, "revision")
+            _ep_require(revision["scope"] in EARNINGS_SCOPES and _ep_text(revision["change_note"]), "invalid revision scope or change note")
+            _ep_require(_ep_text(revision["parent_path"]) and isinstance(revision["parent_hash"], str) and re.fullmatch(r"sha256:[a-f0-9]{64}", revision["parent_hash"]), "revision requires a parent locator and SHA-256")
+            _ep_ids(revision["affected_claim_ids"], "revision.affected_claim_ids")
+            _ep_ids(revision["invalidated_claim_ids"], "revision.invalidated_claim_ids")
+            if revision["scope"] in ("formatting", "wording"):
+                _ep_require(revision["protected_hash"] == _ep_protected_hash(root, content), "formatting/wording revision changed protected evidence or claim meaning")
+        for name in EARNINGS_FILES[:2]:
+            text_value = _ep_child(root, name).read_text(encoding="utf-8")
+            if not scaffold:
+                _ep_require(bool(text_value.strip()) and "EARNINGS_DRAFT" not in text_value, f"{name}: unfinished draft")
+        if not scaffold:
+            brief = _ep_child(root, "webex-brief.md").read_text(encoding="utf-8")
+            lines = brief.splitlines()
+            _ep_require(lines and lines[0] == f"**{content['headline']['title']}**", "brief title must match structured title")
+            _ep_require(any(line.startswith("   •\t") for line in lines), "brief requires proof bullets with three spaces, bullet, tab")
+            _ep_require(not any((line.lstrip().startswith(("•", "- ", "* ")) and not line.startswith("   •\t")) for line in lines), "brief has an invalid bullet prefix")
+            _ep_require(not re.search(r"\*\*[^\n]+\*\*\n\s*\n   •\t", brief), "brief separates a headline from its proof bullets")
+        review_hash = _ep_review_hash(root, manifest, artifacts)
+        report["review_input_hash"] = review_hash
+        _ep_fields(manifest["review"], {"status", "reviewer", "reviewed_at", "input_hash"}, "review")
+        _ep_require(manifest["review"]["status"] in ("pending", "passed"), "invalid review status")
+        if not scaffold and require_review:
+            review = manifest["review"]
+            _ep_require(review["status"] == "passed" and _ep_text(review["reviewer"]), "content/source review is pending; record an actual review against review_input_hash")
+            _ep_require(created <= _ep_time(review["reviewed_at"], "review.reviewed_at") <= datetime.now().astimezone(), "review timestamp must be between pack creation and now")
+            _ep_require(review["input_hash"] == review_hash, "review input hash is stale; review the changed pack")
+        if manifest["source_state"] == "release_only":
+            report["warnings"].append("Release-only coverage: call and Q&A conclusions require a later source refresh.")
+        report.update(status="scaffold" if scaffold else "pass", claims=len(claims), sources=len(sources))
+    except (OSError, ValueError, TypeError, KeyError, InvalidOperation, ZeroDivisionError, SyntaxError, RecursionError, csv.Error) as exc:
+        report["errors"].append(str(exc))
+    return report
+
+
+def _ep_protected_hash(root: Path, content: dict) -> str:
+    # Display and prose may change; claim statements, basis and provenance may not.
+    protected = json.loads(json.dumps(content))
+    protected.pop("headline", None)
+    for item in protected["financial_highlights"]:
+        for key in ("display", "display_value", "label", "comparison", "insight"):
+            item.pop(key, None)
+    for item in _ep_content_items(protected):
+        item.pop("text", None)
+    manifest = _ep_json(_ep_child(root, "manifest.json").read_text(encoding="utf-8"))
+    fixed_metadata = {k: manifest[k] for k in ("company", "ticker", "fiscal_year", "quarter", "period_end", "earnings_date", "source_state", "source_cutoff", "latest_period_check")}
+    claims, _ = _ep_claims(root, {s["source_id"]: s for s in content["sources"]}, False)
+    evidence = {s["capture_path"] for s in content["sources"]} | {c["receipt"] for c in claims.values() if c["receipt"]}
+    return "sha256:" + _sha256_text(_canonical_json({"content": protected, "metadata": fixed_metadata,
+        "ledger_hash": _file_sha256(_ep_child(root, "source-ledger.tsv")),
+        "evidence_hashes": {name: _file_sha256(_ep_child(root, name)) for name in sorted(evidence)}}))
+
+
+def _ep_print(report: dict, as_json: bool) -> int:
+    if as_json:
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+    elif report["status"] == "fail":
+        for error in report.get("errors", []):
+            print(f"ERROR: {error}", file=sys.stderr)
+        if report.get("review_input_hash"):
+            print(f"Review input hash: {report['review_input_hash']}", file=sys.stderr)
+    else:
+        print(f"{report['status'].upper()}: {report['path']}")
+        if report.get("next"):
+            print(f"Next: {report['next']}")
+        for warning in report.get("warnings", []):
+            print(f"WARNING: {warning}", file=sys.stderr)
+    return 2 if report["status"] == "fail" else 0
+
+
+def cmd_earnings_validate(args: argparse.Namespace) -> int:
+    return _ep_print(_ep_validate(Path(args.path).expanduser(), args.scaffold), args.json)
+
+
+def cmd_earnings_revise(args: argparse.Namespace) -> int:
+    destination: Path | None = None
+    try:
+        source = Path(args.path).expanduser()
+        _ep_require(not source.is_symlink(), "parent pack cannot be a symlink")
+        source = source.resolve()
+        original = _ep_validate(source)
+        _ep_require(original["status"] == "pass", "source pack must pass complete validation: " + "; ".join(original["errors"]))
+        _ep_require(args.scope in EARNINGS_SCOPES and _ep_text(args.change_note), "revision scope and change note required")
+        manifest = _ep_json((source / "manifest.json").read_text(encoding="utf-8"))
+        content = _ep_json((source / "one-pager-content.json").read_text(encoding="utf-8"))
+        source_map = {s["source_id"]: s for s in content["sources"]}
+        claims, rows = _ep_claims(source, source_map, True)
+        affected = list(dict.fromkeys(args.claim_id or []))
+        _ep_require(set(affected) <= claims.keys(), "revision references unknown claim ID")
+        if args.scope in ("formatting", "wording"):
+            _ep_require(not affected, "formatting/wording revisions cannot name affected claims")
+        elif args.scope != "source-refresh":
+            _ep_require(bool(affected), "interpretation and financial-data revisions require --claim-id")
+        if args.scope == "interpretation":
+            _ep_require(all(claims[c]["evidence_class"] == "inference" for c in affected), "interpretation revisions require inference claims")
+        if args.scope == "financial-data":
+            _ep_require(all(claims[c]["kind"] == "metric" for c in affected), "financial-data revisions require metric claims")
+        invalidated = set(claims) if args.scope == "source-refresh" else set(affected)
+        while True:
+            expanded = invalidated | {c for c, row in claims.items() if set(row["dependencies"]) & invalidated}
+            if expanded == invalidated:
+                break
+            invalidated = expanded
+        as_of = args.as_of or manifest["as_of"]
+        _ep_date(as_of, "as-of")
+        _ep_require(as_of >= manifest["as_of"], "revision as-of cannot precede parent")
+        # Snapshot all files before allocation; reject symlinks and special files.
+        snapshot = {}
+        for path in source.rglob("*"):
+            _ep_require(not path.is_symlink(), f"source contains symlink: {path.name}")
+            if not path.is_dir():
+                relative = str(path.relative_to(source))
+                snapshot[relative] = _ep_child(source, relative).read_bytes()
+        _ep_require(_ep_validate(source)["review_input_hash"] == original["review_input_hash"], "parent changed while preparing revision")
+        destination, version = _ep_allocate(source.parent, as_of)
+        for name, data in snapshot.items():
+            path = destination / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        manifest.update(as_of=as_of, version=version, created_at=now_iso(), review=_ep_pending_review())
+        manifest["revision"] = {"parent_path": str(source), "parent_hash": original["review_input_hash"],
+                                "scope": args.scope, "change_note": args.change_note.strip(),
+                                "affected_claim_ids": affected, "invalidated_claim_ids": sorted(invalidated),
+                                "protected_hash": _ep_protected_hash(source, content) if args.scope in ("formatting", "wording") else None}
+        if args.scope == "source-refresh":
+            manifest["latest_period_check"] = {"status": "pending", "checked_at": "", "note": ""}
+        for row in rows:
+            if row["claim_id"] in invalidated:
+                row["validation"] = "pending"
+        _ep_write_json(destination / "manifest.json", manifest)
+        if invalidated:
+            _ep_write_ledger(destination / "source-ledger.tsv", rows)
+        report = {"status": "draft", "path": str(destination), "parent_path": str(source),
+                  "invalidated_claim_ids": sorted(invalidated), "next": "Patch the scoped content, review the new pack, then run earnings-validate."}
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        if destination is not None:
+            shutil.rmtree(destination)
+        report = {"status": "fail", "errors": [str(exc)]}
+    return _ep_print(report, args.json)
+
+
 # ---------- main / argparse ----------
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="research.py", description="Central research knowledge base.")
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    sp = sub.add_parser("earnings-init", help="Create a non-overwriting earnings pack scaffold")
+    sp.add_argument("--company", required=True)
+    sp.add_argument("--ticker", required=True)
+    sp.add_argument("--fiscal-year", type=int, required=True)
+    sp.add_argument("--quarter", choices=("Q1", "Q2", "Q3", "Q4"), required=True)
+    sp.add_argument("--as-of", required=True, help="YYYY-MM-DD output version date")
+    sp.add_argument("--period-end")
+    sp.add_argument("--earnings-date")
+    sp.add_argument("--source-cutoff", help="ISO timestamp including timezone; defaults to now")
+    sp.add_argument("--base-dir", help="Output root; defaults to <research content root>/earnings")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_earnings_init)
+
+    sp = sub.add_parser("earnings-validate", help="Read-only earnings pack validation; never verifies source truth")
+    sp.add_argument("path")
+    sp.add_argument("--scaffold", action="store_true", help="Check draft structure only; success does not mean a complete pack")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_earnings_validate)
+
+    sp = sub.add_parser("earnings-revise", help="Create a revision from an explicitly selected validated parent")
+    sp.add_argument("path")
+    sp.add_argument("--scope", choices=EARNINGS_SCOPES, required=True)
+    sp.add_argument("--change-note", required=True)
+    sp.add_argument("--claim-id", action="append", help="Changed metric/inference claim; repeat as needed")
+    sp.add_argument("--as-of", help="New date, defaulting to the parent's date")
+    sp.add_argument("--json", action="store_true")
+    sp.set_defaults(func=cmd_earnings_revise)
 
     sp = sub.add_parser("init", help="Bootstrap research content and index roots")
     sp.add_argument("--refresh-seeds", action="store_true", help="Re-apply seed data (preserves manual overrides)")
@@ -7504,7 +8081,7 @@ def main() -> int:
     sp.add_argument("--no-notes", action="store_true", help="PPTX: exclude speaker notes")
     sp.set_defaults(func=cmd_extract)
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     return args.func(args)
 
 

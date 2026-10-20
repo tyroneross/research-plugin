@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "company": "Example Systems",
+    "ticker": "EXAMPLE",
+    "fiscal_year": 2026,
+    "quarter": "Q2",
+    "period_end": "2026-06-30",
+    "earnings_date": "2026-08-04"
+  },
+  "headline": {
+    "title": "Example Systems FY2026 Q2 Earnings Update",
+    "takeaway": "Synthetic results illustrate a validated earnings pack."
+  },
+  "financial_highlights": [
+    {
+      "claim_id": "C1",
+      "label": "Revenue",
+      "display_value": "$1.26B",
+      "display": {
+        "scale": "1000000000",
+        "decimals": 2,
+        "prefix": "$",
+        "suffix": "B"
+      },
+      "comparison": "Not sourced",
+      "insight": "Synthetic illustration.",
+      "unit": "USD",
+      "period": "FY2026 Q2",
+      "scope": "consolidated",
+      "basis": "GAAP",
+      "status": "reported",
+      "source_ids": [
+        "S1"
+      ],
+      "footnote_ids": []
+    },
+    {
+      "claim_id": "C2",
+      "label": "Gross margin",
+      "display_value": "50.0%",
+      "display": {
+        "scale": "1",
+        "decimals": 1,
+        "prefix": "",
+        "suffix": "%"
+      },
+      "comparison": "Not sourced",
+      "insight": "Synthetic illustration.",
+      "unit": "percent",
+      "period": "FY2026 Q2",
+      "scope": "consolidated",
+      "basis": "GAAP",
+      "status": "reported",
+      "source_ids": [
+        "S1"
+      ],
+      "footnote_ids": []
+    },
+    {
+      "claim_id": "C3",
+      "label": "Operating margin",
+      "display_value": "20.0%",
+      "display": {
+        "scale": "1",
+        "decimals": 1,
+        "prefix": "",
+        "suffix": "%"
+      },
+      "comparison": "Not sourced",
+      "insight": "Synthetic illustration.",
+      "unit": "percent",
+      "period": "FY2026 Q2",
+      "scope": "consolidated",
+      "basis": "GAAP",
+      "status": "reported",
+      "source_ids": [
+        "S1"
+      ],
+      "footnote_ids": []
+    }
+  ],
+  "financial_drivers": [
+    {
+      "text": "Synthetic revenue could support future investment.",
+      "claim_ids": [
+        "C4"
+      ],
+      "evidence_class": "inference",
+      "confidence": "low",
+      "source_ids": [
+        "S1"
+      ],
+      "mechanism": "Illustrative reinvestment capacity",
+      "time_horizon": "next fiscal year",
+      "monitor": "Disclosed investment",
+      "disconfirming_evidence": "Investment falls despite unchanged revenue"
+    }
+  ],
+  "strategic_highlights": {
+    "product": [],
+    "gtm": [],
+    "management_commentary": [],
+    "competitive_reads": [],
+    "strategic_watches": []
+  },
+  "implications_slide": {
+    "stock_reaction": [],
+    "consensus_target": [],
+    "analyst_sentiment": [],
+    "competitive_impact": [],
+    "partnership_opportunity": [],
+    "recommended_actions": []
+  },
+  "sources": [
+    {
+      "source_id": "S1",
+      "citation_text": "Synthetic fixture disclosure",
+      "url": "https://example.org/fixture",
+      "path": "",
+      "role": "PRIMARY-DISCLOSURE",
+      "document_type": "release",
+      "tier": "T1",
+      "tier_rationale": "Synthetic original disclosure fixture",
+      "publication_date": "2026-08-04",
+      "accessed_at": "2026-08-04T18:00:00+00:00",
+      "recency_status": "current",
+      "upstream_source_ids": [],
+      "capture_path": "captures/example.txt",
+      "content_hash": "sha256:5076320e65bd2bcc0b2344db54627402f599626577e8fc91f32764bf951ed2c2",
+      "observation_id": "obs-example"
+    }
+  ],
+  "footnotes": [],
+  "content_gaps": []
+}

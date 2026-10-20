@@ -145,10 +145,19 @@ The output is an evidence package, not a narrative. Required sections: **Objecti
 
 Template and worked column definitions: `references/evidence-package-template.md`.
 
+For a versioned earnings brief plus a separate one-pager handoff, load
+`references/earnings-packs.md`. Use `research.py earnings-init`,
+`earnings-validate`, and `earnings-revise` (also available through the three
+named scripts in `scripts/`). The v1 contract binds structured highlights to
+ledger claims, rechecks calculation receipts, preserves revision lineage, and
+requires a content review tied to the exact pack. A scaffold check is not a
+completed analysis; source truth and prose interpretation remain host review.
+
 ## Related references
 
 - `references/financial-controls.md` — full control detail, worked term-authority and bucket examples, reconciliation patterns.
 - `references/evidence-package-template.md` — deliverable template.
+- `references/earnings-packs.md` — executable earnings-pack schema, validation, and revision rules with a synthetic example.
 - `../research/references/query-optimization.md` — Q4 optimization, decision card, section contracts.
 - `../research/references/deep-orchestration.md` — query ledger, source and claim registers, reconcile step.
 - `../research/references/credibility.md` — tiers and corroboration classes.
