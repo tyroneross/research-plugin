@@ -32,6 +32,47 @@ independent support, a concept map, and an annotated reading list.
 
 The [seeded snowball workflow](skills/research/references/seeded-snowball.md) checks the starting claim, follows labeled conceptual and citation relationships, and stops at saturation, topic drift, or the chosen budget. It separates repeated mentions from independent evidence and preserves uncertain or corrected premises. Conceptual distance is an editorial judgment; the result does not establish expert consensus. The host follows this guidance through the existing research skill; no new CLI method, crawler, or dependency is added.
 
+### Analyze earnings and financial drivers
+
+```text
+/research:research Compare these supplied quarterly disclosures: <files>.
+Explain revenue and margin changes, distinguish management's explanation from
+supported mechanisms, and calculate each derived number. Create a versioned
+earnings brief and one-pager with source links and explicit coverage gaps.
+```
+
+The agent can combine earnings analysis with financial-mechanism analysis,
+then use the [earnings helpers](#earnings-output-helpers) to create and validate
+the deliverables. Missing disclosures or call evidence remain coverage gaps.
+
+## Research approach selection
+
+The host LLM chooses an approach from the evidence the answer needs. The
+[decision guide](skills/research/references/approach-selection.md) supplies
+choose/avoid criteria, required inputs, completion rules, and combination order.
+
+| What the answer needs | Approach |
+|---|---|
+| A narrow fact or definition | Ordinary research (`approaches: []`) |
+| Related guidance starting from a tip or source | Seeded snowball |
+| Quarterly results, guidance, and prior-period comparisons | Earnings analysis |
+| Supported explanations for margin, cost, or operating-model changes | Financial mechanisms |
+| Computed outcomes under changed assumptions | Scenario analysis |
+| Themes, exceptions, and dissent across a bounded corpus | Thematic synthesis |
+| Changes to previous claims based on new dated evidence | Longitudinal update |
+| Firsthand testimony to resolve documentary gaps | Expert interview |
+
+Before sourcing, the LLM records why the approach fits, which close alternative
+it rejected, and any missing inputs. It submits an ordered `approaches` list to
+`route --request-file`; the route validates supported names and returns
+`approach_contracts`. These approaches are separate from scientific `methods`
+such as causal inference or forecasting.
+
+Raw queries return tentative `approach_candidates`. When
+`approach_selection_required` is true, the LLM must accept, replace, or reject
+the candidates through an explicit list before sourcing. An empty list selects
+ordinary research. Suggestions never execute tools or grant permission.
+
 ## Install
 
 ### Python prerequisite
@@ -80,6 +121,44 @@ python3 research.py route --query "Calculate annual savings; do not save" --json
 ```
 
 Expected: `computation` is `required`, `persist` is `false`, and `status` is `planned`. This command writes no research data. It checks the CLI only; it does not prove that the host loaded the plugin or executed research. If Python reports a missing `yaml` module, install PyYAML in the same Python environment and retry.
+
+## Earnings output helpers
+
+The helpers create a versioned pack containing `manifest.json`,
+`source-ledger.tsv`, `one-pager-content.json`, `one-pager-content.md`, and
+`webex-brief.md`. Run from the repository root:
+
+```bash
+python3 scripts/init_earnings_output.py \
+  --company "Example Systems" --ticker EXAMPLE --fiscal-year 2026 --quarter Q2 \
+  --as-of 2026-08-04 --period-end 2026-06-30 --earnings-date 2026-08-04 \
+  --source-cutoff 2026-08-04T20:00:00+00:00 --json
+```
+
+This creates a scaffold under
+`<content-root>/earnings/example-systems/fy2026-q2/2026-08-04-v<N>/` without
+overwriting existing versions. Use `--base-dir <directory>` to choose another
+output root. The host must populate and review the pack before complete
+validation. These helpers do not fetch sources or save a research-library entry.
+
+For a read-only smoke check, validate the committed synthetic example:
+
+```bash
+python3 scripts/validate_earnings_output.py \
+  tests/fixtures/earnings-v1/2026-08-04-v1 --json
+```
+
+Expected: `status` is `pass`, with a release-only coverage warning. This checks evidence links, retained captures,
+decimal display, calculation receipts where required, and the content-bound
+review. The example contains synthetic data; a pass establishes pack
+consistency, not financial truth or live-source verification.
+
+Use `scripts/revise_earnings_output.py` to create a new version from an explicitly
+selected validated parent. The scope determines which claims require renewed
+validation. See the [earnings pack contract](skills/financial-research/references/earnings-packs.md)
+for revision commands, schemas, and review steps. All three scripts share the
+implementation in `research.py`. The new `research.earnings.v1` schema does not
+claim compatibility with historical WorkWiki output packs.
 
 ## Roots
 
@@ -190,25 +269,6 @@ Invoke as `python3 "${RESEARCH_PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT:-${CODEX_PLUGIN
 | `compress <slug>` | Compact an entry's TL;DR and Raw sections |
 
 `/research:dashboard` had no `research.py` equivalent even before removal — its capability lives entirely in the `audit-dashboard` skill. Load that skill, or run directly: `python3 skills/audit-dashboard/scripts/render_dashboard.py <audit.json> --out <file.html>` (`--validate-only` checks the payload without rendering).
-
-The earnings interfaces are also available as `scripts/init_earnings_output.py`,
-`scripts/validate_earnings_output.py`, and `scripts/revise_earnings_output.py`.
-They share one implementation in `research.py`. See the
-[earnings pack contract](skills/financial-research/references/earnings-packs.md)
-for commands, schemas, review steps, and a populated synthetic example. This is
-a new `research.earnings.v1` contract; historical WorkWiki schemas are not
-silently accepted. No helper calls a model or fetches financial sources.
-
-## Research approach selection
-
-Research selection separates task shape, scientific method, and practical
-approach. The host reads the [approach decision guide](skills/research/references/approach-selection.md),
-selects an ordered `approaches` list, and validates it with `route --request-file`.
-The route returns required inputs and completion rules for snowball discovery,
-earnings, financial mechanisms, quantitative scenarios, thematic synthesis,
-longitudinal updates, and expert interviews. Raw queries produce tentative
-candidates; the host must accept or reject them before sourcing. Explicit `[]`
-keeps ordinary research. Suggestions never execute tools or grant permission.
 
 ## Search
 
